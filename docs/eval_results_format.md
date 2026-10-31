@@ -82,3 +82,4 @@ Comparative ablation studies containing:
 - `ece` (float): Calibration error.
 - `avg_latency_ms` (float): Mean round-trip processing time in ms.
 - `insufficient_evidence_rate` (float): Rate of fallback to `insufficient_evidence`.
+

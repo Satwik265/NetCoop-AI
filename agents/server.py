@@ -15,6 +15,7 @@ from agents.log_agent import LogAgent
 from agents.synthesizer_agent import SynthesizerAgent
 from agents.telemetry_agent import TelemetryAgent
 from agents.topology_agent import TopologyAgent
+from netcoop.agents.classifier.classifier_agent import ClassifierAgent
 
 
 def get_agent_instance(role: AgentRole) -> BaseAgent:
@@ -25,6 +26,7 @@ def get_agent_instance(role: AgentRole) -> BaseAgent:
         AgentRole.CONFIG_AGENT: ConfigAgent,
         AgentRole.LOG_AGENT: LogAgent,
         AgentRole.SYNTHESIZER_AGENT: SynthesizerAgent,
+        AgentRole.CLASSIFIER_AGENT: ClassifierAgent,
     }
     agent_cls = mapping.get(role)
     if not agent_cls:
@@ -123,4 +125,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

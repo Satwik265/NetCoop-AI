@@ -330,3 +330,4 @@ def test_data_quality_report_structure() -> None:
     assert src_info["record_count"] == 1
     assert "flattening" in src_info["transformations_applied"]
     assert isinstance(src_info["missing_fields"], list)
+

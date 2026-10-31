@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     log_agent_port: int = 8004
     synthesizer_agent_port: int = 8005
     gateway_port: int = 8006
+    classifier_agent_port: int = 8007
 
     # Communication mode: "http" enforces microservice HTTP calls
     agents_mode: str = "http"
@@ -57,6 +58,7 @@ class Settings(BaseSettings):
             AgentRole.CONFIG_AGENT: self.config_agent_port,
             AgentRole.LOG_AGENT: self.log_agent_port,
             AgentRole.SYNTHESIZER_AGENT: self.synthesizer_agent_port,
+            AgentRole.CLASSIFIER_AGENT: self.classifier_agent_port,
         }
         return port_mapping.get(role, self.port)
 

@@ -19,6 +19,7 @@ AGENT_ROLES = [
     ("config_agent", 8003),
     ("log_agent", 8004),
     ("synthesizer_agent", 8005),
+    ("classifier_agent", 8007),
 ]
 
 GATEWAY_SERVICE = ("gateway", 8006)
@@ -224,4 +225,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

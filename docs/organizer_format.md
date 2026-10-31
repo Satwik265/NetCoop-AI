@@ -54,3 +54,4 @@ The hackathon organizer Colab telemetry generator (`data/organizer/Mock_data_bui
 
 7. **Auto-Detection in `/ingest`**:
    - The Gateway detects the presence of a nested `metrics` key or `status` string (`Healthy`/`Warning`/`Critical`) or top-level list of snapshot records and automatically routes through the `OrganizerAdapter`.
+

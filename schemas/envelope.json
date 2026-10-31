@@ -41,6 +41,7 @@
             "config_agent",
             "log_agent",
             "synthesizer_agent",
+            "classifier_agent",
             "human_operator"
           ],
           "description": "Identifier of the transmitting agent"
@@ -54,6 +55,7 @@
             "config_agent",
             "log_agent",
             "synthesizer_agent",
+            "classifier_agent",
             "broadcast"
           ],
           "description": "Identifier of intended recipient"

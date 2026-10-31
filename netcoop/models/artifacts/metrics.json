@@ -1,0 +1,19 @@
+{
+  "train_samples": 2400,
+  "calibration_samples": 600,
+  "validation_samples": 600,
+  "test_samples": 720,
+  "ece_calibration": 0.0,
+  "ece_test": 0.0341,
+  "conformal_test_coverage": 0.8472,
+  "cutoffs": {
+    "high": 0.4,
+    "medium": 0.4,
+    "low": 0.4
+  },
+  "precisions": {
+    "high": 0.97,
+    "medium": 0.97,
+    "low": 0.97
+  }
+}

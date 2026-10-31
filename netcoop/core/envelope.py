@@ -16,6 +16,7 @@ class AgentRole(str, Enum):
     CONFIG_AGENT = "config_agent"
     LOG_AGENT = "log_agent"
     SYNTHESIZER_AGENT = "synthesizer_agent"
+    CLASSIFIER_AGENT = "classifier_agent"
     HUMAN_OPERATOR = "human_operator"
     BROADCAST = "broadcast"
 

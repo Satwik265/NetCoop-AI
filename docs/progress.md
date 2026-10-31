@@ -13,20 +13,21 @@ Status indicators:
 
 | Directory / File | Purpose | Test / Validation Module | Status |
 | :--- | :--- | :--- | :--- |
-| `/agents` | Five specialized collaborating agents (Telemetry, Topology, Config, Log, Synthesizer) with standalone FastAPI runners | `tests/test_agents.py`<br/>`tests/test_agent_http.py` | complete |
+| `/agents` | Six specialized collaborating agents (Telemetry, Topology, Config, Log, Synthesizer, Classifier) with standalone FastAPI runners | `tests/test_agents.py`<br/>`tests/test_agent_http.py`<br/>`tests/test_b2_learned_layer.py` | complete |
 | `/core` | Protocol definitions, event bus, evidence scoring, normalizer, report builder, ports config | `tests/test_protocol_envelope.py`<br/>`tests/test_conflict_resolution.py` | complete |
-| `/gateway` | External format ingestion, organizer Colab adapters, data quality reporting, and `/ingest` microservice | `tests/test_organizer_adapter.py`<br/>`tests/test_gateway_api.py`<br/>`tests/test_b1_gateway_robustness.py` | complete |
+| `/gateway` | External format ingestion, organizer Colab adapters, unit inferencer, field matcher, and `/ingest` microservice | `tests/test_organizer_adapter.py`<br/>`tests/test_gateway_api.py`<br/>`tests/test_b1_gateway_robustness.py`<br/>`tests/test_b2_learned_layer.py` | complete |
 | `/orchestrator` | LangGraph state graph, conflict resolver, and HTTP mediator | `tests/test_scenarios.py` | complete |
 | `/mcp_server` | Model Context Protocol stdio server | `tests/test_mcp_server.py` | complete |
 | `/api` | FastAPI REST endpoints & WebSocket real-time envelope streamer | `tests/test_api_endpoints.py` | complete |
 | `/cli` | Typer + Rich CLI interface (`diagnose`, `replay`, `gen`, `incidents`, `envelopes`, `remediate`) | CLI execution tests | complete |
 | `/dashboard` | React + Vite + TypeScript + Tailwind minimalist monochrome dashboard | `npm run build` | complete |
 | `/data` | Seeded telemetry generator, chaos knobs, ground-truth scenario library & manifest | `tests/test_generator.py`<br/>`scripts/eval_benchmark.py` | complete |
-| `/scripts` | Supervisor runner (`run_agents.py`), end-to-end demo (`demo.py`), benchmark (`eval_benchmark.py`) | E2E execution tests | complete |
-| `/tests` | Comprehensive unit, scenario, robustness (Hypothesis), HTTP, and evaluation tests | `pytest tests/` (78 passed) | complete |
-| `/docs` | Complete technical documentation (`contract.md`, `handoff.md`, `organizer_format.md`, `eval_results_format.md`, `progress.md`) | Verified against standards | complete |
+| `/models` | Learned classifier, seed splits, feature extractor, isotonic calibration, conformal engine, artifacts | `tests/test_b2_learned_layer.py`<br/>`scripts/train_models.py` | complete |
+| `/scripts` | Supervisor runner (`run_agents.py`), end-to-end demo (`demo.py`), benchmark (`eval_benchmark.py`), training (`train_models.py`) | E2E execution tests | complete |
+| `/tests` | Comprehensive unit, scenario, robustness (Hypothesis), HTTP, B1, and B2 learned layer tests | `pytest tests/` (86 passed) | complete |
+| `/docs` | Complete technical documentation (`contract.md`, `handoff.md`, `organizer_format.md`, `eval_results_format.md`, `confidence.md`, `progress.md`) | Verified against standards | complete |
 | `/schemas` | Formal JSON Schemas (`envelope.json`, `telemetry.json`, `diagnostic_report.json`, `remediation_plan.json`) | `test_protocol_envelope.py` | complete |
-| `Makefile` | Automated tasks (`setup`, `up`, `down`, `demo`, `test`, `eval`, `assets`, `run`, `clean`) with Windows PowerShell equivalents | CLI & make invocation | complete |
+| `Makefile` | Automated tasks (`setup`, `up`, `down`, `demo`, `test`, `eval`, `train`, `assets`, `run`, `clean`) with Windows PowerShell equivalents | CLI & make invocation | complete |
 | `docker-compose.yml` | Containerized microservice deployment with dedicated container per agent | Docker Compose verification | complete |
 | `.env.example` | Template environment configuration with zero secrets | Manual verification | complete |
 | `pyproject.toml` | Packaging, scripts, and build configuration | `pip install -e .` | complete |
@@ -45,6 +46,7 @@ Status indicators:
 | Log Agent | HTTP POST | `127.0.0.1` | **8004** | `GET /health`<br/>`POST /process` | complete |
 | Synthesizer Agent | HTTP POST | `127.0.0.1` | **8005** | `GET /health`<br/>`POST /process` | complete |
 | Ingestion Gateway | HTTP POST | `127.0.0.1` | **8006** | `GET /health`<br/>`POST /ingest` | complete |
+| Classifier Agent | HTTP POST | `127.0.0.1` | **8007** | `GET /health`<br/>`POST /process` | complete |
 
 ---
 
@@ -66,20 +68,35 @@ Status indicators:
 
 ---
 
-## 4. Hackathon Evaluation Criteria Mapping
+## 4. Learned Diagnostic Layer (B2)
 
-| Evaluation Area | Weight | Implementation Modules | Test Modules | Status |
-| :--- | :---: | :--- | :--- | :--- |
-| **Interoperability & Protocol Design** | 30% | `schemas/*.json`<br/>`core/envelope.py`<br/>`gateway/api.py`<br/>`gateway/adapters/organizer_adapter.py`<br/>`docs/protocol.md`<br/>`docs/contract.md` | `tests/test_protocol_envelope.py`<br/>`tests/test_gateway_api.py`<br/>`tests/test_agent_http.py`<br/>`tests/test_b1_gateway_robustness.py` | complete |
-| **Diagnostic Accuracy & Evidence Quality** | 25% | `core/evidence.py`<br/>`core/correlation.py`<br/>`core/scoring.py`<br/>`core/report.py` | `tests/test_scenarios.py`<br/>`tests/test_insufficient_evidence.py`<br/>`scripts/eval_benchmark.py` (21/21 PASS) | complete |
-| **Orchestration & Conflict Resolution** | 15% | `orchestrator/graph.py`<br/>`orchestrator/mediator.py`<br/>`orchestrator/conflict_resolver.py`<br/>`core/bus.py` | `tests/test_conflict_resolution.py`<br/>`tests/test_scenarios.py` | complete |
-| **Robustness to Missing / Incompatible Data** | 15% | `core/normalizer.py`<br/>`gateway/adapters/organizer_adapter.py`<br/>`gateway/api.py` | `tests/test_robustness_hypothesis.py`<br/>`tests/test_organizer_adapter.py`<br/>`tests/test_b1_gateway_robustness.py` | complete |
-| **Innovation, Usability, Extensibility** | 10% | `mcp_server/server.py`<br/>`remediation/engine.py`<br/>`dashboard/` (React Dashboard)<br/>`cli/main.py` (`diagnose`, `replay`)<br/>`Makefile` (`up`, `down`, `demo`) | `tests/test_mcp_server.py`<br/>`tests/test_remediation_safety.py` | complete |
-| **Code Quality, Docs, and Demo** | 5% | `docs/progress.md`<br/>`docs/contract.md`<br/>`docs/handoff.md`<br/>`docs/organizer_format.md`<br/>`docs/eval_results_format.md`<br/>`README.md`<br/>`Makefile` | Full test suite execution (78 passed) | complete |
+| Component | Implementation File(s) | Verification Test(s) | Status |
+| :--- | :--- | :--- | :--- |
+| Seed-Disjoint Dataset Partitioning ($\ge 300$ runs/class, zero overlap) | `netcoop/models/splits.py` | `tests/test_b2_learned_layer.py::test_splits_seed_disjointness` | complete |
+| Window & Topology Feature Extractor (148 incident features, snapshot flag) | `netcoop/models/features.py` | `tests/test_b2_learned_layer.py::test_feature_extraction_*` | complete |
+| Isotonic Probability Calibration & ECE Metrics | `netcoop/models/calibration.py` | `tests/test_b2_learned_layer.py::test_calibration_isotonic_and_ece` | complete |
+| Split Conformal Prediction Engine ($\alpha=0.10$, coverage $\ge 90\%$) | `netcoop/models/conformal.py` | `tests/test_b2_learned_layer.py::test_conformal_prediction_set_and_abstention` | complete |
+| Classifier Agent Microservice (Port 8007, feature attribution observations) | `netcoop/agents/classifier/classifier_agent.py` | `tests/test_b2_learned_layer.py::test_classifier_agent_envelope_processing` | complete |
+| Value-Based Unit Inference Decision Tree (seconds vs ms, kbps vs Mbps) | `gateway/adapters/unit_inference.py` | `tests/test_b2_learned_layer.py::test_unit_inference_decision_tree` | complete |
+| Character n-gram & Token-Aware Field Matcher (`cpu_utilization_pct` $\rightarrow$ `cpu_pct`) | `gateway/adapters/field_matcher.py` | `tests/test_b2_learned_layer.py::test_field_matcher_generalization_without_explicit_alias` | complete |
+| Offline CPU Training Pipeline (`make train`) & Model Card | `scripts/train_models.py`<br/>`netcoop/models/MODEL_CARD.md`<br/>`docs/confidence.md` | `python scripts/train_models.py`<br/>`netcoop/models/artifacts/` | complete |
 
 ---
 
-## 5. Hard Constraints Checklist
+## 5. Hackathon Evaluation Criteria Mapping
+
+| Evaluation Area | Weight | Implementation Modules | Test Modules | Status |
+| :--- | :---: | :--- | :--- | :--- |
+| **Interoperability & Protocol Design** | 30% | `schemas/*.json`<br/>`core/envelope.py`<br/>`gateway/api.py`<br/>`gateway/adapters/organizer_adapter.py`<br/>`gateway/adapters/unit_inference.py`<br/>`gateway/adapters/field_matcher.py`<br/>`docs/protocol.md`<br/>`docs/contract.md` | `tests/test_protocol_envelope.py`<br/>`tests/test_gateway_api.py`<br/>`tests/test_agent_http.py`<br/>`tests/test_b1_gateway_robustness.py`<br/>`tests/test_b2_learned_layer.py` | complete |
+| **Diagnostic Accuracy & Evidence Quality** | 25% | `core/evidence.py`<br/>`core/correlation.py`<br/>`core/scoring.py`<br/>`core/report.py`<br/>`netcoop/models/`<br/>`netcoop/agents/classifier/` | `tests/test_scenarios.py`<br/>`tests/test_insufficient_evidence.py`<br/>`tests/test_b2_learned_layer.py`<br/>`scripts/eval_benchmark.py` (21/21 PASS) | complete |
+| **Orchestration & Conflict Resolution** | 15% | `orchestrator/graph.py`<br/>`orchestrator/mediator.py`<br/>`orchestrator/conflict_resolver.py`<br/>`core/bus.py` | `tests/test_conflict_resolution.py`<br/>`tests/test_scenarios.py` | complete |
+| **Robustness to Missing / Incompatible Data** | 15% | `core/normalizer.py`<br/>`gateway/adapters/organizer_adapter.py`<br/>`gateway/adapters/unit_inference.py`<br/>`gateway/adapters/field_matcher.py`<br/>`netcoop/models/conformal.py` | `tests/test_robustness_hypothesis.py`<br/>`tests/test_organizer_adapter.py`<br/>`tests/test_b1_gateway_robustness.py`<br/>`tests/test_b2_learned_layer.py` | complete |
+| **Innovation, Usability, Extensibility** | 10% | `mcp_server/server.py`<br/>`remediation/engine.py`<br/>`dashboard/` (React Dashboard)<br/>`cli/main.py` (`diagnose`, `replay`)<br/>`netcoop/models/conformal.py`<br/>`Makefile` (`up`, `down`, `demo`, `train`) | `tests/test_mcp_server.py`<br/>`tests/test_remediation_safety.py`<br/>`tests/test_b2_learned_layer.py` | complete |
+| **Code Quality, Docs, and Demo** | 5% | `docs/progress.md`<br/>`docs/contract.md`<br/>`docs/handoff.md`<br/>`docs/organizer_format.md`<br/>`docs/eval_results_format.md`<br/>`docs/confidence.md`<br/>`netcoop/models/MODEL_CARD.md`<br/>`README.md`<br/>`Makefile` | Full test suite execution (86 passed) | complete |
+
+---
+
+## 6. Hard Constraints Checklist
 
 - [x] Zero emojis across all code, comments, logs, CLI output, UI, docs, commit messages.
 - [x] Core pipeline functions fully offline with zero LLM calls.
