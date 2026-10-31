@@ -1,6 +1,6 @@
-"""FastAPI microservice for telemetry ingestion and canonical normalization."""
+"""FastAPI microservice for telemetry ingestion, organizer format auto-detection, and canonical normalization."""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -22,17 +22,6 @@ app.add_middleware(
 )
 
 
-class IngestionResponse(BaseModel):
-    """Canonicalized ingestion response payload."""
-
-    incident_id: str
-    network_id: str
-    schema_version: str
-    clock_skew_detected: bool
-    record_count: int
-    data: Dict[str, Any]
-
-
 @app.get("/health")
 def health() -> Dict[str, str]:
     """Gateway service health check."""
@@ -42,13 +31,23 @@ def health() -> Dict[str, str]:
 @app.post("/ingest")
 async def ingest_endpoint(request: Request) -> Dict[str, Any]:
     """Ingest raw, unnormalized, or organizer-format network data and return canonical schema."""
+    raw_body: Any = None
     try:
         raw_body = await request.json()
-    except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Malformed JSON payload: {str(e)}",
-        )
+    except Exception:
+        # Fall back to raw text body for lenient/malformed JSON handling
+        try:
+            body_bytes = await request.body()
+            body_str = body_bytes.decode("utf-8", errors="replace")
+            if body_str.strip():
+                raw_body = body_str
+            else:
+                raw_body = ""
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Malformed JSON payload: {str(e)}",
+            )
 
     try:
         canonical_data = OrganizerAdapter.adapt_dataset(raw_body)
@@ -63,4 +62,3 @@ async def ingest_endpoint(request: Request) -> Dict[str, Any]:
 def create_gateway_app() -> FastAPI:
     """Factory creating the gateway FastAPI application."""
     return app
-

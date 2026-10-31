@@ -150,7 +150,10 @@
               },
               "timestamp_start": { "type": ["string", "null"] },
               "timestamp_end": { "type": ["string", "null"] },
-              "context": { "type": "object" }
+              "context": { "type": "object" },
+              "provenance": { "type": ["object", "null"] },
+              "confidence": { "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0 },
+              "data_quality": { "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0 }
             },
             "additionalProperties": false
           },
@@ -189,7 +192,9 @@
                 "items": { "type": "string" },
                 "description": "Agents or signals needed to verify this hypothesis",
                 "default": []
-              }
+              },
+              "provenance": { "type": ["object", "null"] },
+              "data_quality": { "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0 }
             },
             "additionalProperties": false
           },
@@ -212,7 +217,8 @@
               "question": { "type": "string" },
               "target_entity": { "type": "string" },
               "parameters": { "type": "object" },
-              "answer": { "type": ["string", "object", "null"] }
+              "answer": { "type": ["string", "object", "null"] },
+              "provenance": { "type": ["object", "null"] }
             },
             "additionalProperties": false
           },
@@ -230,6 +236,12 @@
             "field_path": { "type": ["string", "null"] }
           },
           "required": ["error_code", "message"]
+        },
+        "data_quality": {
+          "type": ["object", "null"]
+        },
+        "provenance": {
+          "type": ["object", "null"]
         }
       },
       "additionalProperties": false
