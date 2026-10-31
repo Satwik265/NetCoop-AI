@@ -1,4 +1,3 @@
-_OPEN_LOG_HANDLES = []
 """Process manager to launch, health-check, and cleanly shut down specialist agent microservices."""
 
 import argparse
@@ -9,10 +8,11 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 import httpx
 
 PID_FILE = Path(__file__).parent.parent / ".agents.pid"
+_OPEN_LOG_HANDLES: List[Any] = []
 
 AGENT_ROLES = [
     ("telemetry_agent", 8001),
@@ -25,16 +25,31 @@ AGENT_ROLES = [
 ]
 
 GATEWAY_SERVICE = ("gateway", 8006)
+ALL_PORTS = [8001, 8002, 8003, 8004, 8005, 8006, 8007, 8008]
+
+
+def get_python_executable(project_root: Path) -> str:
+    """Find virtualenv Python interpreter or fall back to sys.executable."""
+    venv_py = project_root / ".venv" / "Scripts" / "python.exe"
+    if venv_py.exists():
+        return str(venv_py)
+    posix_py = project_root / ".venv" / "bin" / "python"
+    if posix_py.exists():
+        return str(posix_py)
+    return sys.executable
 
 
 def start_agent_process(role: str, port: int, project_root: Path) -> subprocess.Popen:
     """Spawn an individual agent microservice as a child process."""
+    py_exec = get_python_executable(project_root)
     cmd = [
-        sys.executable,
+        py_exec,
         "-m",
         "agents.server",
         "--role",
         role,
+        "--host",
+        "127.0.0.1",
         "--port",
         str(port),
     ]
@@ -44,29 +59,32 @@ def start_agent_process(role: str, port: int, project_root: Path) -> subprocess.
     log_f = open(log_path, "a", encoding="utf-8")
     _OPEN_LOG_HANDLES.append(log_f)
 
+    creationflags = 0
+    if sys.platform == "win32":
+        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
+
     process = subprocess.Popen(
         cmd,
         cwd=str(project_root),
         env=env,
         stdout=log_f,
         stderr=log_f,
+        creationflags=creationflags,
     )
     return process
 
 
 def start_gateway_process(port: int, project_root: Path) -> subprocess.Popen:
     """Spawn the gateway microservice as a child process."""
+    py_exec = get_python_executable(project_root)
     cmd = [
-        sys.executable,
+        py_exec,
         "-m",
-        "uvicorn",
-        "gateway.api:app",
+        "gateway.api",
         "--host",
         "127.0.0.1",
         "--port",
         str(port),
-        "--log-level",
-        "warning",
     ]
     env = os.environ.copy()
     env["PYTHONPATH"] = str(project_root)
@@ -74,12 +92,17 @@ def start_gateway_process(port: int, project_root: Path) -> subprocess.Popen:
     log_f = open(log_path, "a", encoding="utf-8")
     _OPEN_LOG_HANDLES.append(log_f)
 
+    creationflags = 0
+    if sys.platform == "win32":
+        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
+
     process = subprocess.Popen(
         cmd,
         cwd=str(project_root),
         env=env,
         stdout=log_f,
         stderr=log_f,
+        creationflags=creationflags,
     )
     return process
 
@@ -133,20 +156,57 @@ def terminate_pid(pid: int) -> None:
         pass
 
 
-def stop_all_agents() -> None:
-    """Stop all recorded agent and gateway processes."""
-    pids = load_pids()
-    if not pids:
-        print("No active agent processes recorded in .agents.pid", flush=True)
-        return
+def cleanup_orphaned_ports(ports: List[int]) -> None:
+    """Clean up any orphan processes still bound to agent ports using fast netstat check."""
+    if sys.platform == "win32":
+        try:
+            res = subprocess.run(["netstat", "-ano"], capture_output=True, text=True, check=False)
+            port_suffixes = {f":{p}" for p in ports}
+            candidate_pids = set()
+            for line in res.stdout.splitlines():
+                parts = line.strip().split()
+                if len(parts) >= 5 and (parts[0].startswith("TCP") or parts[0].startswith("UDP")):
+                    local_addr = parts[1]
+                    for ps in port_suffixes:
+                        if local_addr.endswith(ps):
+                            pid_str = parts[-1]
+                            if pid_str.isdigit():
+                                candidate_pids.add(int(pid_str))
+            for c_pid in candidate_pids:
+                if c_pid != os.getpid() and c_pid > 0:
+                    terminate_pid(c_pid)
+        except Exception:
+            pass
 
-    print("Stopping all running NetCoop specialist agents and gateway...", flush=True)
-    for name, pid in pids.items():
-        print(f"  Terminating {name} (PID: {pid})...", flush=True)
-        terminate_pid(pid)
+
+def stop_all_agents() -> None:
+    """Stop all recorded agent and gateway processes and release file handles."""
+    pids = load_pids()
+    if pids:
+        print("Stopping all running NetCoop specialist agents and gateway...", flush=True)
+        for name, pid in pids.items():
+            print(f"  Terminating {name} (PID: {pid})...", flush=True)
+            terminate_pid(pid)
+    else:
+        print("No active agent processes recorded in .agents.pid", flush=True)
+
+    # Clean up any unrecorded orphan processes holding agent ports
+    cleanup_orphaned_ports(ALL_PORTS)
+
+    # Flush and close open log handles
+    for handle in _OPEN_LOG_HANDLES:
+        try:
+            handle.flush()
+            handle.close()
+        except Exception:
+            pass
+    _OPEN_LOG_HANDLES.clear()
 
     if PID_FILE.exists():
-        PID_FILE.unlink()
+        try:
+            PID_FILE.unlink()
+        except Exception:
+            pass
     print("All processes stopped cleanly.", flush=True)
 
 
@@ -206,15 +266,34 @@ def main() -> None:
     # Give all processes a moment to bind sockets
     time.sleep(4.0)
 
-    # 3. Wait for all health checks
-    all_healthy = True
-    for role, port in AGENT_ROLES + [GATEWAY_SERVICE]:
-        healthy = wait_for_health("127.0.0.1", port, timeout=15.0)
-        if healthy:
+    # 3. Wait for all health checks concurrently
+    all_services = AGENT_ROLES + [GATEWAY_SERVICE]
+    pending = dict(all_services)
+    health_results = {role: False for role, _ in all_services}
+    start_wait = time.time()
+    timeout = 30.0
+
+    while pending and (time.time() - start_wait < timeout):
+        for role in list(pending.keys()):
+            port = pending[role]
+            url = f"http://127.0.0.1:{port}/health"
+            try:
+                with httpx.Client(timeout=0.5) as client:
+                    res = client.get(url)
+                    if res.status_code == 200:
+                        health_results[role] = True
+                        del pending[role]
+            except Exception:
+                pass
+        if pending:
+            time.sleep(0.5)
+
+    all_healthy = all(health_results.values())
+    for role, port in all_services:
+        if health_results[role]:
             print(f"  {role:<22} (port {port}): healthy", flush=True)
         else:
             print(f"  {role:<22} (port {port}): FAILED TO RESPOND", flush=True)
-            all_healthy = False
 
     if not all_healthy:
         print("Warning: Some agents failed to respond within timeout.", flush=True)

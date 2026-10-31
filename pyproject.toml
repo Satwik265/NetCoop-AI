@@ -48,6 +48,9 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 python_files = ["test_*.py"]
+markers = [
+    "strict_isolation: tests verifying strict HTTP process isolation and fail-closed semantics",
+]
 python_functions = ["test_*"]
 
 [tool.mypy]

@@ -1,6 +1,7 @@
 """FastAPI backend server for NetCoop AI multi-agent diagnostic platform."""
 
 import asyncio
+import httpx
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
@@ -140,12 +141,33 @@ def health() -> Dict[str, str]:
 
 @app.post("/api/ingest")
 def ingest_data_endpoint(raw_payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Gateway Ingestion: translate, unit-convert, and canonicalize arbitrary telemetry."""
+    """Gateway Ingestion: translate, unit-convert, and canonicalize arbitrary telemetry via Gateway HTTP microservice."""
+    gateway_url = settings.get_gateway_url()
     try:
-        canonical = OrganizerAdapter.adapt_dataset(raw_payload)
-        return canonical
+        with httpx.Client(timeout=10.0) as client:
+            resp = client.post(gateway_url, json=raw_payload)
+            if resp.status_code == 200:
+                return resp.json()
+            elif resp.status_code == 422:
+                detail = resp.json().get("detail", "Gateway normalization failure")
+                raise HTTPException(status_code=422, detail=detail)
+            elif resp.status_code == 400:
+                detail = resp.json().get("detail", "Malformed payload")
+                raise HTTPException(status_code=400, detail=detail)
+            else:
+                raise HTTPException(
+                    status_code=resp.status_code,
+                    detail=f"Gateway service returned HTTP {resp.status_code}: {resp.text}",
+                )
+    except (httpx.ConnectError, httpx.TimeoutException) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Gateway service on port {settings.gateway_port} unavailable over HTTP: {str(exc)}",
+        )
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=422, detail=f"Ingestion error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ingestion communication error: {str(e)}")
 
 
 @app.get("/api/scenarios")
@@ -186,11 +208,31 @@ def run_diagnosis_endpoint(incident_data: Dict[str, Any]) -> UnifiedDiagnosticRe
     try:
         format_detected = OrganizerAdapter.detect_format(incident_data)
         if format_detected == "organizer":
-            canonical_data = OrganizerAdapter.adapt_dataset(incident_data)
+            gateway_url = settings.get_gateway_url()
+            try:
+                with httpx.Client(timeout=10.0) as client:
+                    resp = client.post(gateway_url, json=incident_data)
+                    if resp.status_code == 200:
+                        canonical_data = resp.json()
+                    elif resp.status_code == 422:
+                        detail = resp.json().get("detail", "Gateway normalization failure")
+                        raise HTTPException(status_code=422, detail=detail)
+                    else:
+                        raise HTTPException(
+                            status_code=resp.status_code,
+                            detail=f"Gateway normalization failed: {resp.text}",
+                        )
+            except (httpx.ConnectError, httpx.TimeoutException) as exc:
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Gateway service on port {settings.gateway_port} unavailable over HTTP: {str(exc)}",
+                )
             report = run_diagnosis(canonical_data)
         else:
             report = run_diagnosis(incident_data)
         return report
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Diagnostic error: {str(e)}")
 

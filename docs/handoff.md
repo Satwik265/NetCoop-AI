@@ -91,6 +91,13 @@ The system employs a strict shared-nothing architecture. Specialist agents run a
 | **Classifier Agent** | **8007** | `http://127.0.0.1:8007` | `POST /process` | `GET /health` |
 | **Wi-Fi & Services Agent** | **8008** | `http://127.0.0.1:8008` | `POST /process` | `GET /health` |
 
+### 2.2 Microservice Process Isolation & Degraded Mode
+- **Process Isolation**: Each specialist agent and gateway runs as a distinct OS process (FastAPI application launched with Uvicorn), bound to loopback `127.0.0.1:<port>`. Communication occurs strictly over HTTP with JSON-serialized `AgentEnvelope` models.
+- **Fail-Closed Degraded Mode**: `in_process_fallback = False` is enforced. Unreachable agent microservices trip the circuit breaker and enter degraded mode, recording an explicit audit trail entry in report limitations (`agent_unavailable: <role> process unreachable; continued in degraded mode`), never silently executing in-process substitutes.
+- **Gateway HTTP Microservice Dispatch**: Ingestion endpoints (`/api/ingest` and `/api/diagnose`) forward requests over HTTP to the Gateway microservice on port 8006 (`POST /ingest`). If the Gateway service is down, the API returns HTTP 503 Service Unavailable with an actionable error message rather than silently using an in-process adapter.
+- **Process Supervision**: `scripts/run_agents.py` supervises processes, tracks PIDs in `.agents.pid`, polls health endpoints concurrently, and handles graceful teardown via `terminate_pid`.
+- **Docker Compose Topology**: `docker-compose.yml` declares all 8 microservices plus orchestrator with healthchecks, non-root loopback overrides, and `service_healthy` dependency conditions.
+
 ---
 
 ## 3. Authoritative Code Structure and Logical Path Mapping

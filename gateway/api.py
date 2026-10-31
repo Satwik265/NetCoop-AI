@@ -62,3 +62,18 @@ async def ingest_endpoint(request: Request) -> Dict[str, Any]:
 def create_gateway_app() -> FastAPI:
     """Factory creating the gateway FastAPI application."""
     return app
+
+
+def main() -> None:
+    """CLI runner to start the Ingestion Gateway microservice."""
+    import argparse
+    import uvicorn
+    parser = argparse.ArgumentParser(description="Run NetCoop Ingestion Gateway microservice.")
+    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host interface to bind to")
+    parser.add_argument("--port", type=int, default=8006, help="Port to listen on")
+    args = parser.parse_args()
+    uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
+
+
+if __name__ == "__main__":
+    main()
