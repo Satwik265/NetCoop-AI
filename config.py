@@ -1,7 +1,8 @@
 """Application configuration and settings."""
 
-from typing import Optional
+from typing import Dict, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from core.envelope import AgentRole
 
 
 class Settings(BaseSettings):
@@ -22,6 +23,18 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8000
 
+    # Dedicated microservice agent ports
+    telemetry_agent_port: int = 8001
+    topology_agent_port: int = 8002
+    config_agent_port: int = 8003
+    log_agent_port: int = 8004
+    synthesizer_agent_port: int = 8005
+    gateway_port: int = 8006
+
+    # Communication mode: "http" enforces microservice HTTP calls
+    agents_mode: str = "http"
+    in_process_fallback: bool = True
+
     # Persistence
     database_url: str = "sqlite:///./netcoop.db"
 
@@ -36,6 +49,26 @@ class Settings(BaseSettings):
     # Remediation safety
     remediation_simulated_only: bool = True
 
+    def get_agent_port(self, role: AgentRole) -> int:
+        """Lookup HTTP port assigned to a given specialist agent role."""
+        port_mapping: Dict[AgentRole, int] = {
+            AgentRole.TELEMETRY_AGENT: self.telemetry_agent_port,
+            AgentRole.TOPOLOGY_AGENT: self.topology_agent_port,
+            AgentRole.CONFIG_AGENT: self.config_agent_port,
+            AgentRole.LOG_AGENT: self.log_agent_port,
+            AgentRole.SYNTHESIZER_AGENT: self.synthesizer_agent_port,
+        }
+        return port_mapping.get(role, self.port)
+
+    def get_agent_url(self, role: AgentRole) -> str:
+        """Get the HTTP process endpoint URL for an agent role."""
+        port = self.get_agent_port(role)
+        return f"http://{self.host}:{port}/process"
+
+    def get_agent_health_url(self, role: AgentRole) -> str:
+        """Get the HTTP health check URL for an agent role."""
+        port = self.get_agent_port(role)
+        return f"http://{self.host}:{port}/health"
+
 
 settings = Settings()
-
