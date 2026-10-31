@@ -95,3 +95,20 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 - [x] Status set to `insufficient_evidence` whenever data is incomplete or ambiguous.
 - [x] All remediation actions are simulated; real infrastructure is never contacted.
 - [x] Visual style adheres to monochrome tokens (Inter + JetBrains Mono).
+
+
+---
+
+## 7. Member C (UI & Testing) Sprint Deliverables
+
+| Deliverable | Implementation File | Capabilities Verified | Status |
+| :--- | :--- | :--- | :---: |
+| **Monochrome Design Tokens** | `dashboard/src/styles/tokens.css` | Minimalist palette (light `#FAFAF9`, dark `#0F0F10`, slate `#475569`, desaturated status `#5E7A6A`/`#A08A5B`/`#9A5B5B`), 200ms ease-out transitions, `prefers-reduced-motion` compliance | **Complete** |
+| **Interactive Agent Graph** | `dashboard/src/components/AgentGraph.tsx` | React Flow topology with plain outlined nodes, dynamic animated message edges between sender and receiver, receiver border darkening, click to open slide-over | **Complete** |
+| **Streaming Message Timeline** | `dashboard/src/components/StreamingTimeline.tsx` | Smooth envelope insertion, play/pause scrubber slider with step buttons, multi-agent and message type filters, click-to-inspect drawer | **Complete** |
+| **Evidence Correlation Panel** | `dashboard/src/components/CorrelationPanel.tsx` | Hypotheses score bars animating to values, calibrated confidence thin SVG arc with status text, conflict resolution arbitration details, inter-agent inquiries list | **Complete** |
+| **Final Diagnostic Report Card** | `dashboard/src/components/ReportCard.tsx` | Incident summary, probable root cause, uncertainty evaluation, simulated remediation commands with rollback and blast radius, one-click Export JSON and Export Markdown | **Complete** |
+| **Scenario Picker & Audit Banner** | `dashboard/src/components/ScenarioPicker.tsx` | Pre-configured multi-domain scenarios and organizer samples (`normal`, `latency_spike`, `hardware_failure`), Run control, data quality audit health indicators | **Complete** |
+| **Wire Envelope Slide-Over** | `dashboard/src/components/EnvelopeSlideOver.tsx` | Slide-over inspector displaying formatted envelope payload (scope, observations, hypotheses, inquiries) and raw JSON with copy action | **Complete** |
+| **Persistent Theme Toggle** | `dashboard/src/components/ThemeToggle.tsx` | Monochrome light/dark mode persisted in localStorage | **Complete** |
+| **Mock Envelope Fallback** | `dashboard/mock/envelopes.json`, `dashboard/src/mock/envelopes.ts` | Offline mock envelope trace copied from `docs/handoff.md` with automatic switch to live backend stream | **Complete** |

@@ -1,0 +1,226 @@
+[
+  {
+    "id": 1,
+    "message_id": "c1f72b22-86ee-4eb3-8182-3d712f5581ea",
+    "correlation_id": "inc-20261031-001",
+    "timestamp_utc": "2026-10-31T12:00:01.100000+00:00",
+    "sender": "telemetry_agent",
+    "recipient": "orchestrator",
+    "schema_version": "1.0.0",
+    "message_type": "finding_submission",
+    "priority": "normal",
+    "payload": {
+      "scope": {
+        "network_id": "campus-core",
+        "devices": ["spine-01", "leaf-02"],
+        "interfaces": ["et-0/0/1"]
+      },
+      "observations": [
+        {
+          "observation_id": "obs-e4c19a02",
+          "category": "metric_anomaly",
+          "entity": "spine-01:et-0/0/1",
+          "metric_name": "packet_loss_pct",
+          "observed_value": 14.8,
+          "baseline_value": 0.05,
+          "unit": "percent",
+          "severity": "critical"
+        },
+        {
+          "observation_id": "obs-e4c19a03",
+          "category": "metric_anomaly",
+          "entity": "spine-01:et-0/0/1",
+          "metric_name": "link_utilization_pct",
+          "observed_value": 98.6,
+          "baseline_value": 42.0,
+          "unit": "percent",
+          "severity": "critical"
+        }
+      ],
+      "hypotheses": [
+        {
+          "hypothesis_id": "hyp-82b3a104",
+          "probable_cause": "INTERFACE_SATURATION_QUEUE_OVERFLOW",
+          "confidence": 0.88,
+          "supporting_observation_ids": ["obs-e4c19a02", "obs-e4c19a03"],
+          "refuting_observation_ids": [],
+          "required_corroboration": ["LOG_INTERFACE_DROP_MESSAGES"]
+        }
+      ],
+      "inquiries": [
+        {
+          "inquiry_id": "inq-91f82c31",
+          "target_agent": "log_agent",
+          "question": "Are there queue drop or buffer exhaustion syslog messages on interface et-0/0/1?",
+          "target_entity": "spine-01:et-0/0/1",
+          "parameters": { "window_minutes": 15 },
+          "answer": null
+        }
+      ]
+    },
+    "context": {
+      "iteration": 0,
+      "environment": "simulation"
+    }
+  },
+  {
+    "id": 2,
+    "message_id": "d2e83c33-97ff-4fc4-9293-4e823f6692fb",
+    "correlation_id": "inc-20261031-001",
+    "timestamp_utc": "2026-10-31T12:00:01.400000+00:00",
+    "sender": "topology_agent",
+    "recipient": "orchestrator",
+    "schema_version": "1.0.0",
+    "message_type": "finding_submission",
+    "priority": "normal",
+    "payload": {
+      "scope": {
+        "network_id": "campus-core",
+        "devices": ["spine-01", "leaf-02", "leaf-01"],
+        "interfaces": ["et-0/0/1", "et-0/0/2"]
+      },
+      "observations": [
+        {
+          "observation_id": "obs-t100",
+          "category": "state_transition",
+          "entity": "spine-01:et-0/0/1",
+          "metric_name": "link_flaps",
+          "observed_value": 0,
+          "baseline_value": 0,
+          "unit": "flaps_per_minute",
+          "severity": "info"
+        }
+      ],
+      "hypotheses": [
+        {
+          "hypothesis_id": "hyp-top-01",
+          "probable_cause": "TOPOLOGY_ASYMMETRIC_ROUTING",
+          "confidence": 0.42,
+          "supporting_observation_ids": ["obs-t100"],
+          "refuting_observation_ids": [],
+          "required_corroboration": ["BGP_ROUTE_FLAPS"]
+        }
+      ],
+      "inquiries": []
+    },
+    "context": {
+      "iteration": 0,
+      "environment": "simulation"
+    }
+  },
+  {
+    "id": 3,
+    "message_id": "e3f94d44-08aa-5ad5-a304-5f934a7703ac",
+    "correlation_id": "inc-20261031-001",
+    "timestamp_utc": "2026-10-31T12:00:01.800000+00:00",
+    "sender": "config_agent",
+    "recipient": "orchestrator",
+    "schema_version": "1.0.0",
+    "message_type": "finding_submission",
+    "priority": "normal",
+    "payload": {
+      "scope": {
+        "network_id": "campus-core",
+        "devices": ["spine-01", "leaf-02"],
+        "interfaces": ["et-0/0/1"]
+      },
+      "observations": [
+        {
+          "observation_id": "obs-cfg-101",
+          "category": "config_diff",
+          "entity": "spine-01:et-0/0/1",
+          "metric_name": "mtu",
+          "observed_value": 9000,
+          "baseline_value": 9000,
+          "unit": "bytes",
+          "severity": "info"
+        }
+      ],
+      "hypotheses": [],
+      "inquiries": []
+    },
+    "context": {
+      "iteration": 0,
+      "environment": "simulation"
+    }
+  },
+  {
+    "id": 4,
+    "message_id": "f4a05e55-19bb-6be6-b415-6a045b8814bd",
+    "correlation_id": "inc-20261031-001",
+    "timestamp_utc": "2026-10-31T12:00:02.100000+00:00",
+    "sender": "log_agent",
+    "recipient": "orchestrator",
+    "schema_version": "1.0.0",
+    "message_type": "inquiry_response",
+    "priority": "high",
+    "payload": {
+      "scope": {
+        "network_id": "campus-core",
+        "devices": ["spine-01"],
+        "interfaces": ["et-0/0/1"]
+      },
+      "observations": [
+        {
+          "observation_id": "obs-log-501",
+          "category": "log_pattern",
+          "entity": "spine-01:et-0/0/1",
+          "metric_name": "queue_drops",
+          "observed_value": 3480,
+          "baseline_value": 0,
+          "unit": "count",
+          "severity": "critical"
+        }
+      ],
+      "hypotheses": [
+        {
+          "hypothesis_id": "hyp-log-01",
+          "probable_cause": "INTERFACE_SATURATION_QUEUE_OVERFLOW",
+          "confidence": 0.94,
+          "supporting_observation_ids": ["obs-log-501"],
+          "refuting_observation_ids": [],
+          "required_corroboration": []
+        }
+      ],
+      "inquiries": []
+    },
+    "context": {
+      "iteration": 1,
+      "environment": "simulation"
+    }
+  },
+  {
+    "id": 5,
+    "message_id": "a5b16f66-20cc-7cf7-c526-7b156c9925ce",
+    "correlation_id": "inc-20261031-001",
+    "timestamp_utc": "2026-10-31T12:00:02.600000+00:00",
+    "sender": "synthesizer_agent",
+    "recipient": "orchestrator",
+    "schema_version": "1.0.0",
+    "message_type": "synthesis_submission",
+    "priority": "urgent",
+    "payload": {
+      "scope": {
+        "network_id": "campus-core",
+        "devices": ["spine-01", "leaf-02"],
+        "interfaces": ["et-0/0/1"]
+      },
+      "observations": [],
+      "hypotheses": [
+        {
+          "hypothesis_id": "hyp-final-synth",
+          "probable_cause": "INTERFACE_SATURATION_QUEUE_OVERFLOW",
+          "confidence": 0.94,
+          "supporting_observation_ids": ["obs-e4c19a02", "obs-e4c19a03", "obs-log-501"],
+          "refuting_observation_ids": [],
+          "required_corroboration": []
+        }
+      ],
+      "inquiries": []
+    },
+    "context": {
+      "iteration": 2,
+      "environment": "simulation"
+    }
+  }
+]

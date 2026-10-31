@@ -40,6 +40,7 @@ app.add_middleware(
 )
 
 SCENARIOS_DIR = Path(__file__).parent.parent / "data" / "scenarios"
+ORGANIZER_SAMPLES_DIR = Path(__file__).parent.parent / "data" / "organizer" / "samples"
 SCHEMAS_DIR = Path(__file__).parent.parent / "schemas"
 
 
@@ -147,7 +148,7 @@ def ingest_data_endpoint(raw_payload: Dict[str, Any]) -> Dict[str, Any]:
 
 @app.get("/api/scenarios")
 def list_scenarios() -> List[Dict[str, Any]]:
-    """List all pre-configured benchmark scenario files."""
+    """List all pre-configured benchmark scenario files and organizer samples."""
     scenarios: List[Dict[str, Any]] = []
     if SCENARIOS_DIR.exists():
         for f in sorted(SCENARIOS_DIR.glob("*.json")):
@@ -164,12 +165,43 @@ def list_scenarios() -> List[Dict[str, Any]]:
                     )
             except Exception:
                 continue
+
+    if ORGANIZER_SAMPLES_DIR.exists():
+        for sf in sorted(ORGANIZER_SAMPLES_DIR.glob("*.jsonl")):
+            stem = sf.stem
+            scenarios.append(
+                {
+                    "filename": f"organizer_{stem}.jsonl",
+                    "incident_id": f"inc-organizer-{stem}",
+                    "network_id": "iit-bbs-campus-fabric",
+                    "description": f"Organizer Sample: {stem.replace('_', ' ').capitalize()} Telemetry",
+                }
+            )
+
     return scenarios
 
 
 @app.get("/api/scenarios/{filename}")
 def get_scenario(filename: str) -> Dict[str, Any]:
-    """Retrieve full scenario JSON content."""
+    """Retrieve full scenario JSON content or parsed organizer JSONL."""
+    if filename.startswith("organizer_") or filename.endswith(".jsonl"):
+        sample_name = filename.replace("organizer_", "").replace(".jsonl", "")
+        sample_file = ORGANIZER_SAMPLES_DIR / f"{sample_name}.jsonl"
+        if not sample_file.exists():
+            raise HTTPException(status_code=404, detail="Organizer sample not found.")
+        records = []
+        with open(sample_file, "r", encoding="utf-8") as f:
+            for line in f:
+                line_str = line.strip()
+                if line_str:
+                    records.append(json.loads(line_str))
+        return {
+            "incident_id": f"inc-organizer-{sample_name}",
+            "network_id": "iit-bbs-campus-fabric",
+            "telemetry": records,
+            "description": f"Organizer Sample: {sample_name.replace('_', ' ').capitalize()} Telemetry",
+        }
+
     file_path = SCENARIOS_DIR / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Scenario file not found.")
