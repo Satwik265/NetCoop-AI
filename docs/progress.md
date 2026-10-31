@@ -112,3 +112,7 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 | **Wire Envelope Slide-Over** | `dashboard/src/components/EnvelopeSlideOver.tsx` | Slide-over inspector displaying formatted envelope payload (scope, observations, hypotheses, inquiries) and raw JSON with copy action | **Complete** |
 | **Persistent Theme Toggle** | `dashboard/src/components/ThemeToggle.tsx` | Monochrome light/dark mode persisted in localStorage | **Complete** |
 | **Mock Envelope Fallback** | `dashboard/mock/envelopes.json`, `dashboard/src/mock/envelopes.ts` | Offline mock envelope trace copied from `docs/handoff.md` with automatic switch to live backend stream | **Complete** |
+
+| **Held-Out Evaluation Generator** | `netcoop/data/heldout_generator.py` | Seeded generation with heavy-tailed Pareto/Log-Normal noise, variable onset timing, wide severity ranges ($0.75\times - 1.65\times$), bursty dropouts, and compound fault mixes. CLI and schema validated | **Complete** |
+| **Held-Out Test Suite** | `tests/test_heldout_generator.py` | 27 pytest tests verifying schema compliance, seed determinism, coverage across all 23 scenarios, CLI subprocess invocation, and statistical variance | **Complete** |
+| **Held-Out Evaluation Notes** | `docs/heldout_notes.md` | Comprehensive documentation of statistical parameter shifts, distribution models, and CLI usage | **Complete** |

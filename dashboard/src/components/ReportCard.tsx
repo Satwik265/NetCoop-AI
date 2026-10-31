@@ -268,3 +268,4 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report, loading }) => {
     </div>
   );
 };
+

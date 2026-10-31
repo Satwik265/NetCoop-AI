@@ -1,0 +1,2 @@
+"""NetCoop data generation package."""
+

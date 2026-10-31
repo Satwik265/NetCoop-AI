@@ -270,3 +270,4 @@ export const CorrelationPanel: React.FC<CorrelationPanelProps> = ({
     </div>
   );
 };
+
