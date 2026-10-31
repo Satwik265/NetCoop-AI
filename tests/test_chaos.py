@@ -386,9 +386,90 @@ def test_end_to_end_kbps_vs_mbps() -> None:
     assert report.status == "diagnosed"
 
 
+def test_adapter_v1_flat_and_v2_nested_normalization() -> None:
+    """Adapter-level: flat v1 and nested v2 records both normalize to identical field structure with exact values preserved.
+
+    This test operates only at the OrganizerAdapter layer.  It does NOT call run_diagnosis()
+    so the conformal-quantile artifact state cannot affect the assertion.
+    """
+    raw_scenario = {
+        "incident_id": "inc-mixed-schemas",
+        "network_id": "iit-bbs-campus",
+        "telemetry": [
+            {
+                "device_id": "SW_CAMPUS_1",
+                "timestamp": "2026-10-31T12:00:00Z",
+                "link_utilization_pct": 92.0,
+                "queue_drops": 300,
+            },
+            {
+                "device_id": "SW_CAMPUS_2",
+                "timestamp": "2026-10-31T12:01:00Z",
+                "metrics": {
+                    "link_utilization_pct": 94.0,
+                    "queue_drops": 350,
+                },
+            },
+        ],
+    }
+    adapted = OrganizerAdapter.adapt_dataset(raw_scenario)
+
+    assert len(adapted["telemetry"]) == 2
+
+    # v1 flat record: all values must survive verbatim
+    rec0 = adapted["telemetry"][0]
+    assert rec0["device_id"] == "SW_CAMPUS_1"
+    assert rec0["link_utilization_pct"] == 92.0, (
+        f"Expected 92.0 for flat v1 link_utilization_pct, got {rec0['link_utilization_pct']}"
+    )
+    assert rec0["queue_drops"] == 300, (
+        f"Expected 300 for flat v1 queue_drops, got {rec0['queue_drops']}"
+    )
+
+    # v2 nested record: metrics must be flattened with exact values preserved
+    rec1 = adapted["telemetry"][1]
+    assert rec1["device_id"] == "SW_CAMPUS_2"
+    assert rec1["link_utilization_pct"] == 94.0, (
+        f"Expected 94.0 for v2 nested link_utilization_pct after flattening, got {rec1['link_utilization_pct']}"
+    )
+    assert rec1["queue_drops"] == 350, (
+        f"Expected 350 for v2 nested queue_drops after flattening, got {rec1['queue_drops']}"
+    )
+
+    # Absent metrics must not be fabricated
+    assert rec0["latency_ms"] is None, (
+        f"latency_ms must be None for flat v1 record that omitted it, got {rec0['latency_ms']}"
+    )
+    assert rec1["latency_ms"] is None, (
+        f"latency_ms must be None for v2 nested record that omitted it, got {rec1['latency_ms']}"
+    )
+
+    # Both records must share the same canonical output structure (same key set)
+    assert set(rec0.keys()) == set(rec1.keys()), (
+        "v1 flat and v2 nested records must produce identical canonical key sets after normalization"
+    )
+
+
 def test_end_to_end_v1_vs_v2_schema() -> None:
-    """Prove end-to-end: mixed v1 (flat metrics) and v2 (nested under metrics) records are unified."""
+    """Prove end-to-end: mixed v1 (flat metrics) and v2 (nested under metrics) records are unified.
+
+    Uses a full synthetic link_congestion dataset so the classifier has sufficient evidence.
+    Alternating records are converted to v2 nested format before adaptation; exact metric
+    values from flat records are captured before transformation and verified afterwards.
+    """
     dataset = SyntheticNetworkGenerator.generate(scenario="link_congestion", seed=42)
+
+    # Capture ground-truth values from records that will remain flat (even indices)
+    flat_expected: dict = {}
+    for i, rec in enumerate(dataset["telemetry"]):
+        if i % 2 == 0:
+            flat_expected[i] = {
+                "device_id": rec.get("device_id") or rec.get("device"),
+                "link_utilization_pct": rec.get("link_utilization_pct"),
+                "queue_drops": rec.get("queue_drops"),
+            }
+
+    # Build mixed v1/v2 dataset: odd-index records promoted to nested v2 format
     v2_telemetry = []
     for i, rec in enumerate(dataset["telemetry"]):
         if i % 2 == 1:
@@ -404,10 +485,38 @@ def test_end_to_end_v1_vs_v2_schema() -> None:
         else:
             v2_telemetry.append(rec)
     dataset["telemetry"] = v2_telemetry
+
     adapted = OrganizerAdapter.adapt_dataset(dataset)
+
+    # Record count must be preserved (deduplication aside)
     assert len(adapted["telemetry"]) == len(dataset["telemetry"])
-    assert adapted["telemetry"][0]["link_utilization_pct"] is not None
-    assert adapted["telemetry"][1]["link_utilization_pct"] is not None
+
+    # Both first and second output records must carry link_utilization_pct
+    assert adapted["telemetry"][0]["link_utilization_pct"] is not None, (
+        "v1 flat record at index 0 must carry link_utilization_pct after adaptation"
+    )
+    assert adapted["telemetry"][1]["link_utilization_pct"] is not None, (
+        "v2 nested record at index 1 must carry link_utilization_pct after flattening"
+    )
+
+    # Verify that flat records preserved exact metric values through the adapter
+    adapted_by_device: dict = {r["device_id"]: r for r in adapted["telemetry"]}
+    for i, expected in flat_expected.items():
+        dev_id = expected["device_id"]
+        if dev_id not in adapted_by_device:
+            continue
+        out = adapted_by_device[dev_id]
+        if expected["link_utilization_pct"] is not None:
+            assert out["link_utilization_pct"] == expected["link_utilization_pct"], (
+                f"Flat v1 record device '{dev_id}' link_utilization_pct: "
+                f"expected {expected['link_utilization_pct']}, got {out['link_utilization_pct']}"
+            )
+        if expected["queue_drops"] is not None:
+            assert out["queue_drops"] == expected["queue_drops"], (
+                f"Flat v1 record device '{dev_id}' queue_drops: "
+                f"expected {expected['queue_drops']}, got {out['queue_drops']}"
+            )
+
     report = run_diagnosis(adapted)
     assert report.status == "diagnosed"
 
