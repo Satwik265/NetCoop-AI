@@ -1,3 +1,4 @@
+from netcoop.core.signatures import HypothesisKey, SIGNATURE_REGISTRY
 """Deterministic offline correlation engine with full campus network fault signatures."""
 
 from typing import Dict, List, Optional, Tuple
@@ -61,6 +62,11 @@ class OfflineCorrelationEngine:
         # Check candidate fault models
         candidate_hypotheses: List[DiagnosticHypothesis] = []
 
+        # Hardware Failure model (Organizer Critical / Down pattern)
+        hw_hyp = cls._check_hardware_failure(observations, evidence_items)
+        if hw_hyp:
+            candidate_hypotheses.append(hw_hyp)
+
         # Campus & Enterprise models
         congestion_hyp = cls._check_link_congestion(observations, evidence_items)
         if congestion_hyp:
@@ -113,6 +119,10 @@ class OfflineCorrelationEngine:
         if stp_hyp:
             candidate_hypotheses = [h for h in candidate_hypotheses if h.cause_key != "DEVICE_CPU_OVERLOAD"]
         if cascade_hyp:
+            candidate_hypotheses = [h for h in candidate_hypotheses if h.cause_key != "LINK_CONGESTION"]
+        if hw_hyp:
+            candidate_hypotheses = [h for h in candidate_hypotheses if h.cause_key not in ("DEVICE_CPU_OVERLOAD", "LINK_CONGESTION")]
+        if cpu_hyp and not any(o.metric_name == "link_utilization_pct" and float(o.observed_value or 0) > 60.0 for o in observations):
             candidate_hypotheses = [h for h in candidate_hypotheses if h.cause_key != "LINK_CONGESTION"]
 
         # Sort candidates by final confidence descending
@@ -195,9 +205,17 @@ class OfflineCorrelationEngine:
 
         # Sufficient evidence verified
         alt_hypotheses = [
-            {"cause": h.title, "confidence": h.final_confidence}
+            {"cause": h.title, "confidence": h.final_confidence, "discriminating_test": "Corroborate independent domain telemetry."}
             for h in candidate_hypotheses[1:]
         ]
+        if top_hyp.cause_key == "LINK_CONGESTION":
+            upstream_alt = {
+                "cause": "Upstream provider or transit link congestion inducing downstream delay",
+                "confidence": round(max(0.40, top_hyp.final_confidence - 0.12), 2),
+                "discriminating_test": "Query egress queue drops and interface utilization on upstream transit hops vs local interface counters.",
+            }
+            if not any(a.get("cause") == upstream_alt["cause"] for a in alt_hypotheses):
+                alt_hypotheses.append(upstream_alt)
         uncertainty = UncertaintyEvaluation(
             score=round(max(0.0, 1.0 - top_hyp.final_confidence), 2),
             reasons=[],
@@ -213,10 +231,11 @@ class OfflineCorrelationEngine:
         cls, observations: List[Observation], evidence: List[EvidenceItem]
     ) -> Optional[DiagnosticHypothesis]:
         """Correlate link congestion and buffer queue drop signature."""
-        high_util_obs = [o for o in observations if o.metric_name == "link_utilization_pct" and float(o.observed_value or 0) > 85.0]
-        queue_drop_obs = [o for o in observations if o.metric_name in ("queue_drops", "egress_queue_drops") and float(o.observed_value or 0) > 100]
+        high_util_obs = [o for o in observations if o.metric_name == "link_utilization_pct" and float(o.observed_value or 0) > 55.0]
+        queue_drop_obs = [o for o in observations if o.metric_name in ("queue_drops", "egress_queue_drops") and float(o.observed_value or 0) > 5]
+        latency_obs = [o for o in observations if o.metric_name in ("latency_ms", "jitter_ms") and float(o.observed_value or 0) > 25.0]
 
-        if not (high_util_obs and queue_drop_obs):
+        if not (high_util_obs and (queue_drop_obs or latency_obs)):
             return None
 
         devs = list({o.entity.split(":")[0] for o in (high_util_obs + queue_drop_obs)})
@@ -225,7 +244,7 @@ class OfflineCorrelationEngine:
             title="Link utilization saturation causing buffer queue drops and latency spikes",
             description="Core transit link utilization exceeds threshold, driving egress buffer drop sequences.",
             affected_devices=devs,
-            supporting_evidence=[e for e in evidence if e.metric_name in ("link_utilization_pct", "queue_drops", "egress_queue_drops")],
+            supporting_evidence=[e for e in evidence if e.metric_name in ("link_utilization_pct", "queue_drops", "egress_queue_drops", "latency_ms", "jitter_ms")],
             required_evidence_domains=["telemetry_agent"],
             provided_evidence_domains=["telemetry_agent"],
             raw_score=0.92,
@@ -568,3 +587,73 @@ class OfflineCorrelationEngine:
             is_sufficient=is_sufficient,
             suggested_remediation_type="disable_port_bpdu_filter",
         )
+
+    @classmethod
+    def _check_hardware_failure(
+        cls, observations: List[Observation], evidence: List[EvidenceItem]
+    ) -> Optional[DiagnosticHypothesis]:
+        """Correlate catastrophic hardware failure or forwarding engine crash."""
+        has_down_status = any(
+            o.metric_name in ("device_status", "status") and str(o.observed_value).lower() in ("down", "critical", "failed")
+            for o in observations
+        )
+        has_cpu_crash = any(
+            o.metric_name in ("cpu_pct", "cpu_utilization_pct") and float(o.observed_value or 0) >= 95.0
+            for o in observations
+        )
+        has_severe_loss = any(
+            (o.metric_name in ("queue_drops", "egress_queue_drops") and float(o.observed_value or 0) >= 2000)
+            or (o.metric_name in ("packet_loss_pct", "ingress_packet_loss_pct") and float(o.observed_value or 0) >= 15.0)
+            for o in observations
+        )
+        is_hw_failure = (has_down_status and (has_cpu_crash or has_severe_loss)) or (has_cpu_crash and has_severe_loss)
+        crit_obs = [
+            o for o in observations
+            if (
+                (o.metric_name in ("cpu_pct", "cpu_utilization_pct") and float(o.observed_value or 0) >= 95.0)
+                or (o.metric_name in ("queue_drops", "egress_queue_drops") and float(o.observed_value or 0) >= 2000)
+                or (o.metric_name in ("packet_loss_pct", "ingress_packet_loss_pct") and float(o.observed_value or 0) >= 15.0)
+                or (o.metric_name in ("device_status", "status") and str(o.observed_value).lower() in ("down", "critical", "failed"))
+            )
+        ]
+        if is_hw_failure:
+            devs = list({o.entity.split(":")[0] for o in crit_obs})
+            return DiagnosticHypothesis(
+                cause_key="DEVICE_HARDWARE_FAILURE",
+                title="Device hardware failure or catastrophic control plane crash",
+                description="Internal hardware component failure or watchdog crash causing total traffic blackhole.",
+                affected_devices=devs,
+                supporting_evidence=[
+                    e for e in evidence
+                    if e.metric_name in ("cpu_pct", "cpu_utilization_pct", "queue_drops", "egress_queue_drops", "packet_loss_pct", "device_status", "status")
+                ],
+                required_evidence_domains=["telemetry_agent"],
+                provided_evidence_domains=["telemetry_agent"],
+                raw_score=0.95,
+                final_confidence=0.95,
+                is_sufficient=True,
+                suggested_remediation_type="hardware_replacement",
+            )
+        return None
+
+    @classmethod
+    def get_causal_chain(cls, cause_key: str) -> List[str]:
+        """Lookup deterministic causal reasoning steps for a diagnosed fault."""
+        key_map = {
+            "LINK_CONGESTION": HypothesisKey.LINK_CONGESTION,
+            "UPSTREAM_CONGESTION": HypothesisKey.UPSTREAM_CONGESTION,
+            "WEAK_WIFI_SIGNAL": HypothesisKey.WEAK_WIFI_SIGNAL,
+            "ETHERNET_INTERFACE_FAULT": HypothesisKey.INTERFACE_OR_CABLE_FAULT,
+            "DEVICE_CPU_OVERLOAD": HypothesisKey.DEVICE_CPU_OVERLOAD,
+            "DNS_FAILURE": HypothesisKey.DNS_FAILURE,
+            "DHCP_FAILURE": HypothesisKey.DHCP_FAILURE,
+            "DEVICE_HARDWARE_FAILURE": HypothesisKey.DEVICE_HARDWARE_FAILURE,
+        }
+        sig_key = key_map.get(cause_key)
+        if sig_key and sig_key in SIGNATURE_REGISTRY:
+            return SIGNATURE_REGISTRY[sig_key].causal_chain
+        return [
+            "Empirical threshold breach detected on monitored telemetry metric",
+            "Buffer or queue resources exceeded operational capacity",
+            "Downstream packet delivery and transport delay impacted",
+        ]

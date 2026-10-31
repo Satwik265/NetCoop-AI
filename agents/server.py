@@ -14,7 +14,12 @@ from agents.config_agent import ConfigAgent
 from agents.log_agent import LogAgent
 from agents.synthesizer_agent import SynthesizerAgent
 from agents.telemetry_agent import TelemetryAgent
-from agents.topology_agent import TopologyAgent
+from agents.topology_agent import TopologyAgent, ConnectivityAgent
+from agents.wifi_services_agent import WifiServicesAgent
+try:
+    from netcoop.agents.classifier import ClassifierAgent
+except ImportError:
+    ClassifierAgent = None
 
 
 def get_agent_instance(role: AgentRole) -> BaseAgent:
@@ -22,10 +27,14 @@ def get_agent_instance(role: AgentRole) -> BaseAgent:
     mapping = {
         AgentRole.TELEMETRY_AGENT: TelemetryAgent,
         AgentRole.TOPOLOGY_AGENT: TopologyAgent,
+        AgentRole.CONNECTIVITY_AGENT: ConnectivityAgent,
         AgentRole.CONFIG_AGENT: ConfigAgent,
         AgentRole.LOG_AGENT: LogAgent,
         AgentRole.SYNTHESIZER_AGENT: SynthesizerAgent,
+        AgentRole.WIFI_SERVICES_AGENT: WifiServicesAgent,
     }
+    if ClassifierAgent:
+        mapping[AgentRole.CLASSIFIER_AGENT] = ClassifierAgent
     agent_cls = mapping.get(role)
     if not agent_cls:
         raise ValueError(f"Unknown agent role: {role}")

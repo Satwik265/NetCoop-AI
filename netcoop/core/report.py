@@ -1,5 +1,6 @@
 """Unified JSON diagnostic report generator conforming to schemas/diagnostic_report.json."""
 
+import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
@@ -41,9 +42,104 @@ class UnifiedDiagnosticReport(BaseModel):
     summary: str = ""
     processing_time_ms: float = 0.0
 
+    # Additive fields for multi-agent reasoning, arbitration & auditability
+    causal_chain: List[str] = Field(default_factory=list)
+    conflicts_resolved: List[Dict[str, Any]] = Field(default_factory=list)
+    limitations: List[str] = Field(default_factory=list)
+    provenance: Dict[str, Any] = Field(default_factory=dict)
+
     def to_json(self) -> str:
         """Serialize report to formatted JSON string."""
         return self.model_dump_json(indent=2)
+
+    def to_markdown(self) -> str:
+        """Render a clean monochrome markdown report."""
+        lines = [
+            f"# Diagnostic Incident Report: {self.incident_id}",
+            "",
+            "## Summary",
+            f"- Network ID: {self.network_id}",
+            f"- Timestamp (UTC): {self.timestamp_utc}",
+            f"- Diagnostic Status: {self.status.upper()}",
+            f"- Probable Cause: {self.probable_cause or 'None (insufficient evidence)'}",
+            f"- Confidence: {self.confidence:.2%}",
+            f"- Processing Time: {self.processing_time_ms:.1f} ms",
+            "",
+            f"> {self.summary}",
+            "",
+        ]
+
+        if self.affected_devices or self.affected_interfaces:
+            lines.extend([
+                "## Scope Impact",
+                f"- Affected Devices: {', '.join(self.affected_devices) if self.affected_devices else 'None'}",
+                f"- Affected Interfaces: {', '.join(self.affected_interfaces) if self.affected_interfaces else 'None'}",
+                "",
+            ])
+
+        if self.causal_chain:
+            lines.extend([
+                "## Causal Chain",
+                *[f"{idx+1}. {step}" for idx, step in enumerate(self.causal_chain)],
+                "",
+            ])
+
+        if self.evidence:
+            lines.extend([
+                "## Supporting Evidence",
+                "| Domain | Entity | Metric | Value | Severity | Finding |",
+                "| --- | --- | --- | --- | --- | --- |",
+            ])
+            for ev in self.evidence[:10]:
+                src = ev.get("source_agent", "unknown")
+                ent = ev.get("entity", "-")
+                m = ev.get("metric_name", "-")
+                v = f"{ev.get('value')} {ev.get('unit', '')}".strip()
+                sev = ev.get("severity", "info")
+                fnd = ev.get("finding", "-")
+                lines.append(f"| {src} | {ent} | {m} | {v} | {sev} | {fnd} |")
+            lines.append("")
+
+        if self.uncertainty.alternative_hypotheses:
+            lines.extend([
+                "## Alternative Hypotheses",
+                "| Candidate Cause | Confidence | Discriminating Test |",
+                "| --- | --- | --- |",
+            ])
+            for alt in self.uncertainty.alternative_hypotheses:
+                cause = alt.get("cause", "-")
+                conf = alt.get("confidence", 0.0)
+                test = alt.get("discriminating_test", "Path-level telemetry corroboration")
+                lines.append(f"| {cause} | {conf:.2%} | {test} |")
+            lines.append("")
+
+        if self.conflicts_resolved:
+            lines.extend([
+                "## Multi-Agent Conflicts & Arbitration",
+                *[f"- **Iteration {c.get('iteration', 1)}**: {c.get('rationale', 'Resolved via evidence precedence')}" for c in self.conflicts_resolved],
+                "",
+            ])
+
+        if self.limitations:
+            lines.extend([
+                "## Data Limitations & Caveats",
+                *[f"- {lim}" for lim in self.limitations],
+                "",
+            ])
+
+        if self.remediation_actions:
+            lines.extend([
+                "## Simulated Remediation Plan",
+                "| Action ID | Target Device | Risk Level | Description |",
+                "| --- | --- | --- | --- |",
+            ])
+            for act in self.remediation_actions:
+                lines.append(f"| {act.action_id} | {act.device} | {act.risk_level.upper()} | {act.title} |")
+            lines.append("")
+            lines.append("*Notice: Remediation actions are simulated only. No production state modified.*")
+            lines.append("")
+
+        return "\n".join(lines)
 
 
 class ReportBuilder:
@@ -60,6 +156,10 @@ class ReportBuilder:
         remediation_actions: Optional[List[RemediationActionItem]] = None,
         summary: Optional[str] = None,
         processing_time_ms: float = 0.0,
+        causal_chain: Optional[List[str]] = None,
+        conflicts_resolved: Optional[List[Dict[str, Any]]] = None,
+        limitations: Optional[List[str]] = None,
+        provenance: Optional[Dict[str, Any]] = None,
     ) -> UnifiedDiagnosticReport:
         """Construct a standardized UnifiedDiagnosticReport."""
         evidence_dicts: List[Dict[str, Any]] = []
@@ -74,7 +174,10 @@ class ReportBuilder:
             affected_devices = hypothesis.affected_devices
             affected_interfaces = hypothesis.affected_interfaces
             for ev in hypothesis.supporting_evidence:
-                evidence_dicts.append(ev.model_dump())
+                ev_d = ev.model_dump()
+                if not ev_d.get("timestamp"):
+                    ev_d["timestamp"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+                evidence_dicts.append(ev_d)
         elif status == "insufficient_evidence":
             probable_cause = None
             confidence = 0.0
@@ -106,5 +209,8 @@ class ReportBuilder:
             remediation_actions=remediation_actions or [],
             summary=summary,
             processing_time_ms=processing_time_ms,
+            causal_chain=causal_chain or [],
+            conflicts_resolved=conflicts_resolved or [],
+            limitations=limitations or [],
+            provenance=provenance or {},
         )
-

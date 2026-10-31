@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     log_agent_port: int = 8004
     synthesizer_agent_port: int = 8005
     gateway_port: int = 8006
+    classifier_agent_port: int = 8007
+    wifi_services_agent_port: int = 8008
 
     # Communication mode: "http" enforces microservice HTTP calls
     agents_mode: str = "http"
@@ -44,7 +46,9 @@ class Settings(BaseSettings):
 
     # Orchestrator parameters
     max_inquiry_iterations: int = 3
-    agent_timeout_seconds: float = 5.0
+    agent_timeout_seconds: float = 3.0
+    agent_max_retries: int = 2
+    circuit_breaker_failure_threshold: int = 2
 
     # Remediation safety
     remediation_simulated_only: bool = True
@@ -54,9 +58,12 @@ class Settings(BaseSettings):
         port_mapping: Dict[AgentRole, int] = {
             AgentRole.TELEMETRY_AGENT: self.telemetry_agent_port,
             AgentRole.TOPOLOGY_AGENT: self.topology_agent_port,
+            AgentRole.CONNECTIVITY_AGENT: self.topology_agent_port,
             AgentRole.CONFIG_AGENT: self.config_agent_port,
             AgentRole.LOG_AGENT: self.log_agent_port,
             AgentRole.SYNTHESIZER_AGENT: self.synthesizer_agent_port,
+            AgentRole.CLASSIFIER_AGENT: self.classifier_agent_port,
+            AgentRole.WIFI_SERVICES_AGENT: self.wifi_services_agent_port,
         }
         return port_mapping.get(role, self.port)
 

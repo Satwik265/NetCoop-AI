@@ -11,6 +11,11 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
+# Ensure project root is in sys.path
+PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 import httpx
 from rich import box
 from rich.console import Console
@@ -63,7 +68,7 @@ def ingest_via_gateway(records: List[Dict[str, Any]], incident_id: str) -> Dict[
 
 
 def ensure_agents_running() -> bool:
-    """Check if agent microservices are running; launch them if not."""
+    """Check if agent microservices are running; notice if in-process fallback."""
     ports = [
         settings.telemetry_agent_port,
         settings.topology_agent_port,
@@ -71,25 +76,24 @@ def ensure_agents_running() -> bool:
         settings.log_agent_port,
         settings.synthesizer_agent_port,
         settings.gateway_port,
+        settings.classifier_agent_port,
+        settings.wifi_services_agent_port,
     ]
 
-    missing = []
+    active = 0
     for port in ports:
         try:
-            with httpx.Client(timeout=0.5) as client:
+            with httpx.Client(timeout=0.3) as client:
                 res = client.get(f"http://127.0.0.1:{port}/health")
-                if res.status_code != 200:
-                    missing.append(port)
+                if res.status_code == 200:
+                    active += 1
         except Exception:
-            missing.append(port)
+            pass
 
-    if missing:
-        console.print(f"[dim]Launching {len(missing)} inactive agent microservices...[/dim]")
-        run_script = PROJECT_ROOT / "scripts" / "run_agents.py"
-        import subprocess
-        subprocess.run([sys.executable, str(run_script), "--daemon"], check=False)
-        import time
-        time.sleep(2.0)
+    if active == len(ports):
+        console.print("[dim]All 8 specialist agent microservices detected active over HTTP.[/dim]")
+    else:
+        console.print(f"[dim]Specialist agents running in standard mediator dispatch mode ({active}/8 microservices active).[/dim]")
 
     return True
 

@@ -88,6 +88,8 @@ The system employs a strict shared-nothing architecture. Specialist agents run a
 | **Log Agent** | **8004** | `http://127.0.0.1:8004` | `POST /process` | `GET /health` |
 | **Synthesizer Agent** | **8005** | `http://127.0.0.1:8005` | `POST /process` | `GET /health` |
 | **Ingestion Gateway** | **8006** | `http://127.0.0.1:8006` | `POST /ingest` | `GET /health` |
+| **Classifier Agent** | **8007** | `http://127.0.0.1:8007` | `POST /process` | `GET /health` |
+| **Wi-Fi & Services Agent** | **8008** | `http://127.0.0.1:8008` | `POST /process` | `GET /health` |
 
 ---
 

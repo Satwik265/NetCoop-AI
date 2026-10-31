@@ -72,3 +72,9 @@ class ScenarioClassifier:
                     supporting_signals=[f"link_utilization_pct: {util}%", f"queue_drops: {drops}"],
                 )
         return None
+
+
+# Lazy import / export of ClassifierAgent
+from netcoop.agents.classifier.agent import ClassifierAgent
+
+__all__ = ["ScenarioClassifier", "ClassifierAgent"]

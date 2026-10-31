@@ -1,10 +1,13 @@
 """LangGraph multi-agent diagnostic state machine orchestrator."""
 
+import json
+from pathlib import Path
 import time
 from typing import Any, Dict, List, Optional, TypedDict
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 
+from netcoop.core.correlation import OfflineCorrelationEngine
 from netcoop.core.envelope import (
     AgentEnvelope,
     AgentRole,
@@ -18,6 +21,7 @@ from netcoop.core.envelope import (
 )
 from netcoop.core.evidence import DiagnosticHypothesis, UncertaintyEvaluation
 from netcoop.core.report import ReportBuilder, UnifiedDiagnosticReport
+from netcoop.core.thresholds import is_snapshot_mode
 from netcoop.llm.gemini_bridge import GeminiBridge
 from netcoop.orchestrator.conflict_resolver import ConflictResolver
 from netcoop.orchestrator.mediator import AgentMediator
@@ -37,6 +41,8 @@ class GraphState(TypedDict):
     inquiries_queue: List[Dict[str, Any]]
     conflict_detected: bool
     conflict_summary: Optional[str]
+    conflicts_resolved: List[Dict[str, Any]]
+    limitations: List[str]
     iteration: int
     is_paused: bool
     status: str
@@ -51,21 +57,39 @@ mediator = AgentMediator()
 
 
 def node_specialists(state: GraphState) -> Dict[str, Any]:
-    """Broadcast raw telemetry/configs to the 4 specialist domain agents."""
+    """Broadcast raw telemetry/configs to specialist domain agents."""
     incident_id = state["incident_id"]
     network_id = state["network_id"]
     raw_data = state["raw_data"]
     devices = state["scope_devices"]
 
+    # Specialist agents roster
     specialist_roles = [
         AgentRole.TELEMETRY_AGENT,
         AgentRole.TOPOLOGY_AGENT,
         AgentRole.CONFIG_AGENT,
         AgentRole.LOG_AGENT,
+        AgentRole.WIFI_SERVICES_AGENT,
     ]
+    # Dynamically include ClassifierAgent if registered
+    if AgentRole.CLASSIFIER_AGENT in mediator._in_process_agents:
+        specialist_roles.append(AgentRole.CLASSIFIER_AGENT)
 
     all_obs: List[Dict[str, Any]] = list(state.get("accumulated_observations", []))
     all_hyps: List[Dict[str, Any]] = list(state.get("accumulated_hypotheses", []))
+    limitations: List[str] = list(state.get("limitations", []))
+
+    # Detect snapshot mode
+    raw_telemetry = raw_data.get("telemetry", [])
+    if is_snapshot_mode(raw_telemetry):
+        if "single snapshot, no temporal context" not in limitations:
+            limitations.append("single snapshot, no temporal context")
+
+    # Detect absent topology
+    raw_topology = raw_data.get("topology")
+    if not raw_topology or not raw_topology.get("nodes"):
+        if "topology unavailable; upstream transit inference uncorroborated" not in limitations:
+            limitations.append("topology unavailable; upstream transit inference uncorroborated")
 
     for role in specialist_roles:
         dispatch_env = AgentEnvelope(
@@ -87,10 +111,14 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
             all_obs.append(obs.model_dump())
         for hyp in response_env.payload.hypotheses:
             all_hyps.append(hyp.model_dump())
+        for lim in response_env.context.get("limitations", []):
+            if lim not in limitations:
+                limitations.append(lim)
 
     return {
         "accumulated_observations": all_obs,
         "accumulated_hypotheses": all_hyps,
+        "limitations": limitations,
     }
 
 
@@ -98,22 +126,28 @@ def node_mediation(state: GraphState) -> Dict[str, Any]:
     """Evaluate hypotheses for conflicts and determine if targeted inquiries are required."""
     hyps = [Hypothesis(**h) for h in state.get("accumulated_hypotheses", [])]
     obs = [Observation(**o) for o in state.get("accumulated_observations", [])]
+    existing_resolved = list(state.get("conflicts_resolved", []))
 
     conflict = ConflictResolver.detect_conflicts(hyps)
     conflict_summary = None
     inquiries: List[Dict[str, Any]] = []
 
     if conflict:
-        winning_hyp, rationale = ConflictResolver.arbitrate(hyps, obs)
+        winning_hyp, rationale, new_resolved = ConflictResolver.arbitrate(hyps, obs)
         conflict_summary = rationale
+        for r in new_resolved:
+            r["iteration"] = state.get("iteration", 0) + 1
+            existing_resolved.append(r)
+
         if winning_hyp is None and state.get("iteration", 0) < 2:
-            # Need targeted inquiry pass
+            # Need targeted inquiry pass (max 2 iterations)
             raw_inquiries = ConflictResolver.generate_cross_inquiries(hyps, obs)
             inquiries = [inq.model_dump() for inq in raw_inquiries]
 
     return {
         "conflict_detected": conflict,
         "conflict_summary": conflict_summary,
+        "conflicts_resolved": existing_resolved,
         "inquiries_queue": inquiries,
     }
 
@@ -126,7 +160,7 @@ def route_mediation(state: GraphState) -> str:
 
 
 def node_inquiry(state: GraphState) -> Dict[str, Any]:
-    """Route pending inquiries to target agents and increment iteration turn."""
+    """Route pending cross-examination inquiries to target agents and increment turn."""
     incident_id = state["incident_id"]
     network_id = state["network_id"]
     devices = state["scope_devices"]
@@ -237,6 +271,28 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         evidence_summary=evidence_summary,
     )
 
+    # Compile causal chain from formal fault models
+    causal_chain = []
+    if hypothesis:
+        causal_chain = OfflineCorrelationEngine.get_causal_chain(hypothesis.cause_key)
+
+    # Collect complete limitations including degraded mediator agents
+    limitations = list(state.get("limitations", []))
+    for deg in mediator.get_degraded_limitations():
+        if deg not in limitations:
+            limitations.append(deg)
+
+    conflicts_resolved = list(state.get("conflicts_resolved", []))
+
+    # Provenance tracking
+    raw_data = state.get("raw_data", {})
+    provenance = {
+        "generator": raw_data.get("generator", "netcoop_synthetic"),
+        "timestamp_ingested": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    if raw_data.get("topology", {}).get("is_assumed"):
+        provenance["topology"] = "assumed"
+
     report = ReportBuilder.build_report(
         incident_id=incident_id,
         network_id=network_id,
@@ -246,7 +302,14 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         remediation_actions=remediation_items,
         summary=summary_text,
         processing_time_ms=duration_ms,
+        causal_chain=causal_chain,
+        conflicts_resolved=conflicts_resolved,
+        limitations=limitations,
+        provenance=provenance,
     )
+
+    # Schema validation against schemas/diagnostic_report.json
+    _validate_report_schema(report)
 
     # Persist in SQLite
     save_incident(
@@ -259,6 +322,21 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     )
 
     return {"report_dict": report.model_dump()}
+
+
+def _validate_report_schema(report: UnifiedDiagnosticReport) -> None:
+    """Validate report against schemas/diagnostic_report.json schema file."""
+    schema_path = Path("schemas/diagnostic_report.json")
+    if not schema_path.exists():
+        return
+    try:
+        import jsonschema
+        with open(schema_path, "r", encoding="utf-8") as f:
+            schema = json.load(f)
+        report_dict = json.loads(report.to_json())
+        jsonschema.validate(instance=report_dict, schema=schema)
+    except ImportError:
+        pass  # jsonschema optional, pydantic already validated
 
 
 def build_diagnostic_graph() -> StateGraph:
@@ -304,6 +382,16 @@ def run_diagnosis(incident_data: Dict[str, Any]) -> UnifiedDiagnosticReport:
     topology_nodes = incident_data.get("topology", {}).get("nodes", [])
     devices = [n.get("id") for n in topology_nodes if "id" in n]
 
+    # In single-snapshot organizer mode, devices may be inside telemetry records
+    if not devices:
+        telemetry_records = incident_data.get("telemetry", [])
+        dev_set = set()
+        for rec in telemetry_records:
+            d = rec.get("device_id") or rec.get("device")
+            if d:
+                dev_set.add(d)
+        devices = list(dev_set)
+
     initial_state: GraphState = {
         "incident_id": incident_id,
         "network_id": network_id,
@@ -314,6 +402,8 @@ def run_diagnosis(incident_data: Dict[str, Any]) -> UnifiedDiagnosticReport:
         "inquiries_queue": [],
         "conflict_detected": False,
         "conflict_summary": None,
+        "conflicts_resolved": [],
+        "limitations": [],
         "iteration": 0,
         "is_paused": False,
         "status": "initialized",

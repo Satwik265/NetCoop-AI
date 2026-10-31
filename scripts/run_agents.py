@@ -1,3 +1,4 @@
+_OPEN_LOG_HANDLES = []
 """Process manager to launch, health-check, and cleanly shut down specialist agent microservices."""
 
 import argparse
@@ -19,6 +20,8 @@ AGENT_ROLES = [
     ("config_agent", 8003),
     ("log_agent", 8004),
     ("synthesizer_agent", 8005),
+    ("classifier_agent", 8007),
+    ("wifi_services_agent", 8008),
 ]
 
 GATEWAY_SERVICE = ("gateway", 8006)
@@ -38,7 +41,8 @@ def start_agent_process(role: str, port: int, project_root: Path) -> subprocess.
     env = os.environ.copy()
     env["PYTHONPATH"] = str(project_root)
     log_path = project_root / f".agent_{role}.log"
-    log_f = open(log_path, "w", encoding="utf-8")
+    log_f = open(log_path, "a", encoding="utf-8")
+    _OPEN_LOG_HANDLES.append(log_f)
 
     process = subprocess.Popen(
         cmd,
@@ -67,7 +71,8 @@ def start_gateway_process(port: int, project_root: Path) -> subprocess.Popen:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(project_root)
     log_path = project_root / ".agent_gateway.log"
-    log_f = open(log_path, "w", encoding="utf-8")
+    log_f = open(log_path, "a", encoding="utf-8")
+    _OPEN_LOG_HANDLES.append(log_f)
 
     process = subprocess.Popen(
         cmd,
@@ -199,12 +204,12 @@ def main() -> None:
     save_pids(pids)
 
     # Give all processes a moment to bind sockets
-    time.sleep(2.0)
+    time.sleep(4.0)
 
     # 3. Wait for all health checks
     all_healthy = True
     for role, port in AGENT_ROLES + [GATEWAY_SERVICE]:
-        healthy = wait_for_health("127.0.0.1", port, timeout=12.0)
+        healthy = wait_for_health("127.0.0.1", port, timeout=15.0)
         if healthy:
             print(f"  {role:<22} (port {port}): healthy", flush=True)
         else:

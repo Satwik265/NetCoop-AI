@@ -27,6 +27,8 @@ All agents run as independent OS processes with dedicated Python interpreters. A
 | **Log Agent** | `log_agent` | `127.0.0.1` | **8004** | `POST /process` | `GET /health` |
 | **Synthesizer Agent** | `synthesizer_agent` | `127.0.0.1` | **8005** | `POST /process` | `GET /health` |
 | **Ingestion Gateway** | `gateway` | `127.0.0.1` | **8006** | `POST /ingest` | `GET /health` |
+| **Classifier Agent** | `classifier_agent` | `127.0.0.1` | **8007** | `POST /process` | `GET /health` |
+| **Wi-Fi & Services Agent** | `wifi_services_agent` | `127.0.0.1` | **8008** | `POST /process` | `GET /health` |
 
 ---
 
