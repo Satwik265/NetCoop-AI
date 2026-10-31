@@ -192,3 +192,4 @@ def get_schema_endpoint(schema_name: str) -> Dict[str, Any]:
 FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
 if FRONTEND_DIST.exists():
     app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
+

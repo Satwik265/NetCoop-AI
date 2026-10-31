@@ -92,3 +92,4 @@ def list_incidents() -> List[IncidentRecord]:
     with Session(engine) as session:
         statement = select(IncidentRecord).order_by(IncidentRecord.created_at.desc())
         return list(session.exec(statement).all())
+

@@ -89,3 +89,4 @@ Exposed MCP tools:
 - `get_envelope_trace`: Inspects auditable envelope message trace.
 - `simulate_remediation`: Executes simulated remediation with safety gates.
 - `get_protocol_schema`: Inspects formal JSON schemas.
+

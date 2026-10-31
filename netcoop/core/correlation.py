@@ -1,17 +1,16 @@
-"""Deterministic offline correlation engine and hypothesis evaluation matrix."""
+"""Deterministic offline correlation engine with full campus network fault signatures."""
 
 from typing import Dict, List, Optional, Tuple
-from netcoop.core.envelope import Observation
-from netcoop.core.evidence import DiagnosticHypothesis, EvidenceItem, UncertaintyEvaluation
+from core.envelope import Observation
+from core.evidence import DiagnosticHypothesis, EvidenceItem, UncertaintyEvaluation
 
 
 class OfflineCorrelationEngine:
     """Evaluates multi-agent empirical observations against deterministic network fault models.
 
-    Strict rule: Never claim an exact root cause when evidence is insufficient.
+    Strict rule: Never claim an exact root cause when evidence is insufficient or ambiguous.
     """
 
-    # Minimum confidence threshold to accept a diagnosis
     ACCEPTANCE_CONFIDENCE_THRESHOLD = 0.70
 
     @classmethod
@@ -34,17 +33,11 @@ class OfflineCorrelationEngine:
                 None,
                 UncertaintyEvaluation(
                     score=1.0,
-                    reasons=["No observations reported across any agent domain."],
-                    missing_evidence=[
-                        "telemetry:interface_counters",
-                        "topology:link_state",
-                        "config:running_config",
-                        "logs:syslog",
-                    ],
+                    reasons=["No anomalous observations reported across any agent domain."],
+                    missing_evidence=["telemetry_counters", "link_state", "configs", "syslog"],
                 ),
             )
 
-        # Build index of observations by entity and category
         evidence_items: List[EvidenceItem] = []
         domains_present = set()
 
@@ -65,9 +58,39 @@ class OfflineCorrelationEngine:
                 )
             )
 
-        # Test candidate fault models
+        # Check candidate fault models
         candidate_hypotheses: List[DiagnosticHypothesis] = []
 
+        # Campus & Enterprise models
+        congestion_hyp = cls._check_link_congestion(observations, evidence_items)
+        if congestion_hyp:
+            candidate_hypotheses.append(congestion_hyp)
+
+        wifi_hyp = cls._check_weak_wifi(observations, evidence_items)
+        if wifi_hyp:
+            candidate_hypotheses.append(wifi_hyp)
+
+        eth_hyp = cls._check_ethernet_fault(observations, evidence_items)
+        if eth_hyp:
+            candidate_hypotheses.append(eth_hyp)
+
+        dns_hyp = cls._check_dns_failure(observations, evidence_items)
+        if dns_hyp:
+            candidate_hypotheses.append(dns_hyp)
+
+        dhcp_hyp = cls._check_dhcp_failure(observations, evidence_items)
+        if dhcp_hyp:
+            candidate_hypotheses.append(dhcp_hyp)
+
+        cpu_hyp = cls._check_cpu_overload(observations, evidence_items)
+        if cpu_hyp:
+            candidate_hypotheses.append(cpu_hyp)
+
+        cascade_hyp = cls._check_upstream_cascade(observations, evidence_items)
+        if cascade_hyp:
+            candidate_hypotheses.append(cascade_hyp)
+
+        # Datacenter / Backbone models
         mtu_hyp = cls._check_mtu_mismatch(observations, evidence_items)
         if mtu_hyp:
             candidate_hypotheses.append(mtu_hyp)
@@ -84,11 +107,31 @@ class OfflineCorrelationEngine:
         if stp_hyp:
             candidate_hypotheses.append(stp_hyp)
 
+        # Subsumption hierarchy: Root cause failure signatures subsume downstream symptom hypotheses
+        if optic_hyp:
+            candidate_hypotheses = [h for h in candidate_hypotheses if h.cause_key != "ETHERNET_INTERFACE_FAULT"]
+        if stp_hyp:
+            candidate_hypotheses = [h for h in candidate_hypotheses if h.cause_key != "DEVICE_CPU_OVERLOAD"]
+        if cascade_hyp:
+            candidate_hypotheses = [h for h in candidate_hypotheses if h.cause_key != "LINK_CONGESTION"]
+
         # Sort candidates by final confidence descending
         candidate_hypotheses.sort(key=lambda h: h.final_confidence, reverse=True)
 
         if not candidate_hypotheses:
-            # Anomalies exist but match no conclusive pattern
+            # Check if all observations were benign/info
+            all_benign = all(o.severity.value == "info" for o in observations)
+            if all_benign:
+                return (
+                    "benign",
+                    None,
+                    UncertaintyEvaluation(
+                        score=0.05,
+                        reasons=["All telemetry metrics within normal operating bounds."],
+                        missing_evidence=[],
+                    ),
+                )
+
             uncertainty = UncertaintyEvaluation(
                 score=0.90,
                 reasons=[
@@ -102,6 +145,26 @@ class OfflineCorrelationEngine:
                 ],
             )
             return "insufficient_evidence", None, uncertainty
+
+        # Ambiguity check: if multiple distinct strong hypotheses compete within 0.10 margin
+        if len(candidate_hypotheses) >= 2:
+            top = candidate_hypotheses[0]
+            second = candidate_hypotheses[1]
+            if top.cause_key != second.cause_key and abs(top.final_confidence - second.final_confidence) <= 0.05:
+                # Ambiguous multi-fault condition
+                uncertainty = UncertaintyEvaluation(
+                    score=0.75,
+                    reasons=[
+                        f"Ambiguous multi-fault signature: competing hypotheses '{top.title}' ({top.final_confidence}) and '{second.title}' ({second.final_confidence}) present with equal weight.",
+                        "Evidence is contradictory or multi-incident without isolated causality.",
+                    ],
+                    missing_evidence=["Targeted cross-examination probes", "Sequential isolation tests"],
+                    alternative_hypotheses=[
+                        {"cause": h.title, "confidence": h.final_confidence}
+                        for h in candidate_hypotheses
+                    ],
+                )
+                return "insufficient_evidence", None, uncertainty
 
         top_hyp = candidate_hypotheses[0]
 
@@ -143,6 +206,186 @@ class OfflineCorrelationEngine:
         )
         return "diagnosed", top_hyp, uncertainty
 
+    # ----------------- Scenario Checkers -----------------
+
+    @classmethod
+    def _check_link_congestion(
+        cls, observations: List[Observation], evidence: List[EvidenceItem]
+    ) -> Optional[DiagnosticHypothesis]:
+        """Correlate link congestion and buffer queue drop signature."""
+        high_util_obs = [o for o in observations if o.metric_name == "link_utilization_pct" and float(o.observed_value or 0) > 85.0]
+        queue_drop_obs = [o for o in observations if o.metric_name in ("queue_drops", "egress_queue_drops") and float(o.observed_value or 0) > 100]
+
+        if not (high_util_obs and queue_drop_obs):
+            return None
+
+        devs = list({o.entity.split(":")[0] for o in (high_util_obs + queue_drop_obs)})
+        return DiagnosticHypothesis(
+            cause_key="LINK_CONGESTION",
+            title="Link utilization saturation causing buffer queue drops and latency spikes",
+            description="Core transit link utilization exceeds threshold, driving egress buffer drop sequences.",
+            affected_devices=devs,
+            supporting_evidence=[e for e in evidence if e.metric_name in ("link_utilization_pct", "queue_drops", "egress_queue_drops")],
+            required_evidence_domains=["telemetry_agent"],
+            provided_evidence_domains=["telemetry_agent"],
+            raw_score=0.92,
+            final_confidence=0.92,
+            is_sufficient=True,
+            suggested_remediation_type="qos_traffic_shaping",
+        )
+
+    @classmethod
+    def _check_weak_wifi(
+        cls, observations: List[Observation], evidence: List[EvidenceItem]
+    ) -> Optional[DiagnosticHypothesis]:
+        """Correlate weak Wi-Fi signal and high retransmission rate."""
+        low_rssi = [o for o in observations if o.metric_name == "wifi_rssi_dbm" and float(o.observed_value or 0) < -78.0]
+        high_retx = [o for o in observations if o.metric_name == "wifi_retransmission_pct" and float(o.observed_value or 0) > 20.0]
+
+        if not (low_rssi or high_retx):
+            return None
+
+        devs = list({o.entity.split(":")[0] for o in (low_rssi + high_retx)})
+        is_sufficient = len(low_rssi) > 0 and len(high_retx) > 0
+        return DiagnosticHypothesis(
+            cause_key="WEAK_WIFI_SIGNAL",
+            title="Hostel access point RF attenuation causing high retransmissions and packet loss",
+            description="Wireless client receives degraded RSSI signal driving excessive frame retransmissions.",
+            affected_devices=devs,
+            supporting_evidence=[e for e in evidence if e.metric_name in ("wifi_rssi_dbm", "wifi_retransmission_pct")],
+            required_evidence_domains=["telemetry_agent"],
+            provided_evidence_domains=["telemetry_agent"],
+            raw_score=0.90 if is_sufficient else 0.50,
+            final_confidence=0.90 if is_sufficient else 0.50,
+            is_sufficient=is_sufficient,
+            suggested_remediation_type="adjust_ap_power",
+        )
+
+    @classmethod
+    def _check_ethernet_fault(
+        cls, observations: List[Observation], evidence: List[EvidenceItem]
+    ) -> Optional[DiagnosticHypothesis]:
+        """Correlate Ethernet interface errors and flapping."""
+        errs = [o for o in observations if o.metric_name in ("interface_errors", "fcs_errors", "crc_errors") and float(o.observed_value or 0) > 500]
+        flaps = [o for o in observations if o.metric_name == "link_flaps" and float(o.observed_value or 0) > 3]
+
+        if not (errs or flaps):
+            return None
+
+        devs = list({o.entity.split(":")[0] for o in (errs + flaps)})
+        is_sufficient = len(errs) > 0
+        return DiagnosticHypothesis(
+            cause_key="ETHERNET_INTERFACE_FAULT",
+            title="Physical layer Ethernet interface CRC errors and flapping transitions",
+            description="Ethernet physical cabling or SFP transceiver reporting severe frame check sequence drops.",
+            affected_devices=devs,
+            supporting_evidence=[e for e in evidence if e.metric_name in ("interface_errors", "link_flaps", "crc_errors")],
+            required_evidence_domains=["telemetry_agent"],
+            provided_evidence_domains=["telemetry_agent"],
+            raw_score=0.94 if is_sufficient else 0.45,
+            final_confidence=0.94 if is_sufficient else 0.45,
+            is_sufficient=is_sufficient,
+            suggested_remediation_type="cycle_interface",
+        )
+
+    @classmethod
+    def _check_dns_failure(
+        cls, observations: List[Observation], evidence: List[EvidenceItem]
+    ) -> Optional[DiagnosticHypothesis]:
+        """Correlate DNS resolution failure and timeout."""
+        dns_obs = [o for o in observations if (o.metric_name == "dns_failure_pct" and float(o.observed_value or 0) > 50.0) or (o.metric_name == "dns_resolution_ms" and float(o.observed_value or 0) > 1500.0)]
+        if not dns_obs:
+            return None
+
+        devs = list({o.entity.split(":")[0] for o in dns_obs})
+        return DiagnosticHypothesis(
+            cause_key="DNS_FAILURE",
+            title="DNS resolution service outage with high query timeout failure rate",
+            description="Recursive resolver is unreachable or timing out on campus host queries.",
+            affected_devices=devs,
+            supporting_evidence=[e for e in evidence if e.metric_name in ("dns_failure_pct", "dns_resolution_ms")],
+            required_evidence_domains=["telemetry_agent"],
+            provided_evidence_domains=["telemetry_agent"],
+            raw_score=0.95,
+            final_confidence=0.95,
+            is_sufficient=True,
+            suggested_remediation_type="restart_dns_cache",
+        )
+
+    @classmethod
+    def _check_dhcp_failure(
+        cls, observations: List[Observation], evidence: List[EvidenceItem]
+    ) -> Optional[DiagnosticHypothesis]:
+        """Correlate DHCP pool exhaustion or relay failure."""
+        dhcp_obs = [o for o in observations if o.metric_name == "dhcp_failure_pct" and float(o.observed_value or 0) > 50.0]
+        if not dhcp_obs:
+            return None
+
+        devs = list({o.entity.split(":")[0] for o in dhcp_obs})
+        return DiagnosticHypothesis(
+            cause_key="DHCP_FAILURE",
+            title="DHCP scope exhaustion or relay failure preventing lease assignment",
+            description="Clients failing to obtain IP configuration leases.",
+            affected_devices=devs,
+            supporting_evidence=[e for e in evidence if e.metric_name == "dhcp_failure_pct"],
+            required_evidence_domains=["telemetry_agent"],
+            provided_evidence_domains=["telemetry_agent"],
+            raw_score=0.92,
+            final_confidence=0.92,
+            is_sufficient=True,
+            suggested_remediation_type="clear_dhcp_bindings",
+        )
+
+    @classmethod
+    def _check_cpu_overload(
+        cls, observations: List[Observation], evidence: List[EvidenceItem]
+    ) -> Optional[DiagnosticHypothesis]:
+        """Correlate device control plane CPU overload."""
+        cpu_obs = [o for o in observations if o.metric_name in ("cpu_pct", "cpu_utilization_pct") and float(o.observed_value or 0) > 90.0]
+        if not cpu_obs:
+            return None
+
+        devs = list({o.entity.split(":")[0] for o in cpu_obs})
+        return DiagnosticHypothesis(
+            cause_key="DEVICE_CPU_OVERLOAD",
+            title="Control-plane CPU exhaustion on core router driving queue drops",
+            description="Device CPU is pegging at maximum capacity causing packet drop cascade.",
+            affected_devices=devs,
+            supporting_evidence=[e for e in evidence if e.metric_name in ("cpu_pct", "cpu_utilization_pct")],
+            required_evidence_domains=["telemetry_agent"],
+            provided_evidence_domains=["telemetry_agent"],
+            raw_score=0.94,
+            final_confidence=0.94,
+            is_sufficient=True,
+            suggested_remediation_type="throttle_copp",
+        )
+
+    @classmethod
+    def _check_upstream_cascade(
+        cls, observations: List[Observation], evidence: List[EvidenceItem]
+    ) -> Optional[DiagnosticHypothesis]:
+        """Correlate upstream device failure with downstream cascade."""
+        offline_obs = [o for o in observations if o.metric_name in ("device_offline", "carrier_transitions") or (o.metric_name == "packet_loss_pct" and float(o.observed_value or 0) >= 99.0)]
+        util_obs = [o for o in observations if o.metric_name in ("link_utilization_pct", "queue_drops") and float(o.observed_value or 0) > 80.0]
+
+        if not (offline_obs and util_obs):
+            return None
+
+        devs = list({o.entity.split(":")[0] for o in (offline_obs + util_obs)})
+        return DiagnosticHypothesis(
+            cause_key="UPSTREAM_FAILURE_CASCADE",
+            title="Core router failure causing failover saturation on distribution links",
+            description="Upstream link termination triggered traffic diversion, saturating secondary trunks.",
+            affected_devices=devs,
+            supporting_evidence=[e for e in evidence if e.metric_name in ("device_offline", "link_utilization_pct", "queue_drops")],
+            required_evidence_domains=["telemetry_agent"],
+            provided_evidence_domains=["telemetry_agent"],
+            raw_score=0.96,
+            final_confidence=0.96,
+            is_sufficient=True,
+            suggested_remediation_type="drain_and_reroute_link",
+        )
+
     @classmethod
     def _check_mtu_mismatch(
         cls, observations: List[Observation], evidence: List[EvidenceItem]
@@ -178,9 +421,7 @@ class OfflineCorrelationEngine:
             title="Path MTU Mismatch causing packet blackholing on jumbo frames",
             description="Intermediate transit link possesses lower MTU than endpoints with DF bit set.",
             affected_devices=devices or ["leaf-01", "spine-01"],
-            supporting_evidence=[
-                e for e in evidence if e.source_agent in provided_domains
-            ],
+            supporting_evidence=[e for e in evidence if e.source_agent in provided_domains],
             required_evidence_domains=required,
             provided_evidence_domains=provided_domains,
             raw_score=0.95 if is_sufficient else 0.45,
@@ -262,7 +503,6 @@ class OfflineCorrelationEngine:
         if has_low_power and has_crc_errors:
             provided.append("telemetry_agent")
 
-        # Also requires verification that config didn't change
         no_config_diff = not any(obs.category.value == "config_diff" for obs in observations)
         if no_config_diff:
             provided.append("config_agent")

@@ -130,3 +130,4 @@ class ConflictResolver:
             top,
             f"Arbitration: Selected '{top.probable_cause}' with superior confidence ({top.confidence:.2f} vs {second.confidence:.2f}).",
         )
+

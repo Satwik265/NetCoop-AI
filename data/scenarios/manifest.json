@@ -1,0 +1,238 @@
+{
+  "version": "1.0.0",
+  "scenarios": [
+    {
+      "name": "normal_operation",
+      "file": "normal_operation.json",
+      "category": "baseline",
+      "ground_truth": "Normal operational state across all zones",
+      "expected_status": "benign",
+      "expected_devices": [],
+      "target_confidence_min": 0.85,
+      "description": "All metrics nominal; zero packet drops or flaps."
+    },
+    {
+      "name": "link_congestion",
+      "file": "link_congestion.json",
+      "category": "capacity",
+      "ground_truth": "Link utilization saturation causing buffer queue drops and latency spikes",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "core-rtr-01",
+        "dist-sw-core"
+      ],
+      "target_confidence_min": 0.85,
+      "description": "Throughput exceeds 92% bandwidth on core trunk, queue drops > 500."
+    },
+    {
+      "name": "weak_wifi_signal",
+      "file": "weak_wifi_signal.json",
+      "category": "wireless",
+      "ground_truth": "Hostel access point RF attenuation causing high retransmissions and packet loss",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "ap-hostel-b1",
+        "host-student-01"
+      ],
+      "target_confidence_min": 0.85,
+      "description": "RSSI drops below -82 dBm, Wi-Fi retransmission rate > 25%."
+    },
+    {
+      "name": "ethernet_interface_fault",
+      "file": "ethernet_interface_fault.json",
+      "category": "hardware",
+      "ground_truth": "Physical layer Ethernet interface CRC errors and flapping transitions",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "dept-sw-cs-01"
+      ],
+      "target_confidence_min": 0.85,
+      "description": "Department switch interface errors > 2000, link flaps > 5."
+    },
+    {
+      "name": "dns_failure",
+      "file": "dns_failure.json",
+      "category": "service",
+      "ground_truth": "DNS resolution service outage with high query timeout failure rate",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "core-rtr-01"
+      ],
+      "target_confidence_min": 0.85,
+      "description": "DNS failure rate > 80%, resolution latency > 2500ms."
+    },
+    {
+      "name": "dhcp_failure",
+      "file": "dhcp_failure.json",
+      "category": "service",
+      "ground_truth": "DHCP scope exhaustion or relay failure preventing lease assignment",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "host-student-01"
+      ],
+      "target_confidence_min": 0.85,
+      "description": "DHCP failure rate > 75%, host reaches degraded state."
+    },
+    {
+      "name": "device_cpu_overload",
+      "file": "device_cpu_overload.json",
+      "category": "resource",
+      "ground_truth": "Control-plane CPU exhaustion on core router driving queue drops",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "core-rtr-01"
+      ],
+      "target_confidence_min": 0.85,
+      "description": "CPU utilization > 95%, memory > 85%, queue drops on router."
+    },
+    {
+      "name": "upstream_failure_cascade",
+      "file": "upstream_failure_cascade.json",
+      "category": "resilience",
+      "ground_truth": "Core router failure causing failover saturation on distribution links",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "core-rtr-01",
+        "dist-sw-core"
+      ],
+      "target_confidence_min": 0.85,
+      "description": "Upstream link down cascades into downstream buffer starvation."
+    },
+    {
+      "name": "ambiguous_multi_fault",
+      "file": "ambiguous_multi_fault.json",
+      "category": "ambiguity",
+      "ground_truth": "Simultaneous contradictory signals without decisive root cause",
+      "expected_status": "insufficient_evidence",
+      "expected_devices": [],
+      "target_confidence_min": 0.0,
+      "description": "Multiple competing faults present; confidence must remain below threshold."
+    },
+    {
+      "name": "insufficient_data",
+      "file": "insufficient_data.json",
+      "category": "sparse",
+      "ground_truth": "Telemetry data is too sparse to substantiate any definitive fault hypothesis",
+      "expected_status": "insufficient_evidence",
+      "expected_devices": [],
+      "target_confidence_min": 0.0,
+      "description": "Single incomplete record; must strictly return insufficient_evidence."
+    },
+    {
+      "name": "interop_renamed_fields",
+      "file": "interop_renamed_fields.json",
+      "category": "interoperability",
+      "ground_truth": "Field alias adaptation (dev_id, delay, loss, util)",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "core-rtr-01",
+        "dist-sw-core"
+      ],
+      "target_confidence_min": 0.8,
+      "description": "Telemetry keys renamed to test adapter mapping."
+    },
+    {
+      "name": "interop_seconds_vs_ms",
+      "file": "interop_seconds_vs_ms.json",
+      "category": "interoperability",
+      "ground_truth": "Time unit conversion from seconds to milliseconds",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "core-rtr-01",
+        "dist-sw-core"
+      ],
+      "target_confidence_min": 0.8,
+      "description": "Latency metric provided in fractional seconds."
+    },
+    {
+      "name": "interop_kbps_vs_mbps",
+      "file": "interop_kbps_vs_mbps.json",
+      "category": "interoperability",
+      "ground_truth": "Rate conversion from kbps to Mbps",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "core-rtr-01",
+        "dist-sw-core"
+      ],
+      "target_confidence_min": 0.8,
+      "description": "Throughput provided in kbps."
+    },
+    {
+      "name": "interop_schema_v1_vs_v2",
+      "file": "interop_schema_v1_vs_v2.json",
+      "category": "interoperability",
+      "ground_truth": "Schema version tag divergence tolerance",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "core-rtr-01",
+        "dist-sw-core"
+      ],
+      "target_confidence_min": 0.8,
+      "description": "Schema version 2.0.0 experimental envelope."
+    },
+    {
+      "name": "interop_missing_fields",
+      "file": "interop_missing_fields.json",
+      "category": "interoperability",
+      "ground_truth": "Graceful degradation under missing optional metrics",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "core-rtr-01",
+        "dist-sw-core"
+      ],
+      "target_confidence_min": 0.8,
+      "description": "Optional fields omitted entirely."
+    },
+    {
+      "name": "interop_null_nan",
+      "file": "interop_null_nan.json",
+      "category": "interoperability",
+      "ground_truth": "Sanitization of string 'NaN' and 'null' values",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "core-rtr-01",
+        "dist-sw-core"
+      ],
+      "target_confidence_min": 0.8,
+      "description": "Unsanitized null strings present in telemetry."
+    },
+    {
+      "name": "interop_duplicate_out_of_order",
+      "file": "interop_duplicate_out_of_order.json",
+      "category": "interoperability",
+      "ground_truth": "Chronological sorting and deduplication",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "core-rtr-01",
+        "dist-sw-core"
+      ],
+      "target_confidence_min": 0.8,
+      "description": "Duplicate records and reverse timestamp order."
+    },
+    {
+      "name": "interop_clock_skew",
+      "file": "interop_clock_skew.json",
+      "category": "interoperability",
+      "ground_truth": "Clock skew detection and time window normalization",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "core-rtr-01",
+        "dist-sw-core"
+      ],
+      "target_confidence_min": 0.8,
+      "description": "Extreme clock offset between records."
+    },
+    {
+      "name": "interop_malformed_json",
+      "file": "interop_malformed_json.json",
+      "category": "interoperability",
+      "ground_truth": "Lenient parsing of single-quoted / unformatted JSON",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "core-rtr-01"
+      ],
+      "target_confidence_min": 0.7,
+      "description": "Single-quoted raw JSON input."
+    }
+  ]
+}

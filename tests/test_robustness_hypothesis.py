@@ -62,3 +62,4 @@ def test_observation_property_validity(confidence: float, observed_val: float) -
     )
     assert obs.observed_value == observed_val
     assert obs.unit == "packets"
+

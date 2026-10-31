@@ -52,3 +52,4 @@ class RemediationLog(SQLModel, table=True):
     status: str = Field(default="pending_approval")  # pending_approval, approved, simulated_executed, rejected
     approved_by: Optional[str] = Field(default=None)
     simulated_at: Optional[str] = Field(default=None)
+

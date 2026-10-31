@@ -82,3 +82,4 @@ def test_scenario_5_insufficient_evidence_sparse() -> None:
     assert report.uncertainty.score > 0.50
     assert len(report.uncertainty.missing_evidence) > 0
     assert len(report.remediation_actions) == 0
+

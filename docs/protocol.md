@@ -156,3 +156,4 @@ Synthesizer Agent -> (synthesis_submission) -> Orchestrator (UnifiedDiagnosticRe
    - `inquiries`: containing list of missing telemetry keys required
 3. **Timeout / Unresponsive Agent**:
    The orchestrator applies a 5.0-second timeout per agent turn. If an agent fails to respond, the orchestrator logs an agent timeout and marks the agent's domain as `unresponsive_domain` in the uncertainty section of the final report.
+

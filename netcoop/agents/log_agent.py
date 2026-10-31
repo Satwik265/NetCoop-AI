@@ -116,3 +116,4 @@ class LogAgent(BaseAgent):
             )
 
         return response
+

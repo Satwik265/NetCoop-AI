@@ -155,3 +155,4 @@ def test_synthesizer_agent_enforces_insufficient_evidence() -> None:
     out = agent.handle_envelope(envelope)
     assert out.context["diagnostic_status"] == "insufficient_evidence"
     assert len(out.payload.hypotheses) == 0
+

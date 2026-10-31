@@ -50,3 +50,4 @@ class SynthesizerAgent(BaseAgent):
             response.context["hypothesis"] = None
 
         return response
+

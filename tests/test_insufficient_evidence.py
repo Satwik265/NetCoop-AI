@@ -47,3 +47,4 @@ def test_isolated_single_counter_anomaly_refuses_to_guess() -> None:
     assert report.probable_cause is None
     assert report.confidence == 0.0
     assert "missing" in str(report.uncertainty.missing_evidence).lower() or len(report.uncertainty.missing_evidence) > 0
+

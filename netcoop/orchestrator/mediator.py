@@ -42,3 +42,4 @@ class AgentMediator:
         response_envelope = agent.handle_envelope(envelope)
         log_envelope(response_envelope)
         return response_envelope
+

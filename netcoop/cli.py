@@ -36,6 +36,77 @@ def version_cmd() -> None:
     console.print(f"[bold]NetCoop AI[/bold] version {__version__}")
 
 
+@app.command("gen")
+def gen_cmd(
+    scenario: str = typer.Option("link_congestion", "--scenario", "-s", help="Scenario identifier to generate"),
+    seed: int = typer.Option(42, "--seed", help="Random seed for deterministic reproducibility"),
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Optional output JSON destination path"),
+    noise: float = typer.Option(0.0, "--noise", help="Noise knob (Gaussian perturbation standard deviation, 0.0 to 1.0)"),
+    drop_rate: float = typer.Option(0.0, "--drop-rate", help="Missing sample drop rate knob (0.0 to 1.0)"),
+    staleness: float = typer.Option(0.0, "--staleness", help="Staleness offset knob in seconds"),
+) -> None:
+    """Generate synthetic network telemetry and topology with deterministic seed and knobs."""
+    from data.generator import SyntheticNetworkGenerator
+
+    dataset = SyntheticNetworkGenerator.generate(
+        scenario=scenario,
+        seed=seed,
+        noise_level=noise,
+        missing_sample_rate=drop_rate,
+        staleness_seconds=staleness,
+    )
+
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with open(output, "w", encoding="utf-8") as f:
+            json.dump(dataset, f, indent=2)
+        console.print(
+            Panel(
+                f"[bold]Synthetic Telemetry Generated[/bold]\n"
+                f"Scenario: {scenario}\n"
+                f"Seed: {seed}\n"
+                f"Records: {len(dataset['telemetry'])}\n"
+                f"Saved to: {output}",
+                box=box.SQUARE,
+                title="[bold]NetCoop Generator[/bold]",
+            )
+        )
+    else:
+        console.print(
+            Panel(
+                f"[bold]Synthetic Telemetry Generated[/bold]\n"
+                f"Scenario: {scenario} | Seed: {seed} | Noise: {noise} | Drop Rate: {drop_rate} | Staleness: {staleness}s\n"
+                f"Incident ID: {dataset['incident_id']} | Network ID: {dataset['network_id']}",
+                box=box.SQUARE,
+                title="[bold]NetCoop Generator[/bold]",
+            )
+        )
+
+        table = Table(title=f"Telemetry Stream: {scenario} (seed={seed})", box=box.SQUARE)
+        table.add_column("Device ID", style="cyan")
+        table.add_column("Type", style="dim")
+        table.add_column("Status", style="bold")
+        table.add_column("Util %", style="white")
+        table.add_column("Latency ms", style="white")
+        table.add_column("Loss %", style="white")
+        table.add_column("Drops", style="yellow")
+        table.add_column("Errors", style="red")
+
+        for r in dataset["telemetry"]:
+            status_style = "green" if r["device_status"] == "online" else "yellow"
+            table.add_row(
+                r["device_id"],
+                r["device_type"],
+                f"[{status_style}]{r['device_status']}[/{status_style}]",
+                str(r["link_utilization_pct"]),
+                str(r["latency_ms"]),
+                str(r["packet_loss_pct"]),
+                str(r["queue_drops"]),
+                str(r["interface_errors"]),
+            )
+        console.print(table)
+
+
 @app.command("diagnose")
 def diagnose_cmd(
     file_path: Path = typer.Option(
@@ -269,3 +340,4 @@ def mcp_serve_cmd() -> None:
 
 if __name__ == "__main__":
     app()
+

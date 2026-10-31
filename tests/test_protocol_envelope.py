@@ -128,3 +128,4 @@ def test_protocol_error_response_generation() -> None:
     assert error_env.header.recipient == AgentRole.CONFIG_AGENT
     assert error_env.payload.error is not None
     assert error_env.payload.error.error_code == "SCHEMA_VALIDATION_FAILED"
+

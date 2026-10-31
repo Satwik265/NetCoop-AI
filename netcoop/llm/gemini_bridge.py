@@ -83,3 +83,4 @@ class GeminiBridge:
                 f"Observed anomalies lack necessary multi-point corroboration across agent domains."
             )
         return f"Incident {incident_id} evaluated with status {status}."
+

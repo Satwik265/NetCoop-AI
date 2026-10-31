@@ -113,3 +113,4 @@ class RemediationCatalog:
             is_simulated=True,
             status="pending_approval",
         )
+

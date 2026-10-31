@@ -64,3 +64,4 @@ def test_simulated_remediation_execution_updates_status() -> None:
     )
     assert res["success"] is True
     assert action.status == "simulated_success"
+

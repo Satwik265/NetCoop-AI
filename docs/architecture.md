@@ -74,3 +74,4 @@ All remediation actions adhere to:
 3. Automated rollback command generation for every medium and high-risk action.
 4. Human-in-the-Loop gate requiring operator approval before simulation execution.
 5. Persistent logging of simulated commands in `remediation_logs` SQLite table.
+

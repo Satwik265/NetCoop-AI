@@ -71,3 +71,4 @@ def test_arbitration_tie_returns_none() -> None:
     winner, rationale = ConflictResolver.arbitrate([hyp1, hyp2], [])
     assert winner is None
     assert "Arbitration tie" in rationale
+

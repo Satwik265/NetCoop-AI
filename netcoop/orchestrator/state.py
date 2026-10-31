@@ -24,3 +24,4 @@ class OrchestratorState(BaseModel):
     conflict_summary: Optional[str] = None
     status: str = "initialized"
     report: Optional[UnifiedDiagnosticReport] = None
+

@@ -37,3 +37,4 @@ def test_mcp_schema_tool() -> None:
     assert "content" in res
     schema = json.loads(res["content"][0]["text"])
     assert schema["title"] == "AgentEnvelope"
+

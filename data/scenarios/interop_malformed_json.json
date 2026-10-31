@@ -1,0 +1,7 @@
+{
+  'incident_id': 'inc-interop-malformed-json',
+  'network_id': 'iit-bbs-campus-fabric',
+  'telemetry': [
+    {'device': 'core-rtr-01', 'delay': 140.5, 'loss': 5.2, 'util': 95.0, 'drops': 850}
+  ]
+}

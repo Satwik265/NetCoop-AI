@@ -107,3 +107,4 @@ class ReportBuilder:
             summary=summary,
             processing_time_ms=processing_time_ms,
         )
+

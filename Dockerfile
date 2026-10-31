@@ -1,11 +1,11 @@
 # Multi-stage Docker build for NetCoop AI
 
-# Stage 1: Build React frontend
-FROM node:22-alpine AS frontend-builder
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
+# Stage 1: Build React dashboard
+FROM node:22-alpine AS dashboard-builder
+WORKDIR /app/dashboard
+COPY dashboard/package*.json ./
 RUN npm ci
-COPY frontend/ ./
+COPY dashboard/ ./
 RUN npm run build
 
 # Stage 2: Python runtime
@@ -25,18 +25,29 @@ COPY requirements.txt pyproject.toml ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code and schemas
+COPY agents/ ./agents/
+COPY core/ ./core/
+COPY gateway/ ./gateway/
+COPY orchestrator/ ./orchestrator/
+COPY mcp_server/ ./mcp_server/
+COPY api/ ./api/
+COPY cli/ ./cli/
+COPY storage/ ./storage/
+COPY remediation/ ./remediation/
+COPY llm/ ./llm/
 COPY netcoop/ ./netcoop/
 COPY schemas/ ./schemas/
 COPY data/ ./data/
 COPY docs/ ./docs/
-COPY README.md ./
+COPY README.md Makefile ./
 
 # Install package in editable mode
 RUN pip install --no-cache-dir -e .
 
-# Copy built frontend assets from stage 1
-COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+# Copy built dashboard assets from stage 1
+COPY --from=dashboard-builder /app/dashboard/dist ./dashboard/dist
 
 EXPOSE 8000
 
-CMD ["uvicorn", "netcoop.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
