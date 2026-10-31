@@ -141,6 +141,16 @@ class AgentMediator:
         if ClassifierAgent is not None:
             self._in_process_agents[AgentRole.CLASSIFIER_AGENT] = ClassifierAgent()
 
+    def reset_dead_agents(self) -> None:
+        """Clear recorded dead agents."""
+        self.dead_agents.clear()
+
+    def reset_circuit_breaker(self) -> None:
+        """Reset circuit breaker failure states."""
+        self.circuit_breaker._failures.clear()
+        self.circuit_breaker._open_circuits.clear()
+        self.circuit_breaker._last_failure_time.clear()
+
     def get_degraded_limitations(self) -> List[str]:
         """Return audit notes of agents operating in dead or degraded state."""
         return [f"agent_unavailable: {name} process unreachable; continued in degraded mode" for name in sorted(self.dead_agents)]
@@ -159,7 +169,7 @@ class AgentMediator:
             if self.circuit_breaker.is_open(target_role):
                 logger.debug(f"Circuit open for {target_role.value}, skipping HTTP dispatch.")
                 self.dead_agents.add(target_role.value)
-                if not settings.in_process_fallback:
+                if not settings.fallback_enabled:
                     return self._handle_unavailable_agent(envelope, target_role, "Circuit breaker open")
             else:
                 url = settings.get_agent_url(target_role)
@@ -189,7 +199,7 @@ class AgentMediator:
                             self.circuit_breaker.record_failure(target_role)
                             self.circuit_breaker.record_failure(target_role)
                             self.dead_agents.add(target_role.value)
-                            if not settings.in_process_fallback:
+                            if not settings.fallback_enabled:
                                 return self._handle_unavailable_agent(envelope, target_role, str(exc))
                             break
                         if attempt < retries:
@@ -200,12 +210,23 @@ class AgentMediator:
                         self.dead_agents.add(target_role.value)
                         logger.warning(
                             f"HTTP dispatch to {target_role.value} failed ({exc}). "
-                            f"Fallback enabled: {settings.in_process_fallback}"
+                            f"Fallback enabled: {settings.fallback_enabled}"
                         )
-                        if not settings.in_process_fallback:
+                        if not settings.fallback_enabled:
                             return self._handle_unavailable_agent(envelope, target_role, str(exc))
 
         # 3. In-process fallback or direct execution
+        if not settings.fallback_enabled:
+            self.dead_agents.add(target_role.value)
+            return self._handle_unavailable_agent(
+                envelope,
+                target_role,
+                "Direct in-process execution is disabled in strict isolation mode",
+            )
+
+        logger.warning(
+            f"[DEV ONLY] Falling back to in-process execution for {target_role.value}."
+        )
         agent = self._in_process_agents.get(target_role)
         if not agent:
             self.dead_agents.add(target_role.value)
@@ -232,6 +253,8 @@ class AgentMediator:
             error_code="AGENT_UNAVAILABLE",
             message=f"Agent process for {role.value} unavailable over HTTP: {reason}",
         )
+        limitation_msg = f"agent_unavailable: {role.value} process unreachable; continued in degraded mode"
+        error_resp.context["limitations"] = [limitation_msg]
         log_envelope(error_resp)
         notify_envelope_listeners(error_resp)
         return error_resp
