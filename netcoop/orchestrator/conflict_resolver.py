@@ -1,3 +1,5 @@
+from netcoop.core.thresholds import DynamicThresholds
+from netcoop.config import settings
 """Conflict detection, cross-examination inquiry generation, and arbitration engine.
 
 Implements deterministic precedence rules:
@@ -50,6 +52,24 @@ class ArbitrationResult:
         winner_name = self.winner.probable_cause if self.winner else None
         return f"ArbitrationResult(winner={winner_name!r}, rationale={self.rationale!r}, resolved_count={len(self.conflicts_resolved)})"
 
+
+def _extract_numeric_observation(obs: Observation, metric_name: str, allowed_units: Optional[Set[str]] = None) -> Optional[float]:
+    """Safely extract numeric measurement without fabricating 0 or default values."""
+    if obs.metric_name != metric_name:
+        return None
+    if allowed_units and obs.unit and obs.unit.lower() not in allowed_units:
+        return None
+    val = obs.observed_value
+    if val is None or isinstance(val, bool):
+        return None
+    if isinstance(val, (int, float)):
+        return float(val)
+    if isinstance(val, str):
+        try:
+            return float(val)
+        except ValueError:
+            return None
+    return None
 
 class ConflictResolver:
     """Detects and resolves contradictory hypotheses across specialist agents."""
@@ -152,11 +172,8 @@ class ConflictResolver:
         """Apply deterministic rules to resolve competing hypotheses.
 
         Precedence order: direct evidence > correlated evidence > topology inference.
-
-        Returns:
-            ArbitrationResult unpackable as:
-              - 2-tuple: (winning_hypothesis, resolution_rationale)
-              - 3-tuple: (winning_hypothesis, resolution_rationale, conflicts_resolved)
+        Never fabricates measurements from missing or None data.
+        Abstains when evidence is contradictory, ambiguous, or inadequate.
         """
         conflicts_resolved: List[Dict[str, Any]] = []
 
@@ -166,40 +183,55 @@ class ConflictResolver:
         if len(hypotheses) == 1:
             return ArbitrationResult(hypotheses[0], "Single hypothesis without conflict.", [])
 
-        obs_names = {o.metric_name for o in observations}
+        # Rule 1: Hardware crash takes direct precedence over secondary buffer congestion
+        hw_hyp = next((h for h in hypotheses if any(k in h.probable_cause.lower() for k in ("hardware", "crash"))), None)
+        if hw_hyp:
+            cpu_vals = [_extract_numeric_observation(o, m, {"percent", "%"}) for o in observations for m in ("cpu_pct", "cpu_utilization_pct")]
+            cpu_vals = [v for v in cpu_vals if v is not None]
+            drop_vals = [_extract_numeric_observation(o, m) for o in observations for m in ("queue_drops", "egress_queue_drops")]
+            drop_vals = [v for v in drop_vals if v is not None]
 
-        # Rule 1: Hardware crash / failure takes highest direct precedence
-        hw_hyp = next((h for h in hypotheses if "hardware" in h.probable_cause.lower() or "crash" in h.probable_cause.lower()), None)
-        has_severe_hw = any(
-            (o.metric_name in ("cpu_pct", "cpu_utilization_pct") and float(o.observed_value or 0) >= 95.0)
-            for o in observations
-        ) and any(
-            (o.metric_name in ("queue_drops", "egress_queue_drops") and float(o.observed_value or 0) >= 2000)
-            for o in observations
-        )
-        if hw_hyp and has_severe_hw:
-            rationale = (
-                "Arbitration: Catastrophic hardware failure with severe forwarding plane crash "
-                "takes direct precedence over secondary buffer congestion."
-            )
-            conflicts_resolved.append({
-                "conflict": "Hardware Failure vs Congestion/CPU",
-                "winner": hw_hyp.probable_cause,
-                "precedence": "DIRECT",
-                "rationale": rationale,
-            })
-            return ArbitrationResult(hw_hyp, rationale, conflicts_resolved)
+            if any(v >= DynamicThresholds.CPU_CRIT_PCT for v in cpu_vals) and any(v >= DynamicThresholds.QUEUE_DROPS_CRIT for v in drop_vals):
+                rationale = (
+                    f"Arbitration: Catastrophic hardware failure (CPU >= {DynamicThresholds.CPU_CRIT_PCT}%, "
+                    f"queue drops >= {DynamicThresholds.QUEUE_DROPS_CRIT}) takes direct precedence over secondary buffer congestion."
+                )
+                conflicts_resolved.append({
+                    "conflict": "Hardware Failure vs Congestion/CPU",
+                    "winner": hw_hyp.probable_cause,
+                    "precedence": "DIRECT",
+                    "rationale": rationale,
+                })
+                return ArbitrationResult(hw_hyp, rationale, conflicts_resolved)
 
-        # Rule 2: Physical layer optical attenuation overrides soft queue congestion
-        optics_hyp = next((h for h in hypotheses if "optical" in h.probable_cause.lower() or "fiber" in h.probable_cause.lower()), None)
-        has_severe_optics = any(
-            o.metric_name == "rx_power_dbm" and float(o.observed_value or 0) < -15.0
-            for o in observations
+        # Rule 2: Physical layer optical attenuation vs Ethernet CRC/cabling degradation
+        optics_hyp = next((h for h in hypotheses if any(k in h.probable_cause.lower() for k in ("optical", "fiber"))), None)
+        eth_hyp = next((h for h in hypotheses if any(k in h.probable_cause.lower() for k in ("ethernet", "crc", "fcs", "cable"))), None)
+
+        opt_pwr_crit = getattr(settings, "optical_rx_power_crit_dbm", DynamicThresholds.OPTICAL_RX_POWER_CRIT_DBM)
+        opt_pwr_warn = getattr(settings, "optical_rx_power_warn_dbm", DynamicThresholds.OPTICAL_RX_POWER_WARN_DBM)
+
+        optical_vals = [_extract_numeric_observation(o, "rx_power_dbm", {"dbm"}) for o in observations]
+        optical_vals = [v for v in optical_vals if v is not None]
+
+        has_optical_nominal_qual = any(
+            (o.metric_name in ("rx_power_dbm", "optical_transceiver_status") and (
+                o.observed_value == "nominal" or o.context.get("optical_nominal") is True
+            )) for o in observations
         )
+        has_optical_atten_qual = any(
+            (o.metric_name in ("rx_power_dbm", "optical_transceiver_status") and (
+                o.observed_value == "attenuated" or o.context.get("optical_attenuated") is True
+            )) for o in observations
+        )
+
+        has_severe_optics = any(v < opt_pwr_crit for v in optical_vals) or has_optical_atten_qual
+        has_nominal_optics = (any(v >= opt_pwr_warn for v in optical_vals) or has_optical_nominal_qual) and not has_optical_atten_qual
+
         if optics_hyp and has_severe_optics:
             rationale = (
-                "Arbitration: Optical Rx power attenuation below physical receiver threshold "
-                "takes direct precedence over soft counter anomalies."
+                f"Arbitration: Optical Rx power attenuation below physical receiver threshold ({opt_pwr_crit} dBm) "
+                "takes direct precedence over secondary soft counter anomalies."
             )
             conflicts_resolved.append({
                 "conflict": "Optical Degradation vs Soft Congestion",
@@ -209,15 +241,9 @@ class ConflictResolver:
             })
             return ArbitrationResult(optics_hyp, rationale, conflicts_resolved)
 
-        # Rule 2b: Optical inquiry nominal refutes optical hypothesis in favor of Ethernet CRC fault
-        eth_hyp = next((h for h in hypotheses if "ethernet" in h.probable_cause.lower() or "crc" in h.probable_cause.lower()), None)
-        has_nominal_optics = any(
-            o.metric_name == "rx_power_dbm" and float(o.observed_value or 0) >= -15.0
-            for o in observations
-        )
         if optics_hyp and eth_hyp and has_nominal_optics:
             rationale = (
-                "Arbitration: Inquiry confirmed optical power within nominal specification, "
+                f"Arbitration: Inquiry confirmed optical power within nominal specification (>= {opt_pwr_warn} dBm), "
                 "refuting optical attenuation in favor of physical Ethernet interface corruption."
             )
             conflicts_resolved.append({
@@ -228,10 +254,11 @@ class ConflictResolver:
             })
             return ArbitrationResult(eth_hyp, rationale, conflicts_resolved)
 
-        # Rule 3: Confirmed MTU mismatch with large packet drops overrides generic congestion
+        # Rule 3: Confirmed MTU mismatch with packet drops overrides generic congestion
         mtu_hyp = next((h for h in hypotheses if "mtu" in h.probable_cause.lower()), None)
         has_mtu_evidence = any(
-            o.metric_name in ("mtu_mismatch", "large_packet_drops")
+            (o.metric_name == "mtu_mismatch" and o.observed_value not in (None, False, "unknown"))
+            or (o.metric_name == "large_packet_drops" and (_extract_numeric_observation(o, "large_packet_drops") or 0) > 0)
             for o in observations
         )
         if mtu_hyp and has_mtu_evidence:
@@ -248,9 +275,9 @@ class ConflictResolver:
             return ArbitrationResult(mtu_hyp, rationale, conflicts_resolved)
 
         # Rule 4: Spanning tree loop with broadcast storm overrides generic CPU spike
-        stp_hyp = next((h for h in hypotheses if "spanning tree" in h.probable_cause.lower() or "bpdu" in h.probable_cause.lower()), None)
+        stp_hyp = next((h for h in hypotheses if any(k in h.probable_cause.lower() for k in ("spanning tree", "bpdu"))), None)
         has_stp_evidence = any(
-            o.metric_name in ("bpdu_filter", "broadcast_storm")
+            o.metric_name in ("bpdu_filter", "broadcast_storm") and o.observed_value not in (None, False)
             for o in observations
         )
         if stp_hyp and has_stp_evidence:
@@ -268,24 +295,44 @@ class ConflictResolver:
 
         # Rule 5: DNS or DHCP service failure takes precedence when IP routing is healthy
         dns_hyp = next((h for h in hypotheses if "dns" in h.probable_cause.lower()), None)
-        if dns_hyp and any(o.metric_name == "dns_failure_pct" and float(o.observed_value or 0) > 20.0 for o in observations):
-            rationale = "Arbitration: DNS resolution failure rate takes direct precedence over transport anomalies."
-            conflicts_resolved.append({
-                "conflict": "DNS Outage vs Transport Delay",
-                "winner": dns_hyp.probable_cause,
-                "precedence": "DIRECT",
-                "rationale": rationale,
-            })
-            return ArbitrationResult(dns_hyp, rationale, conflicts_resolved)
+        if dns_hyp:
+            dns_vals = [_extract_numeric_observation(o, "dns_failure_pct", {"percent", "%"}) for o in observations]
+            dns_vals = [v for v in dns_vals if v is not None]
+            if any(v >= DynamicThresholds.DNS_FAILURE_CRIT_PCT for v in dns_vals):
+                rationale = f"Arbitration: DNS resolution failure rate (>= {DynamicThresholds.DNS_FAILURE_CRIT_PCT}%) takes direct precedence over transport anomalies."
+                conflicts_resolved.append({
+                    "conflict": "DNS Outage vs Transport Delay",
+                    "winner": dns_hyp.probable_cause,
+                    "precedence": "DIRECT",
+                    "rationale": rationale,
+                })
+                return ArbitrationResult(dns_hyp, rationale, conflicts_resolved)
 
         # Rule 6: Upstream transit saturation confirmed via inquiry vs local link congestion
-        upstream_hyp = next((h for h in hypotheses if "upstream" in h.probable_cause.lower() or "transit" in h.probable_cause.lower()), None)
-        congestion_hyp = next((h for h in hypotheses if "congestion" in h.probable_cause.lower() or "queue" in h.probable_cause.lower()), None)
-        has_upstream_confirmed = any(o.metric_name == "upstream_link_saturation" for o in observations)
-        has_upstream_refuted = any(o.metric_name == "upstream_links_nominal" for o in observations)
+        upstream_hyp = next((h for h in hypotheses if any(k in h.probable_cause.lower() for k in ("upstream", "transit"))), None)
+        congestion_hyp = next((h for h in hypotheses if any(k in h.probable_cause.lower() for k in ("congestion", "queue"))), None)
+
+        has_upstream_confirmed = any(
+            (o.metric_name == "upstream_link_saturation" and o.observed_value not in (None, False))
+            for o in observations
+        )
+        has_upstream_refuted = any(
+            (o.metric_name == "upstream_links_nominal" and o.observed_value not in (None, False))
+            for o in observations
+        )
 
         if upstream_hyp and congestion_hyp:
-            if has_upstream_confirmed:
+            # Handle contradictory evidence: if both confirmed and refuted are present, abstain!
+            if has_upstream_confirmed and has_upstream_refuted:
+                rationale = "Arbitration abstained: Contradictory evidence detected for upstream transit link state."
+                conflicts_resolved.append({
+                    "conflict": "Upstream Transit Saturation vs Local Congestion",
+                    "winner": "TIE",
+                    "precedence": "CONTRADICTORY",
+                    "rationale": rationale,
+                })
+                return ArbitrationResult(None, rationale, conflicts_resolved)
+            elif has_upstream_confirmed:
                 rationale = (
                     "Arbitration: Targeted inquiry corroborated upstream transit link saturation, "
                     "establishing upstream provider failure as root cause."
@@ -311,20 +358,50 @@ class ConflictResolver:
                 return ArbitrationResult(congestion_hyp, rationale, conflicts_resolved)
 
         # Rule 7: Wi-Fi RF degradation corroborated via inquiry vs wired queue congestion
-        wifi_hyp = next((h for h in hypotheses if "wifi" in h.probable_cause.lower() or "wireless" in h.probable_cause.lower()), None)
-        has_wifi_confirmed = any(o.metric_name == "wifi_rf_degradation" for o in observations)
-        if wifi_hyp and congestion_hyp and has_wifi_confirmed:
-            rationale = (
-                "Arbitration: Targeted inquiry confirmed Wi-Fi RF coverage degradation, "
-                "establishing wireless channel degradation as root cause over wired backhaul."
-            )
-            conflicts_resolved.append({
-                "conflict": "Wi-Fi RF Degradation vs Wired Congestion",
-                "winner": wifi_hyp.probable_cause,
-                "precedence": "DIRECT",
-                "rationale": rationale,
-            })
-            return ArbitrationResult(wifi_hyp, rationale, conflicts_resolved)
+        wifi_hyp = next((h for h in hypotheses if any(k in h.probable_cause.lower() for k in ("wifi", "wireless"))), None)
+        has_wifi_confirmed = any(
+            (o.metric_name == "wifi_rf_degradation" and o.observed_value not in (None, False))
+            for o in observations
+        )
+        has_wifi_refuted = any(
+            (o.metric_name == "wifi_rf_nominal" and o.observed_value not in (None, False))
+            for o in observations
+        )
+
+        if wifi_hyp and congestion_hyp:
+            if has_wifi_confirmed and has_wifi_refuted:
+                rationale = "Arbitration abstained: Contradictory wireless RF telemetry observed across access points."
+                conflicts_resolved.append({
+                    "conflict": "Wi-Fi RF Degradation vs Wired Congestion",
+                    "winner": "TIE",
+                    "precedence": "CONTRADICTORY",
+                    "rationale": rationale,
+                })
+                return ArbitrationResult(None, rationale, conflicts_resolved)
+            elif has_wifi_confirmed:
+                rationale = (
+                    "Arbitration: Targeted inquiry confirmed Wi-Fi RF coverage degradation, "
+                    "establishing wireless channel degradation as root cause over wired backhaul."
+                )
+                conflicts_resolved.append({
+                    "conflict": "Wi-Fi RF Degradation vs Wired Congestion",
+                    "winner": wifi_hyp.probable_cause,
+                    "precedence": "DIRECT",
+                    "rationale": rationale,
+                })
+                return ArbitrationResult(wifi_hyp, rationale, conflicts_resolved)
+            elif has_wifi_refuted:
+                rationale = (
+                    "Arbitration: Targeted inquiry verified Wi-Fi RF parameters within nominal bounds, "
+                    "establishing wired backhaul congestion as root cause."
+                )
+                conflicts_resolved.append({
+                    "conflict": "Wi-Fi RF Degradation vs Wired Congestion",
+                    "winner": congestion_hyp.probable_cause,
+                    "precedence": "DIRECT",
+                    "rationale": rationale,
+                })
+                return ArbitrationResult(congestion_hyp, rationale, conflicts_resolved)
 
         # Rule 8: Precedence based on EvidencePrecedence ranking
         def get_precedence(h: Hypothesis) -> int:

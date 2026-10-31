@@ -766,3 +766,305 @@ def test_test12_service_auth_header_rejection():
         assert res_health.status_code == 200
     finally:
         settings.internal_service_token = orig_token
+
+
+def test_priority1_no_fabricated_measurements_from_missing_numeric_values():
+    """PRIORITY 1: Prove missing numeric values never become fabricated zero or default measurements."""
+    from netcoop.orchestrator.graph import _convert_inquiry_to_observation
+    from netcoop.core.envelope import Inquiry, AgentEnvelope, AgentRole, ProtocolHeader, MessageType
+
+    resp_env = AgentEnvelope(
+        header=ProtocolHeader(correlation_id="c1", sender=AgentRole.TELEMETRY_AGENT, recipient=AgentRole.ORCHESTRATOR, message_type=MessageType.INQUIRY_RESPONSE),
+        payload=EnvelopePayload(scope=NetworkScope(network_id="net", devices=["sw-1"])),
+    )
+
+    # 1. Optical nominal without numeric power
+    inq_opt_nom = Inquiry(
+        target_agent=AgentRole.TELEMETRY_AGENT,
+        question="Check optical power levels",
+        target_entity="sw-1:et-0/0/1",
+        answer="Optical transceiver diagnostics report Rx power levels within specification nominal.",
+    )
+    obs = _convert_inquiry_to_observation(inq_opt_nom, resp_env)
+    assert obs is not None
+    assert obs.observed_value == "nominal"
+    assert obs.unit == "text"
+    assert obs.observed_value != -10.5
+    assert obs.observed_value != 0.0
+    assert obs.timestamp_start is None
+
+    # 2. Optical attenuated without numeric power
+    inq_opt_att = Inquiry(
+        target_agent=AgentRole.TELEMETRY_AGENT,
+        question="Check optical power levels",
+        target_entity="sw-1:et-0/0/1",
+        answer="Optical transceiver diagnostics report severe attenuation below receiver sensitivity.",
+    )
+    obs_att = _convert_inquiry_to_observation(inq_opt_att, resp_env)
+    assert obs_att is not None
+    assert obs_att.observed_value == "attenuated"
+    assert obs_att.unit == "text"
+    assert obs_att.observed_value != -18.5
+    assert obs_att.observed_value != 0.0
+
+    # 3. MTU disparity without explicit numbers
+    inq_mtu = Inquiry(
+        target_agent=AgentRole.CONFIG_AGENT,
+        question="Check interface MTU",
+        target_entity="sw-1:et-0/0/2",
+        answer="MTU mismatch disparity identified along transit path.",
+    )
+    obs_mtu = _convert_inquiry_to_observation(inq_mtu, resp_env)
+    assert obs_mtu is not None
+    assert obs_mtu.observed_value == "mismatch"
+    assert obs_mtu.unit == "text"
+    assert obs_mtu.observed_value != 1500
+    assert obs_mtu.observed_value != 0
+
+    # 4. Structured dict qualitative evidence without numeric values
+    inq_dict = Inquiry(
+        target_agent=AgentRole.WIFI_SERVICES_AGENT,
+        question="Query RF coverage",
+        target_entity="ap-1",
+        answer={"qualitative": "degraded", "status": "anomaly", "metric_name": "wifi_rf_degradation"},
+    )
+    obs_dict = _convert_inquiry_to_observation(inq_dict, resp_env)
+    assert obs_dict is not None
+    assert obs_dict.observed_value == "degraded"
+    assert obs_dict.unit == "text"
+    assert obs_dict.observed_value != 0.0
+
+    # 5. Ambiguous / inconclusive answers must be rejected (return None)
+    inq_ambig = Inquiry(
+        target_agent=AgentRole.TELEMETRY_AGENT,
+        question="Query queue drops",
+        target_entity="sw-1",
+        answer="Inconclusive telemetry; unable to determine queue drops.",
+    )
+    obs_ambig = _convert_inquiry_to_observation(inq_ambig, resp_env)
+    assert obs_ambig is None
+
+
+def test_priority2_inquiry_failure_propagation_and_limitations():
+    """PRIORITY 2: Prove that failed inquiries propagate error metadata and limitations without recording fake answers."""
+    from netcoop.orchestrator.graph import node_inquiry
+    from netcoop.orchestrator.graph import mediator
+    from unittest.mock import patch
+
+    state = {
+        "incident_id": "inc-fail-prop-test",
+        "network_id": "test-net",
+        "scope_devices": ["rtr-1"],
+        "raw_data": {"telemetry": []},
+        "accumulated_observations": [],
+        "inquiries_queue": [
+            {
+                "inquiry_id": "inq-fail-1",
+                "target_agent": "telemetry_agent",
+                "question": "Query upstream saturation",
+                "target_entity": "rtr-1",
+            },
+            {
+                "inquiry_id": "inq-succ-2",
+                "target_agent": "topology_agent",
+                "question": "Query topology hops",
+                "target_entity": "rtr-1",
+            },
+        ],
+        "inquiries_history": [],
+        "processed_inquiry_hashes": [],
+        "agent_execution": {},
+        "limitations": [],
+        "iteration": 1,
+    }
+
+    # Mock mediator.dispatch so inq-fail-1 fails with INTERNAL_ERROR, while inq-succ-2 succeeds
+    def mock_dispatch(env):
+        if env.header.recipient == AgentRole.TELEMETRY_AGENT:
+            err_env = AgentEnvelope.create_error_response(
+                original=env,
+                error_code="INTERNAL_ERROR",
+                message="Telemetry agent crashed with unhandled exception",
+            )
+            err_env.context["execution_record"] = {
+                "agent_id": "telemetry_agent",
+                "execution_status": "internal_error",
+                "error_code": "INTERNAL_ERROR",
+            }
+            return err_env
+        else:
+            succ_env = AgentEnvelope(
+                header=ProtocolHeader(correlation_id=env.header.correlation_id, sender=AgentRole.TOPOLOGY_AGENT, recipient=AgentRole.ORCHESTRATOR, message_type=MessageType.INQUIRY_RESPONSE),
+                payload=EnvelopePayload(
+                    scope=env.payload.scope,
+                    inquiries=[
+                        Inquiry(
+                            inquiry_id="inq-succ-2",
+                            target_agent=AgentRole.TOPOLOGY_AGENT,
+                            question=env.payload.inquiries[0].question,
+                            target_entity="rtr-1",
+                            answer="Adjacent hops for rtr-1: ['core-1', 'core-2']",
+                        )
+                    ],
+                ),
+            )
+            succ_env.context["execution_record"] = {"agent_id": "topology_agent", "execution_status": "success"}
+            return succ_env
+
+    with patch.object(mediator, "dispatch", side_effect=mock_dispatch):
+        res = node_inquiry(state)
+
+    # 1. Failed inquiry is recorded with status='failed' and answer=None
+    inq_history = res["inquiries_history"]
+    failed_entries = [i for i in inq_history if i.get("inquiry_id") == "inq-fail-1"]
+    assert len(failed_entries) == 1
+    assert failed_entries[0]["status"] == "failed"
+    assert failed_entries[0]["answer"] is None
+    assert "error" in failed_entries[0]
+
+    # 2. Successful inquiry is preserved alongside
+    succ_entries = [i for i in inq_history if i.get("inquiry_id") == "inq-succ-2"]
+    assert len(succ_entries) == 1
+    assert succ_entries[0]["status"] == "answered"
+    assert succ_entries[0]["answer"] is not None
+
+    # 3. Clear limitation appended
+    limitations = res["limitations"]
+    assert any("inquiry_failed: telemetry_agent" in lim for lim in limitations)
+
+
+def test_priority3_internal_service_auth_production_fail_closed():
+    """PRIORITY 3: Prove production mode fails closed on missing/weak token and rejects unauthorized requests."""
+    from netcoop.config import settings
+
+    orig_env = settings.environment
+    orig_token = settings.internal_service_token
+    try:
+        settings.environment = "production"
+        settings.internal_service_token = None
+
+        app = create_agent_app(AgentRole.TELEMETRY_AGENT)
+        client = TestClient(app)
+
+        envelope = AgentEnvelope(
+            header=ProtocolHeader(correlation_id="corr-p3", sender=AgentRole.ORCHESTRATOR, recipient=AgentRole.TELEMETRY_AGENT, message_type=MessageType.TELEMETRY_DISPATCH),
+            payload=EnvelopePayload(scope=NetworkScope(network_id="net", devices=["sw-1"])),
+        )
+
+        # 1. Missing token in production -> Fail closed (HTTP 500 misconfiguration)
+        res_missing = client.post("/process", json=envelope.model_dump(mode="json"))
+        assert res_missing.status_code == 500
+        assert "Production configuration error" in res_missing.json()["detail"]
+
+        # 2. Weak token (< 16 chars) in production -> Fail closed (HTTP 500 misconfiguration)
+        settings.internal_service_token = "weak-secret"
+        res_weak = client.post("/process", json=envelope.model_dump(mode="json"))
+        assert res_weak.status_code == 500
+
+        # 3. Strong token configured: missing header -> HTTP 401 Unauthorized
+        settings.internal_service_token = "netcoop-production-service-token-32chars-secure"
+        res_no_hdr = client.post("/process", json=envelope.model_dump(mode="json"))
+        assert res_no_hdr.status_code == 401
+        assert res_no_hdr.json()["payload"]["error"]["error_code"] == "UNAUTHORIZED"
+
+        # 4. Strong token configured: invalid header -> HTTP 401 Unauthorized
+        res_bad_hdr = client.post(
+            "/process",
+            json=envelope.model_dump(mode="json"),
+            headers={settings.service_auth_header: "wrong-token-value"},
+        )
+        assert res_bad_hdr.status_code == 401
+
+        # 5. Strong token configured: valid header -> HTTP 200 OK
+        res_valid = client.post(
+            "/process",
+            json=envelope.model_dump(mode="json"),
+            headers={settings.service_auth_header: "netcoop-production-service-token-32chars-secure"},
+        )
+        assert res_valid.status_code == 200
+
+        # 6. Health check remains intentionally public in production
+        res_health = client.get("/health")
+        assert res_health.status_code == 200
+        assert res_health.json()["status"] == "ok"
+
+    finally:
+        settings.environment = orig_env
+        settings.internal_service_token = orig_token
+
+
+def test_priority4_conflict_arbitration_boundary_and_contradictory_evidence():
+    """PRIORITY 4: Prove conflict arbitration handles boundaries, domain thresholds, and contradictory evidence."""
+    from netcoop.orchestrator.conflict_resolver import ConflictResolver
+    from netcoop.core.envelope import Hypothesis, Observation, ObservationCategory, Severity
+    from netcoop.core.thresholds import DynamicThresholds
+
+    optics_hyp = Hypothesis(
+        hypothesis_id="h-opt",
+        probable_cause="Optical power attenuation or fiber degradation",
+        confidence=0.85,
+        supporting_observation_ids=["obs-opt-1"],
+    )
+    eth_hyp = Hypothesis(
+        hypothesis_id="h-eth",
+        probable_cause="Ethernet interface physical CRC/FCS corruption",
+        confidence=0.82,
+        supporting_observation_ids=["obs-eth-1"],
+    )
+
+    # 1. Optical boundary value: -14.0 dBm is nominal specification boundary
+    # Must refute optical attenuation in favor of Ethernet CRC corruption
+    obs_nom_boundary = [
+        Observation(
+            category=ObservationCategory.METRIC_ANOMALY,
+            entity="sw-1:et-0/0/1",
+            metric_name="rx_power_dbm",
+            observed_value=-14.0,
+            unit="dbm",
+            severity=Severity.INFO,
+        )
+    ]
+    res_nom = ConflictResolver.arbitrate([optics_hyp, eth_hyp], obs_nom_boundary)
+    assert res_nom.winner is not None
+    assert "Ethernet interface" in res_nom.winner.probable_cause
+
+    # 2. Optical critical boundary value: -18.5 dBm is below critical threshold (-18.0 dBm)
+    # Must select Optical degradation
+    obs_crit_boundary = [
+        Observation(
+            category=ObservationCategory.METRIC_ANOMALY,
+            entity="sw-1:et-0/0/1",
+            metric_name="rx_power_dbm",
+            observed_value=-18.5,
+            unit="dbm",
+            severity=Severity.CRITICAL,
+        )
+    ]
+    res_crit = ConflictResolver.arbitrate([optics_hyp, eth_hyp], obs_crit_boundary)
+    assert res_crit.winner is not None
+    assert "Optical" in res_crit.winner.probable_cause
+
+    # 3. Contradictory evidence: upstream saturation AND upstream nominal both reported
+    upstream_hyp = Hypothesis(hypothesis_id="h-up", probable_cause="Upstream transit provider link saturation", confidence=0.88, supporting_observation_ids=["obs-1"])
+    cong_hyp = Hypothesis(hypothesis_id="h-cong", probable_cause="Local egress link congestion and queue exhaustion", confidence=0.85, supporting_observation_ids=["obs-1"])
+
+    obs_contradictory = [
+        Observation(category=ObservationCategory.METRIC_ANOMALY, entity="transit-1", metric_name="upstream_link_saturation", observed_value=True, unit="boolean", severity=Severity.CRITICAL),
+        Observation(category=ObservationCategory.METRIC_ANOMALY, entity="transit-1", metric_name="upstream_links_nominal", observed_value=True, unit="boolean", severity=Severity.INFO),
+    ]
+    res_contra = ConflictResolver.arbitrate([upstream_hyp, cong_hyp], obs_contradictory)
+    # Must abstain due to contradiction, never force a speculative guess
+    assert res_contra.winner is None
+    assert "Contradictory" in res_contra.rationale
+
+    # 4. Missing data: observed_value is None (missing measurement)
+    # Must NOT convert None to 0.0 or make false declaration
+    obs_missing = [
+        Observation(category=ObservationCategory.METRIC_ANOMALY, entity="sw-1", metric_name="rx_power_dbm", observed_value=None, unit="dbm", severity=Severity.INFO)
+    ]
+    # Without valid optical power measurement, neither rule 2 nor 2b can trigger with direct evidence
+    res_miss = ConflictResolver.arbitrate([optics_hyp, eth_hyp], obs_missing)
+    # Both are DIRECT precedence, confidence diff = 0.85 - 0.82 = 0.03 (< 0.10 margin)
+    # Must declare a tie and abstain!
+    assert res_miss.winner is None
+    assert "Arbitration tie" in res_miss.rationale

@@ -57,6 +57,13 @@ class DynamicThresholds:
     INTERFACE_ERRORS_WARN: int = 50
     INTERFACE_ERRORS_CRIT: int = 500
 
+    # Optical transceiver DOM power levels (dBm):
+    # Receiver power nominal: >= -14.0 dBm
+    # Receiver power warning (marginal attenuation): < -14.0 dBm
+    # Receiver power critical (severe attenuation / sensitivity cutoff): < -18.0 dBm
+    OPTICAL_RX_POWER_WARN_DBM: float = -14.0
+    OPTICAL_RX_POWER_CRIT_DBM: float = -18.0
+
     # Link flaps: transition between up and down state within rolling observation window.
     # > 1 flap is warning; >= 3 flaps indicates physical flapping or aggressive dampening.
     LINK_FLAPS_WARN: int = 1

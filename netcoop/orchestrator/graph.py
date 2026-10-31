@@ -1,3 +1,4 @@
+import re
 """LangGraph multi-agent diagnostic state machine orchestrator."""
 
 import json
@@ -99,109 +100,261 @@ def _deduplicate_observations(observations: List[Dict[str, Any]]) -> List[Dict[s
 
 
 def _convert_inquiry_to_observation(inq: Inquiry, response_env: AgentEnvelope) -> Optional[Observation]:
-    """Convert verified inquiry answers into structured observations where justified.
+    """Convert verified inquiry answers into structured observations without inventing measurements.
 
     Never invents observations from empty, ambiguous, or generic answers.
+    Never fabricates numeric measurements, units, or timestamps when they are absent.
     """
     if not inq.answer:
         return None
+
+    # 1. Handle structured dict answers
+    if isinstance(inq.answer, dict):
+        ans_dict = inq.answer
+        status = str(ans_dict.get("status", "")).lower()
+        if status in ("inconclusive", "ambiguous", "no_data", "error", "unknown", "insufficient_evidence"):
+            return None
+
+        val = ans_dict.get("value")
+        if val is None:
+            val = ans_dict.get("observed_value")
+
+        qualitative = ans_dict.get("qualitative")
+        unit = ans_dict.get("unit") or ("text" if val is None else "")
+        metric_name = ans_dict.get("metric_name") or inq.parameters.get("metric_requested") or inq.question[:40].strip()
+        entity = ans_dict.get("device_id") or ans_dict.get("entity") or inq.target_entity or "network"
+        ts = ans_dict.get("timestamp") or ans_dict.get("timestamp_start")
+
+        sev_str = str(ans_dict.get("severity", "")).lower()
+        if sev_str == "critical":
+            sev = Severity.CRITICAL
+        elif sev_str == "warning":
+            sev = Severity.WARNING
+        else:
+            sev = Severity.INFO
+
+        final_val = val if val is not None else qualitative
+        if final_val is None:
+            if "nominal" in status:
+                final_val = "nominal"
+                sev = Severity.INFO
+            elif any(k in status for k in ("confirmed", "anomaly", "attenuated", "mismatch", "degraded")):
+                final_val = "anomaly"
+                sev = Severity.CRITICAL
+            else:
+                return None
+
+        return Observation(
+            category=ObservationCategory.METRIC_ANOMALY,
+            entity=str(entity),
+            metric_name=str(metric_name),
+            observed_value=final_val,
+            unit=str(unit) if unit else "text",
+            severity=sev,
+            timestamp_start=ts,
+            context={
+                "inquiry_id": inq.inquiry_id,
+                "original_answer": inq.answer,
+                "agent_domain": inq.target_agent.value,
+                "converted_from_inquiry": True,
+            },
+            provenance={
+                "source_agent": inq.target_agent.value,
+                "inquiry_id": inq.inquiry_id,
+            },
+        )
+
+    # 2. Handle string answers
     ans = str(inq.answer).strip()
-    if not ans or ans.lower() in ("no data", "none", "unknown"):
+    if not ans:
+        return None
+    ans_lower = ans.lower()
+
+    # Reject malformed, ambiguous or inconclusive responses
+    if any(p in ans_lower for p in (
+        "no data", "none", "unknown", "inconclusive", "ambiguous", "unable to determine",
+        "insufficient evidence", "cannot confirm", "unverified"
+    )):
         return None
 
     target = inq.target_entity or "network"
-    ans_lower = ans.lower()
-    ts = datetime.now(timezone.utc).isoformat()
+    ts_resp = response_env.header.timestamp_utc if response_env and response_env.header else None
 
-    # 1. Upstream transit saturation inquiry
-    if "upstream link saturation confirmed" in ans_lower:
+    # Case 1: Upstream link transit saturation / nominal
+    if "upstream link saturation confirmed" in ans_lower or ("upstream" in ans_lower and "saturation" in ans_lower and "confirmed" in ans_lower):
+        m_util = re.search(r"utilization\s+([0-9]+(?:\.[0-9]+)?)\s*%", ans, re.IGNORECASE)
+        m_drops = re.search(r"queue\s+drops\s+([0-9]+)", ans, re.IGNORECASE)
+        m_dev = re.search(r"confirmed\s+on\s+([a-zA-Z0-9_-]+)", ans, re.IGNORECASE)
+
+        util_val = float(m_util.group(1)) if m_util else None
+        drops_val = int(m_drops.group(1)) if m_drops else None
+        dev_entity = m_dev.group(1) if m_dev else target
+
+        final_val = util_val if util_val is not None else "saturated"
+        unit = "percent" if util_val is not None else "text"
+
         return Observation(
             category=ObservationCategory.METRIC_ANOMALY,
-            entity=target,
+            entity=dev_entity,
             metric_name="upstream_link_saturation",
-            observed_value=True,
-            unit="boolean",
+            observed_value=final_val,
+            unit=unit,
             severity=Severity.CRITICAL,
-            timestamp_start=ts,
-            context={"inquiry_id": inq.inquiry_id, "answer": ans, "agent_domain": inq.target_agent.value},
+            timestamp_start=None,
+            context={
+                "inquiry_id": inq.inquiry_id,
+                "original_answer": ans,
+                "agent_domain": inq.target_agent.value,
+                "queue_drops": drops_val,
+                "converted_from_inquiry": True,
+                "response_timestamp": ts_resp,
+            },
+            provenance={"source_agent": inq.target_agent.value, "inquiry_id": inq.inquiry_id},
         )
-    elif "upstream links nominal" in ans_lower:
+    elif "upstream links nominal" in ans_lower or ("upstream" in ans_lower and "nominal" in ans_lower):
+        m_util = re.search(r"utilization\s+([0-9]+(?:\.[0-9]+)?)\s*%", ans, re.IGNORECASE)
+        util_val = float(m_util.group(1)) if m_util else None
+
+        final_val = util_val if util_val is not None else "nominal"
+        unit = "percent" if util_val is not None else "text"
+
         return Observation(
             category=ObservationCategory.METRIC_ANOMALY,
             entity=target,
             metric_name="upstream_links_nominal",
-            observed_value=True,
-            unit="boolean",
+            observed_value=final_val,
+            unit=unit,
             severity=Severity.INFO,
-            timestamp_start=ts,
-            context={"inquiry_id": inq.inquiry_id, "answer": ans, "agent_domain": inq.target_agent.value},
+            timestamp_start=None,
+            context={
+                "inquiry_id": inq.inquiry_id,
+                "original_answer": ans,
+                "agent_domain": inq.target_agent.value,
+                "converted_from_inquiry": True,
+                "response_timestamp": ts_resp,
+            },
+            provenance={"source_agent": inq.target_agent.value, "inquiry_id": inq.inquiry_id},
         )
 
-    # 2. Optical transceiver power inquiry
-    if "rx power" in ans_lower or "optical transceiver" in ans_lower:
-        if "within specification" in ans_lower or "-10.5 dbm nominal" in ans_lower:
+    # Case 2: Optical transceiver power
+    if "rx power" in ans_lower or "optical transceiver" in ans_lower or "optical" in ans_lower:
+        m_pwr = re.search(r"(-?[0-9]+(?:\.[0-9]+)?)\s*dbm", ans, re.IGNORECASE)
+        actual_pwr = float(m_pwr.group(1)) if m_pwr else None
+
+        if "nominal" in ans_lower or "within specification" in ans_lower:
             return Observation(
                 category=ObservationCategory.METRIC_ANOMALY,
                 entity=target,
-                metric_name="rx_power_dbm",
-                observed_value=-10.5,
-                unit="dbm",
+                metric_name="rx_power_dbm" if actual_pwr is not None else "optical_transceiver_status",
+                observed_value=actual_pwr if actual_pwr is not None else "nominal",
+                unit="dbm" if actual_pwr is not None else "text",
                 severity=Severity.INFO,
-                timestamp_start=ts,
-                context={"inquiry_id": inq.inquiry_id, "answer": ans, "agent_domain": inq.target_agent.value, "optical_nominal": True},
+                timestamp_start=None,
+                context={
+                    "inquiry_id": inq.inquiry_id,
+                    "original_answer": ans,
+                    "agent_domain": inq.target_agent.value,
+                    "optical_nominal": True,
+                    "converted_from_inquiry": True,
+                    "response_timestamp": ts_resp,
+                },
+                provenance={"source_agent": inq.target_agent.value, "inquiry_id": inq.inquiry_id},
             )
-        elif "attenuated" in ans_lower or "below" in ans_lower:
+        elif "attenuated" in ans_lower or "below" in ans_lower or "degraded" in ans_lower or "fault" in ans_lower:
             return Observation(
                 category=ObservationCategory.METRIC_ANOMALY,
                 entity=target,
-                metric_name="rx_power_dbm",
-                observed_value=-18.5,
-                unit="dbm",
+                metric_name="rx_power_dbm" if actual_pwr is not None else "optical_transceiver_status",
+                observed_value=actual_pwr if actual_pwr is not None else "attenuated",
+                unit="dbm" if actual_pwr is not None else "text",
                 severity=Severity.CRITICAL,
-                timestamp_start=ts,
-                context={"inquiry_id": inq.inquiry_id, "answer": ans, "agent_domain": inq.target_agent.value},
+                timestamp_start=None,
+                context={
+                    "inquiry_id": inq.inquiry_id,
+                    "original_answer": ans,
+                    "agent_domain": inq.target_agent.value,
+                    "optical_attenuated": True,
+                    "converted_from_inquiry": True,
+                    "response_timestamp": ts_resp,
+                },
+                provenance={"source_agent": inq.target_agent.value, "inquiry_id": inq.inquiry_id},
             )
 
-    # 3. Wi-Fi RF channel degradation inquiry
-    if "wi-fi rf degradation identified" in ans_lower or "rf degradation" in ans_lower:
-        return Observation(
-            category=ObservationCategory.METRIC_ANOMALY,
-            entity=target,
-            metric_name="wifi_rf_degradation",
-            observed_value=True,
-            unit="boolean",
-            severity=Severity.CRITICAL,
-            timestamp_start=ts,
-            context={"inquiry_id": inq.inquiry_id, "answer": ans, "agent_domain": inq.target_agent.value},
-        )
-    elif "nominal coverage bounds" in ans_lower or "wi-fi rf parameters within nominal" in ans_lower:
-        return Observation(
-            category=ObservationCategory.METRIC_ANOMALY,
-            entity=target,
-            metric_name="wifi_rf_nominal",
-            observed_value=True,
-            unit="boolean",
-            severity=Severity.INFO,
-            timestamp_start=ts,
-            context={"inquiry_id": inq.inquiry_id, "answer": ans, "agent_domain": inq.target_agent.value},
-        )
+    # Case 3: Wi-Fi RF degradation / nominal
+    if "wi-fi" in ans_lower or "rf" in ans_lower or "wireless" in ans_lower:
+        m_rssi = re.search(r"rssi\s*[:=]?\s*(-?[0-9]+(?:\.[0-9]+)?)\s*dbm", ans, re.IGNORECASE)
+        m_snr = re.search(r"snr\s*[:=]?\s*([0-9]+(?:\.[0-9]+)?)\s*db", ans, re.IGNORECASE)
+        rssi_val = float(m_rssi.group(1)) if m_rssi else None
+        snr_val = float(m_snr.group(1)) if m_snr else None
 
-    # 4. MTU inquiry
-    if "mtu mismatch confirmed" in ans_lower or "disparity" in ans_lower:
-        return Observation(
-            category=ObservationCategory.CONFIG_DIFF,
-            entity=target,
-            metric_name="mtu_mismatch",
-            observed_value=1500,
-            unit="bytes",
-            severity=Severity.CRITICAL,
-            timestamp_start=ts,
-            context={"inquiry_id": inq.inquiry_id, "answer": ans, "agent_domain": inq.target_agent.value},
-        )
+        if "degradation" in ans_lower or "interference" in ans_lower or "weak" in ans_lower:
+            final_val = rssi_val if rssi_val is not None else (snr_val if snr_val is not None else "degraded")
+            unit = "dbm" if rssi_val is not None else ("db" if snr_val is not None else "text")
+            return Observation(
+                category=ObservationCategory.METRIC_ANOMALY,
+                entity=target,
+                metric_name="wifi_rf_degradation",
+                observed_value=final_val,
+                unit=unit,
+                severity=Severity.CRITICAL,
+                timestamp_start=None,
+                context={
+                    "inquiry_id": inq.inquiry_id,
+                    "original_answer": ans,
+                    "agent_domain": inq.target_agent.value,
+                    "converted_from_inquiry": True,
+                    "response_timestamp": ts_resp,
+                },
+                provenance={"source_agent": inq.target_agent.value, "inquiry_id": inq.inquiry_id},
+            )
+        elif "nominal" in ans_lower or "healthy" in ans_lower:
+            final_val = rssi_val if rssi_val is not None else (snr_val if snr_val is not None else "nominal")
+            unit = "dbm" if rssi_val is not None else ("db" if snr_val is not None else "text")
+            return Observation(
+                category=ObservationCategory.METRIC_ANOMALY,
+                entity=target,
+                metric_name="wifi_rf_nominal",
+                observed_value=final_val,
+                unit=unit,
+                severity=Severity.INFO,
+                timestamp_start=None,
+                context={
+                    "inquiry_id": inq.inquiry_id,
+                    "original_answer": ans,
+                    "agent_domain": inq.target_agent.value,
+                    "converted_from_inquiry": True,
+                    "response_timestamp": ts_resp,
+                },
+                provenance={"source_agent": inq.target_agent.value, "inquiry_id": inq.inquiry_id},
+            )
+
+    # Case 4: MTU mismatch
+    if "mtu" in ans_lower:
+        m_mtu = re.findall(r"\b([0-9]{3,5})\b", ans)
+        mtu_nums = [int(n) for n in m_mtu if int(n) in (1500, 1492, 9000, 9198, 9216)]
+        actual_val = mtu_nums[0] if mtu_nums else "mismatch"
+        unit = "bytes" if mtu_nums else "text"
+
+        if "mismatch" in ans_lower or "disparity" in ans_lower:
+            return Observation(
+                category=ObservationCategory.CONFIG_DIFF,
+                entity=target,
+                metric_name="mtu_mismatch",
+                observed_value=actual_val,
+                unit=unit,
+                severity=Severity.CRITICAL,
+                timestamp_start=None,
+                context={
+                    "inquiry_id": inq.inquiry_id,
+                    "original_answer": ans,
+                    "agent_domain": inq.target_agent.value,
+                    "converted_from_inquiry": True,
+                    "response_timestamp": ts_resp,
+                },
+                provenance={"source_agent": inq.target_agent.value, "inquiry_id": inq.inquiry_id},
+            )
 
     return None
-
-
 def node_specialists(state: GraphState) -> Dict[str, Any]:
     """Broadcast raw telemetry/configs to specialist domain agents concurrently."""
     incident_id = state["incident_id"]
@@ -361,6 +514,7 @@ def node_inquiry(state: GraphState) -> Dict[str, Any]:
     inquiries_history = list(state.get("inquiries_history", []))
     processed_hashes = list(state.get("processed_inquiry_hashes", []))
     agent_execution = dict(state.get("agent_execution", {}))
+    limitations = list(state.get("limitations", []))
 
     for inq in inquiries:
         inq_key = f"{inq.target_agent.value}:{inq.target_entity}:{inq.question[:30]}"
@@ -385,22 +539,65 @@ def node_inquiry(state: GraphState) -> Dict[str, Any]:
         if exec_rec:
             agent_execution[f"{inq.target_agent.value}_inquiry_{inq.inquiry_id}"] = exec_rec
 
-        # 1. Preserve returned inquiry records
-        returned_inquiries = response_env.payload.inquiries or [inq]
+        # Priority 2: Inspect payload.error, HTTP/protocol failure states, and execution record
+        is_failed = (
+            response_env.payload.error is not None
+            or response_env.header.message_type == MessageType.PROTOCOL_ERROR
+            or (exec_rec and exec_rec.get("execution_status") in (
+                "unavailable", "timeout", "protocol_error", "internal_error", "circuit_open"
+            ))
+        )
+
+        if is_failed:
+            err = response_env.payload.error
+            err_code = err.error_code if err else (exec_rec.get("error_code") if exec_rec else "INQUIRY_FAILED")
+            err_msg = err.message if err else (exec_rec.get("error_code") if exec_rec else "Target agent failed to respond")
+
+            # Preserve failed inquiry record with explicit status without recording as answered
+            inq_fail = inq.model_dump()
+            inq_fail["status"] = "failed"
+            inq_fail["answer"] = None
+            inq_fail["error"] = {"error_code": err_code, "message": err_msg}
+            inq_fail["sender"] = inq.target_agent.value
+            inq_fail["recipient"] = AgentRole.ORCHESTRATOR.value
+            inq_fail["correlation_id"] = incident_id
+            inquiries_history.append(inq_fail)
+
+            lim_entry = f"inquiry_failed: {inq.target_agent.value} ({inq.inquiry_id}) {err_code}: {err_msg}"
+            if lim_entry not in limitations:
+                limitations.append(lim_entry)
+            continue
+
+        returned_inquiries = response_env.payload.inquiries
+        if not returned_inquiries:
+            # Empty response without error: record as unanswered
+            inq_unans = inq.model_dump()
+            inq_unans["status"] = "unanswered"
+            inq_unans["answer"] = None
+            inq_unans["sender"] = inq.target_agent.value
+            inq_unans["recipient"] = AgentRole.ORCHESTRATOR.value
+            inq_unans["correlation_id"] = incident_id
+            inquiries_history.append(inq_unans)
+
+            lim_entry = f"inquiry_unanswered: {inq.target_agent.value} ({inq.inquiry_id}) empty response payload"
+            if lim_entry not in limitations:
+                limitations.append(lim_entry)
+            continue
+
         for ret_inq in returned_inquiries:
             inq_dump = ret_inq.model_dump()
             inq_dump["sender"] = inq.target_agent.value
             inq_dump["recipient"] = AgentRole.ORCHESTRATOR.value
             inq_dump["correlation_id"] = incident_id
-            inq_dump["timestamp_utc"] = datetime.now(timezone.utc).isoformat()
+            inq_dump["status"] = "answered" if ret_inq.answer else "unanswered"
             inquiries_history.append(inq_dump)
 
-            # 2. Convert meaningful inquiry findings into structured observations
+            # Convert meaningful inquiry findings into structured observations
             converted_obs = _convert_inquiry_to_observation(ret_inq, response_env)
             if converted_obs is not None:
                 new_obs.append(converted_obs.model_dump())
 
-        # 3. Direct observations returned in payload
+        # Direct observations returned in payload
         for obs in response_env.payload.observations:
             d = obs.model_dump()
             d.setdefault("provenance", {"source_agent": inq.target_agent.value, "inquiry_id": inq.inquiry_id})
@@ -413,13 +610,12 @@ def node_inquiry(state: GraphState) -> Dict[str, Any]:
         "inquiries_history": inquiries_history,
         "processed_inquiry_hashes": processed_hashes,
         "agent_execution": agent_execution,
+        "limitations": limitations,
         "iteration": state.get("iteration", 0) + 1,
     }
     if settings.feature_resume:
         save_checkpoint(session_id=incident_id, node_name="inquiry", state_dict={**state, **res}, iteration=res["iteration"], is_paused=state.get("is_paused", False))
     return res
-
-
 def node_synthesis(state: GraphState) -> Dict[str, Any]:
     """Invoke Synthesizer Agent to render root cause diagnosis or flag insufficient evidence."""
     incident_id = state["incident_id"]

@@ -31,7 +31,7 @@ services:
       - GATEWAY_PORT=8006
       - CLASSIFIER_AGENT_PORT=8007
       - WIFI_SERVICES_AGENT_PORT=8008
-      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN:-}
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN:-netcoop-production-service-token-32chars-secure}
     volumes:
       - ./data:/app/data
       - netcoop-db:/app/storage

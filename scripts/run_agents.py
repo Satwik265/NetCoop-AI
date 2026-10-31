@@ -61,7 +61,7 @@ def start_agent_process(role: str, port: int, project_root: Path) -> subprocess.
 
     creationflags = 0
     if sys.platform == "win32":
-        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
+        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
 
     process = subprocess.Popen(
         cmd,
@@ -94,7 +94,7 @@ def start_gateway_process(port: int, project_root: Path) -> subprocess.Popen:
 
     creationflags = 0
     if sys.platform == "win32":
-        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
+        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
 
     process = subprocess.Popen(
         cmd,
