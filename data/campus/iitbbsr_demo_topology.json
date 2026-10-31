@@ -1,0 +1,259 @@
+{
+  "schema_version": "1.0.0",
+  "campus_id": "iitbbsr_argul_campus",
+  "campus_name": "Indian Institute of Technology Bhubaneswar",
+  "map_source": {
+    "primary_reference": "https://www.iitbbs.ac.in/index.php/home/about-campus/",
+    "master_plan_url": "https://www.iitbbs.ac.in/wp-content/uploads/2025/07/Master-Plan-IITBBS-scaled.jpg",
+    "route_map_url": "https://www.iitbbs.ac.in/wp-content/uploads/2025/10/Route-2.jpg",
+    "attribution": "Building landmarks and campus zone designations derived from official IIT Bhubaneswar master plan and route maps. These sources define civil architecture and campus geography only; they do not depict network router locations or physical IT cabling."
+  },
+  "topology_provenance": {
+    "model_type": "simulated_demonstration_topology",
+    "institution": "IIT Bhubaneswar",
+    "campus_location": "Argul, Khordha, Odisha 752050",
+    "disclaimer": "All router devices, interface links, and routing paths in this dataset are synthetic demonstration inventory. Official campus maps establish physical building landmarks only and contain zero network routing equipment records."
+  },
+  "simulated_inventory": true,
+  "layout_coordinate_system": "normalized_canvas_space",
+  "nodes": [
+    {
+      "id": "IITBBSR-CORE-RTR-01",
+      "display_name": "Campus Core Router 01",
+      "type": "router",
+      "role": "core",
+      "site_id": "site_admin",
+      "site_name": "Administrative Building",
+      "layout_position": {
+        "x": 0.5,
+        "y": 0.35
+      },
+      "simulated": true,
+      "inventory_status": "simulated_demonstration",
+      "status": "unknown"
+    },
+    {
+      "id": "IITBBSR-AGG-ACAD-01",
+      "display_name": "Academic Zone Aggregation Router 01",
+      "type": "router",
+      "role": "aggregation",
+      "site_id": "zone_academic",
+      "site_name": "Academic zone",
+      "layout_position": {
+        "x": 0.32,
+        "y": 0.5
+      },
+      "simulated": true,
+      "inventory_status": "simulated_demonstration",
+      "status": "unknown"
+    },
+    {
+      "id": "IITBBSR-AGG-RES-01",
+      "display_name": "Residential Zone Aggregation Router 01",
+      "type": "router",
+      "role": "aggregation",
+      "site_id": "zone_residential",
+      "site_name": "Residential zone",
+      "layout_position": {
+        "x": 0.68,
+        "y": 0.55
+      },
+      "simulated": true,
+      "inventory_status": "simulated_demonstration",
+      "status": "unknown"
+    },
+    {
+      "id": "IITBBSR-DIST-ADMIN-01",
+      "display_name": "Administrative Building Distribution Router 01",
+      "type": "router",
+      "role": "distribution",
+      "site_id": "site_admin",
+      "site_name": "Administrative Building",
+      "layout_position": {
+        "x": 0.5,
+        "y": 0.18
+      },
+      "simulated": true,
+      "inventory_status": "simulated_demonstration",
+      "status": "unknown"
+    },
+    {
+      "id": "IITBBSR-DIST-SBS-01",
+      "display_name": "School of Basic Sciences Distribution Router 01",
+      "type": "router",
+      "role": "distribution",
+      "site_id": "site_sbs",
+      "site_name": "School of Basic Sciences",
+      "layout_position": {
+        "x": 0.18,
+        "y": 0.42
+      },
+      "simulated": true,
+      "inventory_status": "simulated_demonstration",
+      "status": "unknown"
+    },
+    {
+      "id": "IITBBSR-DIST-SIF-01",
+      "display_name": "School of Infrastructure Distribution Router 01",
+      "type": "router",
+      "role": "distribution",
+      "site_id": "site_sif",
+      "site_name": "School of Infrastructure",
+      "layout_position": {
+        "x": 0.18,
+        "y": 0.58
+      },
+      "simulated": true,
+      "inventory_status": "simulated_demonstration",
+      "status": "unknown"
+    },
+    {
+      "id": "IITBBSR-DIST-SMS-01",
+      "display_name": "School of Mechanical Sciences Distribution Router 01",
+      "type": "router",
+      "role": "distribution",
+      "site_id": "site_sms",
+      "site_name": "School of Mechanical Sciences",
+      "layout_position": {
+        "x": 0.32,
+        "y": 0.72
+      },
+      "simulated": true,
+      "inventory_status": "simulated_demonstration",
+      "status": "unknown"
+    },
+    {
+      "id": "IITBBSR-DIST-AUD-01",
+      "display_name": "Auditorium Distribution Router 01",
+      "type": "router",
+      "role": "distribution",
+      "site_id": "site_aud",
+      "site_name": "IIT Bhubaneswar Auditorium",
+      "layout_position": {
+        "x": 0.65,
+        "y": 0.22
+      },
+      "simulated": true,
+      "inventory_status": "simulated_demonstration",
+      "status": "unknown"
+    },
+    {
+      "id": "IITBBSR-DIST-CW-01",
+      "display_name": "Central Workshop Distribution Router 01",
+      "type": "router",
+      "role": "distribution",
+      "site_id": "site_cw",
+      "site_name": "Central Workshop",
+      "layout_position": {
+        "x": 0.18,
+        "y": 0.78
+      },
+      "simulated": true,
+      "inventory_status": "simulated_demonstration",
+      "status": "unknown"
+    },
+    {
+      "id": "IITBBSR-DIST-RHR-01",
+      "display_name": "Rushikulya Hall of Residence Distribution Router 01",
+      "type": "router",
+      "role": "distribution",
+      "site_id": "site_rhr",
+      "site_name": "Rushikulya Hall of Residence",
+      "layout_position": {
+        "x": 0.82,
+        "y": 0.75
+      },
+      "simulated": true,
+      "inventory_status": "simulated_demonstration",
+      "status": "unknown"
+    }
+  ],
+  "links": [
+    {
+      "source": "IITBBSR-CORE-RTR-01",
+      "target": "IITBBSR-AGG-ACAD-01",
+      "link_type": "core_aggregation_trunk",
+      "simulated": true,
+      "status": "unknown"
+    },
+    {
+      "source": "IITBBSR-CORE-RTR-01",
+      "target": "IITBBSR-AGG-RES-01",
+      "link_type": "core_aggregation_trunk",
+      "simulated": true,
+      "status": "unknown"
+    },
+    {
+      "source": "IITBBSR-CORE-RTR-01",
+      "target": "IITBBSR-DIST-ADMIN-01",
+      "link_type": "core_distribution_link",
+      "simulated": true,
+      "status": "unknown"
+    },
+    {
+      "source": "IITBBSR-CORE-RTR-01",
+      "target": "IITBBSR-DIST-AUD-01",
+      "link_type": "core_distribution_link",
+      "simulated": true,
+      "status": "unknown"
+    },
+    {
+      "source": "IITBBSR-AGG-ACAD-01",
+      "target": "IITBBSR-DIST-SBS-01",
+      "link_type": "aggregation_distribution_link",
+      "simulated": true,
+      "status": "unknown"
+    },
+    {
+      "source": "IITBBSR-AGG-ACAD-01",
+      "target": "IITBBSR-DIST-SIF-01",
+      "link_type": "aggregation_distribution_link",
+      "simulated": true,
+      "status": "unknown"
+    },
+    {
+      "source": "IITBBSR-AGG-ACAD-01",
+      "target": "IITBBSR-DIST-SMS-01",
+      "link_type": "aggregation_distribution_link",
+      "simulated": true,
+      "status": "unknown"
+    },
+    {
+      "source": "IITBBSR-AGG-ACAD-01",
+      "target": "IITBBSR-DIST-CW-01",
+      "link_type": "aggregation_distribution_link",
+      "simulated": true,
+      "status": "unknown"
+    },
+    {
+      "source": "IITBBSR-AGG-RES-01",
+      "target": "IITBBSR-DIST-RHR-01",
+      "link_type": "aggregation_distribution_link",
+      "simulated": true,
+      "status": "unknown"
+    },
+    {
+      "source": "IITBBSR-AGG-ACAD-01",
+      "target": "IITBBSR-AGG-RES-01",
+      "link_type": "aggregation_interconnect",
+      "simulated": true,
+      "status": "unknown"
+    }
+  ],
+  "logical_routing_paths": [
+    {
+      "path_id": "PATH-DEMO-CORE-SBS-01",
+      "name": "Campus Core to School of Basic Sciences",
+      "description": "Simulated demonstration path routing traffic from Campus Core via Academic Zone Aggregation to School of Basic Sciences Distribution Router.",
+      "path_type": "simulated_logical_route",
+      "simulated": true,
+      "hops": [
+        "IITBBSR-CORE-RTR-01",
+        "IITBBSR-AGG-ACAD-01",
+        "IITBBSR-DIST-SBS-01"
+      ],
+      "disclaimer": "Simulated logical demonstration route; does not represent physical cable infrastructure."
+    }
+  ]
+}
+
