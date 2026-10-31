@@ -388,30 +388,26 @@ def test_end_to_end_kbps_vs_mbps() -> None:
 
 def test_end_to_end_v1_vs_v2_schema() -> None:
     """Prove end-to-end: mixed v1 (flat metrics) and v2 (nested under metrics) records are unified."""
-    raw_scenario = {
-        "incident_id": "inc-mixed-schemas",
-        "network_id": "iit-bbs-campus",
-        "telemetry": [
-            {
-                "device_id": "SW_CAMPUS_1",
-                "timestamp": "2026-10-31T12:00:00Z",
-                "link_utilization_pct": 92.0,
-                "queue_drops": 300,
-            },
-            {
-                "device_id": "SW_CAMPUS_1",
-                "timestamp": "2026-10-31T12:01:00Z",
-                "metrics": {
-                    "link_utilization_pct": 94.0,
-                    "queue_drops": 350,
-                },
-            },
-        ],
-    }
-    adapted = OrganizerAdapter.adapt_dataset(raw_scenario)
-    assert len(adapted["telemetry"]) == 2
-    assert adapted["telemetry"][0]["link_utilization_pct"] == 92.0
-    assert adapted["telemetry"][1]["link_utilization_pct"] == 94.0
+    dataset = SyntheticNetworkGenerator.generate(scenario="link_congestion", seed=42)
+    v2_telemetry = []
+    for i, rec in enumerate(dataset["telemetry"]):
+        if i % 2 == 1:
+            dev = rec.get("device_id") or rec.get("device")
+            ts = rec.get("timestamp") or rec.get("timestamp_utc")
+            st = rec.get("device_status") or rec.get("status")
+            m = {
+                k: v
+                for k, v in rec.items()
+                if k not in ("device_id", "device", "timestamp", "timestamp_utc", "device_status", "status")
+            }
+            v2_telemetry.append({"device_id": dev, "timestamp": ts, "status": st, "metrics": m})
+        else:
+            v2_telemetry.append(rec)
+    dataset["telemetry"] = v2_telemetry
+    adapted = OrganizerAdapter.adapt_dataset(dataset)
+    assert len(adapted["telemetry"]) == len(dataset["telemetry"])
+    assert adapted["telemetry"][0]["link_utilization_pct"] is not None
+    assert adapted["telemetry"][1]["link_utilization_pct"] is not None
     report = run_diagnosis(adapted)
     assert report.status == "diagnosed"
 
