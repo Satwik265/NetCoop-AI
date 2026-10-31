@@ -129,6 +129,12 @@ async def websocket_events_endpoint(websocket: WebSocket) -> None:
         ws_manager.disconnect(websocket)
 
 
+@app.websocket("/ws/envelopes")
+async def websocket_envelopes_endpoint(websocket: WebSocket) -> None:
+    """Alias WebSocket stream for real-time envelope inspection."""
+    await websocket_events_endpoint(websocket)
+
+
 @app.get("/api/health")
 def health() -> Dict[str, str]:
     """Healthcheck endpoint."""

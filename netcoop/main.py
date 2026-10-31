@@ -1,18 +1,21 @@
 """FastAPI backend server for NetCoop AI multi-agent diagnostic platform."""
 
+import asyncio
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from netcoop import __version__
 from netcoop.config import settings
+from netcoop.core.envelope import AgentEnvelope
 from netcoop.core.report import RemediationActionItem, UnifiedDiagnosticReport
+from gateway.adapters.organizer_adapter import OrganizerAdapter
 from netcoop.orchestrator.graph import run_diagnosis
+from netcoop.orchestrator.mediator import register_envelope_listener, unregister_envelope_listener
 from netcoop.remediation.engine import RemediationEngine
 from netcoop.storage.db import (
     get_envelope_logs,
@@ -40,16 +43,106 @@ SCENARIOS_DIR = Path(__file__).parent.parent / "data" / "scenarios"
 SCHEMAS_DIR = Path(__file__).parent.parent / "schemas"
 
 
+class ConnectionManager:
+    """Manages active WebSocket connections for live envelope streaming."""
+
+    def __init__(self) -> None:
+        self.active_connections: Set[WebSocket] = set()
+
+    async def connect(self, websocket: WebSocket) -> None:
+        await websocket.accept()
+        self.active_connections.add(websocket)
+
+    def disconnect(self, websocket: WebSocket) -> None:
+        self.active_connections.discard(websocket)
+
+    async def broadcast_json(self, message: Dict[str, Any]) -> None:
+        stale: List[WebSocket] = []
+        for connection in list(self.active_connections):
+            try:
+                await connection.send_json(message)
+            except Exception:
+                stale.append(connection)
+        for dead_ws in stale:
+            self.active_connections.discard(dead_ws)
+
+
+ws_manager = ConnectionManager()
+
+
+def _envelope_stream_hook(envelope: AgentEnvelope) -> None:
+    """Relay dispatched envelopes to active WebSocket subscribers."""
+    event = {
+        "event_type": "envelope_logged",
+        "correlation_id": envelope.header.correlation_id,
+        "timestamp_utc": envelope.header.timestamp_utc,
+        "sender": envelope.header.sender.value,
+        "recipient": envelope.header.recipient.value,
+        "message_type": envelope.header.message_type.value,
+        "priority": envelope.header.priority.value,
+        "summary": f"Obs: {len(envelope.payload.observations)}, Hyp: {len(envelope.payload.hypotheses)}, Inq: {len(envelope.payload.inquiries)}",
+        "envelope": envelope.model_dump(mode="json"),
+    }
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(ws_manager.broadcast_json(event))
+    except RuntimeError:
+        pass
+
+
 @app.on_event("startup")
 def on_startup() -> None:
-    """Initialize SQLite database tables on application start."""
+    """Initialize database and register envelope streaming callbacks."""
     init_db()
+    register_envelope_listener(_envelope_stream_hook)
+
+
+@app.on_event("shutdown")
+def on_shutdown() -> None:
+    """Unregister callbacks cleanly on shutdown."""
+    unregister_envelope_listener(_envelope_stream_hook)
+
+
+@app.websocket("/ws/events")
+async def websocket_events_endpoint(websocket: WebSocket) -> None:
+    """WebSocket stream emitting real-time envelope traces and diagnostic events."""
+    await ws_manager.connect(websocket)
+    try:
+        await websocket.send_json({
+            "event_type": "connected",
+            "message": "NetCoop WebSocket streaming active",
+            "version": __version__,
+        })
+        while True:
+            text = await websocket.receive_text()
+            if text.strip().lower() == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+    except Exception:
+        ws_manager.disconnect(websocket)
+
+
+@app.websocket("/ws/envelopes")
+async def websocket_envelopes_endpoint(websocket: WebSocket) -> None:
+    """Alias WebSocket stream for real-time envelope inspection."""
+    await websocket_events_endpoint(websocket)
 
 
 @app.get("/api/health")
 def health() -> Dict[str, str]:
     """Healthcheck endpoint."""
     return {"status": "ok", "version": __version__}
+
+
+@app.post("/api/ingest")
+def ingest_data_endpoint(raw_payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Gateway Ingestion: translate, unit-convert, and canonicalize arbitrary telemetry."""
+    try:
+        canonical = OrganizerAdapter.adapt_dataset(raw_payload)
+        return canonical
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Ingestion error: {str(e)}")
 
 
 @app.get("/api/scenarios")
@@ -86,9 +179,10 @@ def get_scenario(filename: str) -> Dict[str, Any]:
 
 @app.post("/api/diagnose", response_model=UnifiedDiagnosticReport)
 def run_diagnosis_endpoint(incident_data: Dict[str, Any]) -> UnifiedDiagnosticReport:
-    """Execute multi-agent diagnosis on network incident input."""
+    """Execute multi-agent diagnosis on network incident input canonicalized via Gateway."""
     try:
-        report = run_diagnosis(incident_data)
+        canonical_data = OrganizerAdapter.adapt_dataset(incident_data)
+        report = run_diagnosis(canonical_data)
         return report
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Diagnostic error: {str(e)}")
@@ -188,8 +282,9 @@ def get_schema_endpoint(schema_name: str) -> Dict[str, Any]:
         return json.load(f)
 
 
-# Serve frontend static assets if built
-FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
-if FRONTEND_DIST.exists():
-    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
-
+# Serve dashboard static assets if built
+DASHBOARD_DIST = Path(__file__).parent.parent / "dashboard" / "dist"
+if DASHBOARD_DIST.exists():
+    app.mount("/", StaticFiles(directory=str(DASHBOARD_DIST), html=True), name="dashboard")
+elif (Path(__file__).parent.parent / "frontend" / "dist").exists():
+    app.mount("/", StaticFiles(directory=str(Path(__file__).parent.parent / "frontend" / "dist"), html=True), name="frontend")

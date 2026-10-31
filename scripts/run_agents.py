@@ -38,13 +38,15 @@ def start_agent_process(role: str, port: int, project_root: Path) -> subprocess.
     ]
     env = os.environ.copy()
     env["PYTHONPATH"] = str(project_root)
+    log_path = project_root / f".agent_{role}.log"
+    log_f = open(log_path, "w", encoding="utf-8")
 
     process = subprocess.Popen(
         cmd,
         cwd=str(project_root),
         env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stdout=log_f,
+        stderr=log_f,
     )
     return process
 
@@ -65,13 +67,15 @@ def start_gateway_process(port: int, project_root: Path) -> subprocess.Popen:
     ]
     env = os.environ.copy()
     env["PYTHONPATH"] = str(project_root)
+    log_path = project_root / ".agent_gateway.log"
+    log_f = open(log_path, "w", encoding="utf-8")
 
     process = subprocess.Popen(
         cmd,
         cwd=str(project_root),
         env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stdout=log_f,
+        stderr=log_f,
     )
     return process
 
@@ -129,17 +133,17 @@ def stop_all_agents() -> None:
     """Stop all recorded agent and gateway processes."""
     pids = load_pids()
     if not pids:
-        print("No active agent processes recorded in .agents.pid")
+        print("No active agent processes recorded in .agents.pid", flush=True)
         return
 
-    print("Stopping all running NetCoop specialist agents and gateway...")
+    print("Stopping all running NetCoop specialist agents and gateway...", flush=True)
     for name, pid in pids.items():
-        print(f"  Terminating {name} (PID: {pid})...")
+        print(f"  Terminating {name} (PID: {pid})...", flush=True)
         terminate_pid(pid)
 
     if PID_FILE.exists():
         PID_FILE.unlink()
-    print("All processes stopped cleanly.")
+    print("All processes stopped cleanly.", flush=True)
 
 
 def check_status() -> None:
@@ -147,12 +151,12 @@ def check_status() -> None:
     pids = load_pids()
     all_services = AGENT_ROLES + [GATEWAY_SERVICE]
 
-    print("NetCoop AI Agent Process Health Status:")
+    print("NetCoop AI Agent Process Health Status:", flush=True)
     for role, port in all_services:
         is_healthy = wait_for_health("127.0.0.1", port, timeout=1.0)
         status_str = "HEALTHY" if is_healthy else "STOPPED / UNRESPONSIVE"
         pid = pids.get(role, "unknown")
-        print(f"  {role:<22} port {port:<5} PID {pid:<8} [{status_str}]")
+        print(f"  {role:<22} port {port:<5} PID {pid:<8} [{status_str}]", flush=True)
 
 
 def main() -> None:
@@ -170,9 +174,13 @@ def main() -> None:
         check_status()
         return
 
+    # First clean up any existing processes
+    stop_all_agents()
+    time.sleep(1.0)
+
     # Start processes
     project_root = Path(__file__).parent.parent.resolve()
-    print("Launching NetCoop AI specialist agents and gateway...")
+    print("Launching NetCoop AI specialist agents and gateway...", flush=True)
 
     pids: Dict[str, int] = {}
     proc_handles: List[subprocess.Popen] = []
@@ -191,35 +199,38 @@ def main() -> None:
 
     save_pids(pids)
 
+    # Give all processes a moment to bind sockets
+    time.sleep(2.0)
+
     # 3. Wait for all health checks
     all_healthy = True
     for role, port in AGENT_ROLES + [GATEWAY_SERVICE]:
-        healthy = wait_for_health("127.0.0.1", port, timeout=10.0)
+        healthy = wait_for_health("127.0.0.1", port, timeout=12.0)
         if healthy:
-            print(f"  {role:<22} (port {port}): healthy")
+            print(f"  {role:<22} (port {port}): healthy", flush=True)
         else:
-            print(f"  {role:<22} (port {port}): FAILED TO RESPOND")
+            print(f"  {role:<22} (port {port}): FAILED TO RESPOND", flush=True)
             all_healthy = False
 
     if not all_healthy:
-        print("Warning: Some agents failed to respond within timeout.")
+        print("Warning: Some agents failed to respond within timeout.", flush=True)
         if not args.daemon:
             stop_all_agents()
             sys.exit(1)
     else:
-        print("All specialist agent microservices and gateway are operational.")
+        print("All specialist agent microservices and gateway are operational.", flush=True)
 
     if args.daemon:
-        print("Agent processes running in background. Use --stop or 'make down' to terminate.")
+        print("Agent processes running in background. Use --stop or 'make down' to terminate.", flush=True)
         return
 
     # Foreground mode: listen for SIGINT
-    print("Press Ctrl+C to shut down all agents.")
+    print("Press Ctrl+C to shut down all agents.", flush=True)
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("\nInterrupted by operator. Shutting down...")
+        print("\nInterrupted by operator. Shutting down...", flush=True)
         stop_all_agents()
 
 
