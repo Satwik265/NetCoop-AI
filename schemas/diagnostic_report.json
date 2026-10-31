@@ -222,7 +222,10 @@
               "recommended",
               "pending_approval",
               "simulated_success",
-              "rejected"
+              "rejected",
+              "pending",
+              "approved",
+              "modified"
             ]
           }
         }
@@ -265,24 +268,46 @@
       "description": "Source generator or adapter attribution metadata"
     },
     "confidence_breakdown": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "properties": {
-        "rules_score": { "type": "number" },
-        "model_score": { "type": "number" },
-        "blended_score": { "type": "number" },
-        "calibrated_confidence": { "type": "number" }
+        "rules_score": {
+          "type": "number"
+        },
+        "model_score": {
+          "type": "number"
+        },
+        "blended_score": {
+          "type": "number"
+        },
+        "calibrated_confidence": {
+          "type": "number"
+        }
       },
       "description": "Decomposition of hybrid confidence scores between rule engine and learned classifier"
     },
     "conformal_prediction_set": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "default": [],
       "description": "Split conformal prediction set with statistical coverage guarantees"
     },
     "confidence_category": {
-      "type": ["string", "null"],
-      "enum": ["high", "medium", "low", "abstain", null],
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "high",
+        "medium",
+        "low",
+        "abstain",
+        null
+      ],
       "description": "Empirical confidence tier based on precision cutoffs"
     }
   }

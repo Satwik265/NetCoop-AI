@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     # Remediation safety
     remediation_simulated_only: bool = True
 
+    # Feature flags (default on for demo; when off, core pipeline remains untouched)
+    feature_resume: bool = True
+    feature_hitl: bool = True
+
     def get_agent_port(self, role: AgentRole) -> int:
         """Lookup HTTP port assigned to a given specialist agent role."""
         port_mapping: Dict[AgentRole, int] = {
@@ -79,3 +83,7 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Module-level feature flag exports
+FEATURE_RESUME: bool = settings.feature_resume
+FEATURE_HITL: bool = settings.feature_hitl

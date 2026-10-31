@@ -26,7 +26,18 @@ from netcoop.llm.gemini_bridge import GeminiBridge
 from netcoop.orchestrator.conflict_resolver import ConflictResolver
 from netcoop.orchestrator.mediator import AgentMediator
 from netcoop.remediation.engine import RemediationEngine
-from netcoop.storage.db import get_incident, init_db, save_incident
+from netcoop.config import settings
+from netcoop.storage.db import (
+    get_incident,
+    init_db,
+    save_incident,
+    save_checkpoint,
+    get_latest_checkpoint,
+    mark_session_paused,
+    mark_session_resumed,
+    save_remediation_action_log,
+)
+from netcoop.core.report import RemediationActionItem, ReportBuilder, UnifiedDiagnosticReport
 
 
 class GraphState(TypedDict):
@@ -131,7 +142,7 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
             if lim not in limitations:
                 limitations.append(lim)
 
-    return {
+    res = {
         "accumulated_observations": all_obs,
         "accumulated_hypotheses": all_hyps,
         "limitations": limitations,
@@ -139,6 +150,9 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
         "classifier_calib_probs": classifier_calib_probs,
         "classifier_conformal_status": classifier_conformal_status,
     }
+    if settings.feature_resume:
+        save_checkpoint(session_id=incident_id, node_name="specialists", state_dict={**state, **res}, iteration=state.get("iteration", 0), is_paused=state.get("is_paused", False))
+    return res
 
 
 def node_mediation(state: GraphState) -> Dict[str, Any]:
@@ -163,12 +177,15 @@ def node_mediation(state: GraphState) -> Dict[str, Any]:
             raw_inquiries = ConflictResolver.generate_cross_inquiries(hyps, obs)
             inquiries = [inq.model_dump() for inq in raw_inquiries]
 
-    return {
+    res = {
         "conflict_detected": conflict,
         "conflict_summary": conflict_summary,
         "conflicts_resolved": existing_resolved,
         "inquiries_queue": inquiries,
     }
+    if settings.feature_resume:
+        save_checkpoint(session_id=state.get("incident_id", "session-unknown"), node_name="mediation", state_dict={**state, **res}, iteration=state.get("iteration", 0), is_paused=state.get("is_paused", False))
+    return res
 
 
 def route_mediation(state: GraphState) -> str:
@@ -206,11 +223,14 @@ def node_inquiry(state: GraphState) -> Dict[str, Any]:
         for obs in response_env.payload.observations:
             new_obs.append(obs.model_dump())
 
-    return {
+    res = {
         "accumulated_observations": new_obs,
         "inquiries_queue": [],
         "iteration": state.get("iteration", 0) + 1,
     }
+    if settings.feature_resume:
+        save_checkpoint(session_id=incident_id, node_name="inquiry", state_dict={**state, **res}, iteration=res["iteration"], is_paused=state.get("is_paused", False))
+    return res
 
 
 def node_synthesis(state: GraphState) -> Dict[str, Any]:
@@ -239,11 +259,14 @@ def node_synthesis(state: GraphState) -> Dict[str, Any]:
     uncertainty_dict = synth_resp.context.get("uncertainty", {})
     hypothesis_dict = synth_resp.context.get("hypothesis")
 
-    return {
+    res = {
         "status": diag_status,
         "uncertainty_dict": uncertainty_dict,
         "hypothesis_dict": hypothesis_dict,
     }
+    if settings.feature_resume:
+        save_checkpoint(session_id=incident_id, node_name="synthesis", state_dict={**state, **res}, iteration=state.get("iteration", 0), is_paused=state.get("is_paused", False))
+    return res
 
 
 def node_remediation(state: GraphState) -> Dict[str, Any]:
@@ -251,14 +274,22 @@ def node_remediation(state: GraphState) -> Dict[str, Any]:
     hyp_dict = state.get("hypothesis_dict")
     status = state.get("status", "insufficient_evidence")
     devices = state["scope_devices"]
+    incident_id = state.get("incident_id", "session-unknown")
 
     actions: List[Dict[str, Any]] = []
     if status == "diagnosed" and hyp_dict:
         hypothesis = DiagnosticHypothesis(**hyp_dict)
         plan_items = RemediationEngine.generate_plan(hypothesis, devices)
-        actions = [a.model_dump() for a in plan_items]
+        for a in plan_items:
+            if settings.feature_hitl:
+                a.status = "pending"
+                save_remediation_action_log(incident_id, a.model_dump(), status="pending")
+            actions.append(a.model_dump())
 
-    return {"remediation_actions": actions}
+    res = {"remediation_actions": actions}
+    if settings.feature_resume:
+        save_checkpoint(session_id=incident_id, node_name="remediation", state_dict={**state, **res}, iteration=state.get("iteration", 0), is_paused=state.get("is_paused", False))
+    return res
 
 
 def node_report(state: GraphState) -> Dict[str, Any]:
@@ -272,7 +303,7 @@ def node_report(state: GraphState) -> Dict[str, Any]:
 
     hypothesis = DiagnosticHypothesis(**hyp_dict) if hyp_dict else None
     uncertainty = UncertaintyEvaluation(**uncertainty_dict)
-    remediation_items = [RemediationEngine.generate_plan(hypothesis, state["scope_devices"])[0]] if (hypothesis and remediation_dicts) else []
+    remediation_items = [RemediationActionItem(**d) for d in remediation_dicts]
 
     duration_ms = round((time.time() - state.get("start_time_s", time.time())) * 1000, 2)
 
@@ -441,7 +472,10 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         report_json=report.to_json(),
     )
 
-    return {"report_dict": report.model_dump()}
+    res_dict = {"report_dict": report.model_dump()}
+    if settings.feature_resume:
+        save_checkpoint(session_id=incident_id, node_name="report", state_dict={**state, **res_dict}, iteration=state.get("iteration", 0), is_paused=False)
+    return res_dict
 
 
 def _validate_report_schema(report: UnifiedDiagnosticReport) -> None:
@@ -544,3 +578,77 @@ def run_diagnosis(incident_data: Dict[str, Any]) -> UnifiedDiagnosticReport:
         raise RuntimeError("Diagnostic execution failed to produce a report.")
 
     return UnifiedDiagnosticReport(**report_dict)
+
+
+def pause_diagnosis(session_id: str) -> bool:
+    """Signal an active diagnostic session to halt cleanly at its next checkpoint."""
+    return mark_session_paused(session_id)
+
+
+def resume_diagnosis(session_id: str) -> UnifiedDiagnosticReport:
+    """Resume execution of an interrupted or paused diagnosis from the latest SQLite checkpoint."""
+    init_db()
+    latest = get_latest_checkpoint(session_id)
+    if not latest:
+        raise ValueError(f"No checkpoint found for session '{session_id}'. Cannot resume.")
+
+    mark_session_resumed(session_id)
+    state = json.loads(latest.state_json)
+    state["is_paused"] = False
+
+    node = latest.node_name
+
+    # Step through remaining graph nodes sequentially from checkpointed state
+    if node == "specialists":
+        res_med = node_mediation(state)
+        state.update(res_med)
+        route = route_mediation(state)
+        if route == "inquiry":
+            res_inq = node_inquiry(state)
+            state.update(res_inq)
+            res_med2 = node_mediation(state)
+            state.update(res_med2)
+        res_synth = node_synthesis(state)
+        state.update(res_synth)
+        res_rem = node_remediation(state)
+        state.update(res_rem)
+        res_rep = node_report(state)
+        state.update(res_rep)
+
+    elif node in ("mediation", "inquiry"):
+        route = route_mediation(state)
+        if route == "inquiry":
+            res_inq = node_inquiry(state)
+            state.update(res_inq)
+            res_med2 = node_mediation(state)
+            state.update(res_med2)
+        res_synth = node_synthesis(state)
+        state.update(res_synth)
+        res_rem = node_remediation(state)
+        state.update(res_rem)
+        res_rep = node_report(state)
+        state.update(res_rep)
+
+    elif node == "synthesis":
+        res_rem = node_remediation(state)
+        state.update(res_rem)
+        res_rep = node_report(state)
+        state.update(res_rep)
+
+    elif node == "remediation":
+        res_rep = node_report(state)
+        state.update(res_rep)
+
+    elif node == "report":
+        pass
+
+    report_dict = state.get("report_dict")
+    if not report_dict:
+        res_rep = node_report(state)
+        report_dict = res_rep.get("report_dict")
+
+    if not report_dict:
+        raise RuntimeError(f"Resumed diagnostic execution for session '{session_id}' failed to produce a report.")
+
+    return UnifiedDiagnosticReport(**report_dict)
+

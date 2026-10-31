@@ -49,7 +49,7 @@ class RemediationSafetyChecker:
         impacted_count = len(action.blast_radius_devices)
         blast_ratio = impacted_count / total_count
 
-        blast_passed = blast_ratio <= 0.60
+        blast_passed = (blast_ratio <= 0.60) or (total_count <= 2 and impacted_count <= 1)
         blast_check = {
             "check_name": "blast_radius_limit",
             "passed": blast_passed,

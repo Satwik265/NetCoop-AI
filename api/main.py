@@ -14,7 +14,7 @@ from core.config import settings
 from core.envelope import AgentEnvelope
 from core.report import RemediationActionItem, UnifiedDiagnosticReport
 from gateway.adapters.organizer_adapter import OrganizerAdapter
-from orchestrator.graph import run_diagnosis
+from orchestrator.graph import pause_diagnosis, resume_diagnosis, run_diagnosis
 try:
     from orchestrator.mediator import register_envelope_listener, unregister_envelope_listener
 except ImportError:
@@ -28,6 +28,9 @@ from storage.db import (
     get_incident,
     init_db,
     list_incidents,
+    list_checkpoints,
+    list_remediation_action_logs,
+    get_remediation_action_log,
 )
 
 app = FastAPI(
@@ -187,8 +190,12 @@ def get_scenario(filename: str) -> Dict[str, Any]:
 def run_diagnosis_endpoint(incident_data: Dict[str, Any]) -> UnifiedDiagnosticReport:
     """Execute multi-agent diagnosis on network incident input canonicalized via Gateway."""
     try:
-        canonical_data = OrganizerAdapter.adapt_dataset(incident_data)
-        report = run_diagnosis(canonical_data)
+        format_detected = OrganizerAdapter.detect_format(incident_data)
+        if format_detected == "organizer":
+            canonical_data = OrganizerAdapter.adapt_dataset(incident_data)
+            report = run_diagnosis(canonical_data)
+        else:
+            report = run_diagnosis(incident_data)
         return report
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Diagnostic error: {str(e)}")
@@ -249,9 +256,175 @@ def get_incident_envelopes(incident_id: str) -> List[Dict[str, Any]]:
     ]
 
 
+# -----------------------------------------------------------------------------
+# Pause and Resume Orchestrator Endpoints (FEATURE_RESUME)
+# -----------------------------------------------------------------------------
+
+class PauseRequest(BaseModel):
+    session_id: str
+    rationale: Optional[str] = "Operator requested pause"
+
+
+@app.post("/api/orchestrator/pause")
+def pause_orchestrator_endpoint(req: PauseRequest) -> Dict[str, Any]:
+    """Signal an active diagnostic session to halt cleanly at its next checkpoint."""
+    success = pause_diagnosis(req.session_id)
+    return {
+        "session_id": req.session_id,
+        "status": "paused" if success else "failed",
+        "message": f"Diagnostic session {req.session_id} marked as paused.",
+        "rationale": req.rationale,
+    }
+
+
+@app.post("/api/orchestrator/resume/{session_id}", response_model=UnifiedDiagnosticReport)
+def resume_orchestrator_endpoint(session_id: str) -> UnifiedDiagnosticReport:
+    """Resume execution of an interrupted or paused diagnosis from latest checkpoint."""
+    try:
+        report = resume_diagnosis(session_id)
+        return report
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Resume failed: {str(e)}")
+
+
+@app.get("/api/orchestrator/checkpoints/{session_id}")
+def get_session_checkpoints_endpoint(session_id: str) -> List[Dict[str, Any]]:
+    """Retrieve chronological checkpoints recorded for a diagnostic session."""
+    cps = list_checkpoints(session_id)
+    return [
+        {
+            "id": cp.id,
+            "session_id": cp.session_id,
+            "node_name": cp.node_name,
+            "iteration": cp.iteration,
+            "is_paused": cp.is_paused,
+            "created_at": cp.created_at,
+            "state": json.loads(cp.state_json) if cp.state_json else {},
+        }
+        for cp in cps
+    ]
+
+
+# -----------------------------------------------------------------------------
+# Human-in-the-Loop Remediation Endpoints (FEATURE_HITL)
+# -----------------------------------------------------------------------------
+
 class RemediationRequest(BaseModel):
     action_id: str
     operator: str = "human_operator"
+
+
+class HITLDecisionRequest(BaseModel):
+    operator: str = "human_operator"
+    rationale: Optional[str] = None
+
+
+class HITLModifyRequest(BaseModel):
+    commands: List[str]
+    operator: str = "human_operator"
+    rationale: Optional[str] = None
+
+
+@app.get("/api/remediation/pending")
+def get_pending_remediation_actions_endpoint() -> List[Dict[str, Any]]:
+    """List all remediation actions awaiting operator approval under Human-in-the-Loop."""
+    logs = list_remediation_action_logs(status="pending")
+    return [
+        {
+            "id": l.id,
+            "incident_id": l.incident_id,
+            "action_id": l.action_id,
+            "device": l.device,
+            "commands": json.loads(l.commands_json) if l.commands_json else [],
+            "rollback_commands": json.loads(l.rollback_commands_json) if l.rollback_commands_json else [],
+            "risk_level": l.risk_level,
+            "status": l.status,
+            "approved_by": l.approved_by,
+            "rationale": l.rationale,
+            "modified_commands": json.loads(l.modified_commands_json) if l.modified_commands_json else None,
+            "simulated_at": l.simulated_at,
+            "decision_timestamp": l.decision_timestamp,
+        }
+        for l in logs
+    ]
+
+
+@app.get("/api/remediation/actions")
+def list_remediation_actions_endpoint(
+    incident_id: Optional[str] = None,
+    status: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """List recorded remediation action items filtered by incident or status."""
+    logs = list_remediation_action_logs(incident_id=incident_id, status=status)
+    return [
+        {
+            "id": l.id,
+            "incident_id": l.incident_id,
+            "action_id": l.action_id,
+            "device": l.device,
+            "commands": json.loads(l.commands_json) if l.commands_json else [],
+            "rollback_commands": json.loads(l.rollback_commands_json) if l.rollback_commands_json else [],
+            "risk_level": l.risk_level,
+            "status": l.status,
+            "approved_by": l.approved_by,
+            "rationale": l.rationale,
+            "modified_commands": json.loads(l.modified_commands_json) if l.modified_commands_json else None,
+            "simulated_at": l.simulated_at,
+            "decision_timestamp": l.decision_timestamp,
+        }
+        for l in logs
+    ]
+
+
+@app.post("/api/remediation/{action_id}/approve")
+def approve_remediation_action_endpoint(
+    action_id: str,
+    req: HITLDecisionRequest = HITLDecisionRequest(),
+) -> Dict[str, Any]:
+    """Approve a pending remediation action and execute simulated remediation."""
+    res = RemediationEngine.approve_action(
+        action_id=action_id,
+        operator=req.operator,
+        rationale=req.rationale,
+    )
+    if not res.get("success"):
+        raise HTTPException(status_code=404, detail=res.get("message", "Action not found."))
+    return res
+
+
+@app.post("/api/remediation/{action_id}/reject")
+def reject_remediation_action_endpoint(
+    action_id: str,
+    req: HITLDecisionRequest = HITLDecisionRequest(),
+) -> Dict[str, Any]:
+    """Reject a pending remediation action and record the decision audit log."""
+    res = RemediationEngine.reject_action(
+        action_id=action_id,
+        operator=req.operator,
+        rationale=req.rationale,
+    )
+    if not res.get("success"):
+        raise HTTPException(status_code=404, detail=res.get("message", "Action not found."))
+    return res
+
+
+@app.post("/api/remediation/{action_id}/modify")
+def modify_remediation_action_endpoint(
+    action_id: str,
+    req: HITLModifyRequest,
+) -> Dict[str, Any]:
+    """Modify parameters/commands of a pending action and record the decision audit log."""
+    res = RemediationEngine.modify_action(
+        action_id=action_id,
+        new_commands=req.commands,
+        operator=req.operator,
+        rationale=req.rationale,
+    )
+    if not res.get("success"):
+        raise HTTPException(status_code=404, detail=res.get("message", "Action not found."))
+    return res
 
 
 @app.post("/api/incidents/{incident_id}/remediate")

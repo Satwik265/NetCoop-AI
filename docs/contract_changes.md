@@ -87,3 +87,198 @@ Once approved:
 4. **Isolated Memory**: Agents must communicate solely through HTTP payloads conforming to `schemas/envelope.json`. In-process memory sharing or shared mutable state is prohibited.
 5. **Monochrome Design Tokens**: Any UI or CLI output additions must adhere strictly to the monochrome design tokens (#FAFAF9 / #0F0F10, slate #475569, box.SQUARE, zero emojis).
 
+
+
+---
+
+## 5. RFC-004: Orchestrator Checkpointing (Pause/Resume) & Human-in-the-Loop (HITL) Workflow
+
+### 5.1 Motivation & Scope
+In production enterprise network operations, automated diagnostics must support checkpoint persistence for long-running investigations, operator pause/resume signals, and Human-in-the-Loop (HITL) approval gates before simulated configuration changes execute.
+
+### 5.2 Feature Flags
+Managed in `netcoop/config.py` (and mirrored in `core/config.py`):
+- `FEATURE_RESUME: bool = True` (Default enabled for demo/interactive use; when False, orchestrator runs without storing node checkpoints).
+- `FEATURE_HITL: bool = True` (Default enabled for demo/interactive use; when False, recommended remediation actions run directly in simulated sandbox without manual operator gating).
+
+### 5.3 REST API Endpoints Specification
+
+#### 1. Signal Diagnosis Pause
+- **Endpoint**: `POST /api/orchestrator/pause`
+- **Request Body**:
+```json
+{
+  "session_id": "inc-20261031-101",
+  "rationale": "Manual inspection requested by Network Operations Center"
+}
+```
+- **Response (200 OK)**:
+```json
+{
+  "session_id": "inc-20261031-101",
+  "status": "paused",
+  "message": "Diagnostic session inc-20261031-101 marked as paused.",
+  "rationale": "Manual inspection requested by Network Operations Center"
+}
+```
+
+#### 2. Resume Diagnosis from Checkpoint
+- **Endpoint**: `POST /api/orchestrator/resume/{session_id}`
+- **Response (200 OK)**: Full `UnifiedDiagnosticReport` object conforming to `schemas/diagnostic_report.json`.
+- **Response (404 Not Found)**:
+```json
+{
+  "detail": "No checkpoint found for session 'inc-20261031-101'. Cannot resume."
+}
+```
+
+#### 3. List Session Checkpoints
+- **Endpoint**: `GET /api/orchestrator/checkpoints/{session_id}`
+- **Response (200 OK)**:
+```json
+[
+  {
+    "id": 1,
+    "session_id": "inc-20261031-101",
+    "node_name": "specialists",
+    "iteration": 0,
+    "is_paused": false,
+    "created_at": "2026-10-31T14:00:00Z",
+    "state": {
+      "incident_id": "inc-20261031-101",
+      "network_id": "campus-lan-01",
+      "status": "initialized"
+    }
+  }
+]
+```
+
+#### 4. List Pending Remediation Actions
+- **Endpoint**: `GET /api/remediation/pending`
+- **Response (200 OK)**:
+```json
+[
+  {
+    "id": 4,
+    "incident_id": "inc-20261031-101",
+    "action_id": "act-mtu-harmonize-01",
+    "device": "spine-01",
+    "commands": [
+      "configure terminal",
+      "interface et-0/0/1",
+      "mtu 9000",
+      "commit"
+    ],
+    "rollback_commands": [
+      "configure terminal",
+      "interface et-0/0/1",
+      "mtu 1500",
+      "commit"
+    ],
+    "risk_level": "medium",
+    "status": "pending",
+    "approved_by": null,
+    "rationale": null,
+    "modified_commands": null,
+    "simulated_at": null,
+    "decision_timestamp": "2026-10-31T14:05:00Z"
+  }
+]
+```
+
+#### 5. List All Remediation Actions
+- **Endpoint**: `GET /api/remediation/actions?incident_id={incident_id}&status={status}`
+- **Query Parameters**:
+  - `incident_id` (string, optional)
+  - `status` (string, optional: `pending`, `approved`, `rejected`, `modified`, `simulated_executed`)
+
+#### 6. Approve Remediation Action
+- **Endpoint**: `POST /api/remediation/{action_id}/approve`
+- **Request Body**:
+```json
+{
+  "operator": "netops_alice",
+  "rationale": "Verified MTU mismatch symptoms; approved for simulated execution"
+}
+```
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "action_id": "act-mtu-harmonize-01",
+  "status": "approved",
+  "operator": "netops_alice",
+  "rationale": "Verified MTU mismatch symptoms; approved for simulated execution",
+  "simulation": {
+    "success": true,
+    "message": "Successfully simulated remediation action act-mtu-harmonize-01 on spine-01.",
+    "executed_commands": [
+      "configure terminal",
+      "interface et-0/0/1",
+      "mtu 9000",
+      "commit"
+    ],
+    "checks": [
+      {"check": "Blast radius within bounds", "passed": true},
+      {"check": "Rollback procedure defined", "passed": true}
+    ]
+  }
+}
+```
+
+#### 7. Reject Remediation Action
+- **Endpoint**: `POST /api/remediation/{action_id}/reject`
+- **Request Body**:
+```json
+{
+  "operator": "netops_bob",
+  "rationale": "Scheduled maintenance window required for spine core changes"
+}
+```
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "action_id": "act-mtu-harmonize-01",
+  "status": "rejected",
+  "operator": "netops_bob",
+  "rationale": "Scheduled maintenance window required for spine core changes"
+}
+```
+
+#### 8. Modify Remediation Action
+- **Endpoint**: `POST /api/remediation/{action_id}/modify`
+- **Request Body**:
+```json
+{
+  "commands": [
+    "configure terminal",
+    "interface et-0/0/1",
+    "mtu 9216",
+    "commit"
+  ],
+  "operator": "netops_charlie",
+  "rationale": "Increased target jumbo frame MTU to 9216 standard"
+}
+```
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "action_id": "act-mtu-harmonize-01",
+  "status": "modified",
+  "modified_commands": [
+    "configure terminal",
+    "interface et-0/0/1",
+    "mtu 9216",
+    "commit"
+  ],
+  "operator": "netops_charlie",
+  "rationale": "Increased target jumbo frame MTU to 9216 standard"
+}
+```
+
+### 5.4 Auditing & Invariants
+- **Envelope Audit Trail**: Every operator decision emits an audit log record with `message_type="REMEDIATION_DECISION"`, `sender=operator`, and `recipient="remediation_engine"`.
+- **Simulation Sandbox Only**: All commands remain strictly simulated in sandbox test environments. No actual network interface changes occur.
+- **Monochrome & Clean Output**: Zero emojis across API responses, CLI logs, and documentation.

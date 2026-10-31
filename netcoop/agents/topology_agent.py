@@ -64,6 +64,8 @@ class TopologyAgent(BaseAgent):
         raw_data = envelope.payload.raw_data or {}
         topology = raw_data.get("topology")
         raw_routing = raw_data.get("routing_state", {})
+        if not isinstance(raw_routing, dict):
+            raw_routing = {}
         raw_telemetry = raw_data.get("telemetry", [])
 
         bgp_sessions = raw_routing.get("bgp_sessions", [])

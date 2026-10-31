@@ -10,9 +10,18 @@ from rich.table import Table
 from rich import box
 
 from netcoop import __version__
-from netcoop.orchestrator.graph import run_diagnosis
+from typing import List
+from netcoop.orchestrator.graph import run_diagnosis, pause_diagnosis, resume_diagnosis
+from netcoop.storage.db import (
+    get_envelope_logs,
+    get_incident,
+    init_db,
+    list_incidents,
+    mark_session_paused,
+    mark_session_resumed,
+    list_remediation_action_logs,
+)
 from netcoop.remediation.engine import RemediationEngine
-from netcoop.storage.db import get_envelope_logs, get_incident, init_db, list_incidents
 
 app = typer.Typer(
     name="netcoop",
@@ -423,6 +432,141 @@ def mcp_serve_cmd() -> None:
 
     NetCoopMCPServer.run_stdio_server()
 
+# -----------------------------------------------------------------------------
+# Orchestrator Pause and Resume (FEATURE_RESUME)
+# -----------------------------------------------------------------------------
+
+@app.command("pause")
+def pause_cmd(
+    session_id: Optional[str] = typer.Argument(None, help="Diagnostic session or incident ID to pause (defaults to active session)"),
+) -> None:
+    """Signal the active diagnostic session to halt cleanly at its next checkpoint."""
+    init_db()
+    target_id = session_id
+    if not target_id:
+        incidents = list_incidents()
+        if incidents:
+            target_id = incidents[0].incident_id
+        else:
+            console.print("[yellow]No active diagnostic sessions found to pause.[/yellow]")
+            return
+
+    mark_session_paused(target_id)
+    console.print(
+        Panel(
+            f"[bold]Session ID:[/bold] {target_id}\n"
+            f"[bold]Status:[/bold] Paused\n"
+            f"[bold]Checkpoint:[/bold] State saved to SQLite. Use 'netcoop resume {target_id}' to continue.",
+            box=box.SQUARE,
+            title="[bold]NetCoop Orchestrator: Session Paused[/bold]",
+        )
+    )
+
+
+@app.command("resume")
+def resume_cmd(
+    session_id: str = typer.Argument(..., help="Diagnostic session or incident ID to resume"),
+) -> None:
+    """Resume execution of an interrupted or paused diagnosis from the latest checkpoint."""
+    init_db()
+    try:
+        report = resume_diagnosis(session_id)
+        console.print(
+            Panel(
+                f"[bold]Session Resumed Successfully[/bold]\n"
+                f"Incident ID: {report.incident_id}\n"
+                f"Status: {report.status}\n"
+                f"Probable Cause: {report.probable_cause or 'None'}\n"
+                f"Confidence: {int(report.confidence * 100)}%\n"
+                f"Category: {report.confidence_category or 'N/A'}",
+                box=box.SQUARE,
+                title="[bold]NetCoop Orchestrator: Resume[/bold]",
+            )
+        )
+    except Exception as e:
+        console.print(f"[red]Error resuming session '{session_id}':[/red] {e}")
+
+
+# -----------------------------------------------------------------------------
+# Human-in-the-Loop Remediation Approvals (FEATURE_HITL)
+# -----------------------------------------------------------------------------
+
+@app.command("approve")
+def approve_cmd(
+    action_id: str = typer.Argument(..., help="Remediation action ID to approve"),
+    rationale: str = typer.Option("Operator approval via CLI", "--rationale", "-r", help="Rationale for approving the action"),
+    operator: str = typer.Option("human_operator", "--operator", "-o", help="Identifier of approving human operator"),
+) -> None:
+    """Approve a pending simulated remediation action."""
+    init_db()
+    res = RemediationEngine.approve_action(action_id=action_id, operator=operator, rationale=rationale)
+    if res.get("success"):
+        console.print(
+            Panel(
+                f"[bold green]Action Approved & Executed (Simulated)[/bold green]\n"
+                f"Action ID: {action_id}\n"
+                f"Operator: {operator}\n"
+                f"Rationale: {rationale}\n"
+                f"Status: simulated_executed",
+                box=box.SQUARE,
+                title="[bold]HITL Remediation: Approved[/bold]",
+            )
+        )
+    else:
+        console.print(f"[red]Failed to approve action '{action_id}':[/red] {res.get('message')}")
+
+
+@app.command("reject")
+def reject_cmd(
+    action_id: str = typer.Argument(..., help="Remediation action ID to reject"),
+    rationale: str = typer.Option("Operator rejection via CLI", "--rationale", "-r", help="Rationale for rejecting the action"),
+    operator: str = typer.Option("human_operator", "--operator", "-o", help="Identifier of rejecting human operator"),
+) -> None:
+    """Reject a pending simulated remediation action."""
+    init_db()
+    res = RemediationEngine.reject_action(action_id=action_id, operator=operator, rationale=rationale)
+    if res.get("success"):
+        console.print(
+            Panel(
+                f"[bold red]Action Rejected[/bold red]\n"
+                f"Action ID: {action_id}\n"
+                f"Operator: {operator}\n"
+                f"Rationale: {rationale}\n"
+                f"Status: rejected",
+                box=box.SQUARE,
+                title="[bold]HITL Remediation: Rejected[/bold]",
+            )
+        )
+    else:
+        console.print(f"[red]Failed to reject action '{action_id}':[/red] {res.get('message')}")
+
+
+@app.command("modify")
+def modify_cmd(
+    action_id: str = typer.Argument(..., help="Remediation action ID to modify"),
+    commands: list[str] = typer.Option(..., "--command", "-c", help="New configuration commands to execute"),
+    rationale: str = typer.Option("Operator command modification via CLI", "--rationale", "-r", help="Rationale for modifying the commands"),
+    operator: str = typer.Option("human_operator", "--operator", "-o", help="Identifier of modifying human operator"),
+) -> None:
+    """Modify parameters/commands of a pending remediation action."""
+    init_db()
+    res = RemediationEngine.modify_action(action_id=action_id, new_commands=commands, operator=operator, rationale=rationale)
+    if res.get("success"):
+        cmd_lines = "\n".join(f"  {c}" for c in commands)
+        console.print(
+            Panel(
+                f"[bold yellow]Action Modified[/bold yellow]\n"
+                f"Action ID: {action_id}\n"
+                f"Operator: {operator}\n"
+                f"Rationale: {rationale}\n"
+                f"Updated Commands:\n{cmd_lines}\n"
+                f"Status: modified",
+                box=box.SQUARE,
+                title="[bold]HITL Remediation: Modified[/bold]",
+            )
+        )
+    else:
+        console.print(f"[red]Failed to modify action '{action_id}':[/red] {res.get('message')}")
 
 if __name__ == "__main__":
     app()

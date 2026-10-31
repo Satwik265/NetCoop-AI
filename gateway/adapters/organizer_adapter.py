@@ -75,6 +75,9 @@ class OrganizerAdapter:
         # Error and drop counters
         "drops": "queue_drops",
         "packet_drops": "queue_drops",
+        "egress_queue_drops": "queue_drops",
+        "large_packet_drops": "queue_drops",
+        "ingress_packet_loss_pct": "packet_loss_pct",
         "errors": "interface_errors",
         "crc_errors": "interface_errors",
         "fcs_errors": "interface_errors",
@@ -296,6 +299,8 @@ class OrganizerAdapter:
                     merged_raw[rk] = rv
         else:
             merged_raw = dict(raw)
+        if "metric" in raw and "value" in raw:
+            merged_raw[str(raw["metric"])] = raw["value"]
 
         # 2. Map aliases through alias table and fuzzy FieldNameMatcher
         for k, v in merged_raw.items():
@@ -838,7 +843,7 @@ class OrganizerAdapter:
         incident_id = container.get("incident_id") or "inc-adapted-001"
         network_id = container.get("network_id") or "adapted-network"
 
-        return {
+        res_dict = {
             "incident_id": incident_id,
             "network_id": network_id,
             "schema_version": "1.0.0",
@@ -856,4 +861,10 @@ class OrganizerAdapter:
             "telemetry": unique_records,
             "configurations": container.get("configurations", []),
             "logs": container.get("logs", []),
+            "routing_state": container.get("routing_state", {}),
+            "description": container.get("description", ""),
         }
+        for k, v in container.items():
+            if k not in res_dict:
+                res_dict[k] = v
+        return res_dict

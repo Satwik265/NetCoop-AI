@@ -49,7 +49,24 @@ class RemediationLog(SQLModel, table=True):
     commands_json: str
     rollback_commands_json: str
     risk_level: str
-    status: str = Field(default="pending_approval")  # pending_approval, approved, simulated_executed, rejected
+    status: str = Field(default="pending")  # pending, approved, rejected, modified, simulated_executed
     approved_by: Optional[str] = Field(default=None)
+    rationale: Optional[str] = Field(default=None)
+    modified_commands_json: Optional[str] = Field(default=None)
     simulated_at: Optional[str] = Field(default=None)
+    decision_timestamp: Optional[str] = Field(default=None)
+
+
+class OrchestratorCheckpoint(SQLModel, table=True):
+    """Persisted checkpoint of LangGraph orchestrator state for pause and resume."""
+
+    __tablename__ = "orchestrator_checkpoints"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    session_id: str = Field(index=True)
+    node_name: str = Field(index=True)
+    iteration: int = Field(default=0)
+    state_json: str
+    is_paused: bool = Field(default=False)
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
