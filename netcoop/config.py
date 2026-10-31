@@ -1,5 +1,6 @@
 """Application configuration and settings."""
 
+import os
 from typing import Dict, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from netcoop.core.envelope import AgentRole
@@ -18,6 +19,8 @@ class Settings(BaseSettings):
     version: str = "1.0.0"
     debug: bool = False
     log_level: str = "INFO"
+    environment: str = "development"  # development, testing, production
+    demo_mode: bool = False  # Explicitly gated; disabled in production
 
     # Server binding (host interface to bind listeners on: 127.0.0.1 locally, 0.0.0.0 in Docker)
     bind_host: str = "127.0.0.1"
@@ -96,6 +99,14 @@ class Settings(BaseSettings):
             return "127.0.0.1"
         return target_host
 
+    # Authentication & JWT Security Settings
+    jwt_secret_key: str = "netcoop-production-signing-secret-key-change-in-production-env"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 60
+    jwt_issuer: str = "netcoop-ai"
+    jwt_audience: str = "netcoop-dashboard"
+    auth_enabled: bool = True
+
     def get_agent_port(self, role: AgentRole) -> int:
         """Lookup HTTP port assigned to a given specialist agent role."""
         port_mapping: Dict[AgentRole, int] = {
@@ -169,3 +180,12 @@ FEATURE_RESUME: bool = settings.feature_resume
 FEATURE_HITL: bool = settings.feature_hitl
 FEATURE_MCP: bool = settings.feature_mcp
 FEATURE_REMEDIATION_SIM: bool = settings.feature_remediation_sim
+
+
+def is_demo_mode_allowed() -> bool:
+    """Check whether demo authentication is permitted in the current runtime environment."""
+    env = os.getenv("NETCOOP_ENV", settings.environment).lower()
+    if env == "production":
+        return False
+    demo_env = os.getenv("NETCOOP_DEMO_MODE", str(settings.demo_mode)).lower()
+    return demo_env in ("true", "1", "yes")

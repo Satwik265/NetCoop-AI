@@ -3,8 +3,12 @@
 import pytest
 from fastapi.testclient import TestClient
 from api.main import app
+from core.auth import get_auth_headers, ROLE_PLATFORM_ADMIN, ROLE_NETWORK_ENGINEER, ROLE_NETWORK_ADMIN
 
 client = TestClient(app)
+admin_headers = get_auth_headers(role=ROLE_NETWORK_ADMIN, username="admin")
+plat_headers = get_auth_headers(role=ROLE_PLATFORM_ADMIN, username="platform_admin")
+eng_headers = get_auth_headers(role=ROLE_NETWORK_ENGINEER, username="engineer")
 
 
 def test_get_features_endpoint():
@@ -23,7 +27,7 @@ def test_simulate_remediation_endpoint():
         "device": "spine-01",
         "interface": "et-0/0/1",
     }
-    res = client.post("/api/remediate/simulate", json=payload)
+    res = client.post("/api/remediate/simulate", json=payload, headers=eng_headers)
     assert res.status_code == 200
     data = res.json()
     assert data["status"] == "success"
@@ -42,14 +46,14 @@ def test_hitl_decision_and_logs():
         "rationale": "Verified packet loss signature is strictly Path MTU blackholing.",
         "operator": "operator_alice",
     }
-    res = client.post("/api/incidents/inc-test-hitl/hitl-decision", json=decision_payload)
+    res = client.post("/api/incidents/inc-test-hitl/hitl-decision", json=decision_payload, headers=eng_headers)
     assert res.status_code == 200
     res_data = res.json()
     assert res_data["success"] is True
     assert res_data["decision"] == "approve"
 
     # Verify log retrieval
-    logs_res = client.get("/api/remediation/logs?incident_id=inc-test-hitl")
+    logs_res = client.get("/api/remediation/logs?incident_id=inc-test-hitl", headers=plat_headers)
     assert logs_res.status_code == 200
     logs = logs_res.json()
     assert len(logs) >= 1
@@ -78,7 +82,7 @@ def test_mcp_info_endpoint():
 
 
 def test_devices_endpoint():
-    res = client.get("/api/devices")
+    res = client.get("/api/devices", headers=admin_headers)
     assert res.status_code == 200
     devices = res.json()
     assert isinstance(devices, list)
@@ -89,7 +93,7 @@ def test_devices_endpoint():
 
 
 def test_platform_status_endpoint():
-    res = client.get("/api/platform/status")
+    res = client.get("/api/platform/status", headers=plat_headers)
     assert res.status_code == 200
     status = res.json()
     assert status["status"] == "healthy"

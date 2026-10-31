@@ -1,3 +1,4 @@
+import { apiFetch } from '../../auth/AuthContext';
 import React, { useState, useEffect } from "react";
 
 export interface DeviceItem {
@@ -37,7 +38,7 @@ export const AdminView: React.FC = () => {
   const [scheduledMsg, setScheduledMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/devices")
+    apiFetch("/api/devices")
       .then((res) => {
         if (!res.ok) throw new Error("Devices API unavailable");
         return res.json();

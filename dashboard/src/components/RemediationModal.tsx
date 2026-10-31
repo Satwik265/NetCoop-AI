@@ -1,3 +1,4 @@
+import { apiFetch } from '../auth/AuthContext';
 import React, { useState } from "react";
 import { RemediationAction } from "../types/protocol";
 
@@ -32,7 +33,7 @@ export const RemediationModal: React.FC<Props> = ({
     setResult(null);
 
     try {
-      const resp = await fetch(`/api/incidents/${incidentId}/remediate`, {
+      const resp = await apiFetch(`/api/incidents/${incidentId}/remediate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

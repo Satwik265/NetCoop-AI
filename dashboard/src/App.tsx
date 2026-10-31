@@ -32,8 +32,11 @@ import { ItManagerView } from "./components/views/ItManagerView";
 import { PlatformAdminView } from "./components/views/PlatformAdminView";
 import { AuditorView } from "./components/views/AuditorView";
 import { HelpdeskView } from "./components/views/HelpdeskView";
+import { useAuth, apiFetch } from "./auth/AuthContext";
+import { LoginModal } from "./components/LoginModal";
 
 export const App: React.FC = () => {
+  const { user, token, isDemoMode, logout, openLoginModal, lastForbiddenError, clearForbiddenError, loginAsDemoAccount } = useAuth();
   // Role & Navigation state
   const [currentRole, setCurrentRole] = useState<UserRole>(() => {
     const saved = localStorage.getItem("netcoop_user_role");
@@ -79,10 +82,35 @@ export const App: React.FC = () => {
 
   const playbackTimerRef = useRef<number | null>(null);
 
-  // Persist role change
+  // Sync currentRole when authenticated user changes
+  useEffect(() => {
+    if (user?.role && user.role !== currentRole) {
+      setCurrentRole(user.role);
+    }
+  }, [user?.role]);
+
+  // Persist role change and switch demo account if requested
   const handleSelectRole = (role: UserRole) => {
     setCurrentRole(role);
     localStorage.setItem("netcoop_user_role", role);
+    const roleToUserMap: Record<UserRole, string> = {
+      noc_operator: "noc",
+      network_engineer: "engineer",
+      network_admin: "admin",
+      security_analyst: "security",
+      it_manager: "it_manager",
+      platform_admin: "platform_admin",
+      auditor: "auditor",
+      helpdesk: "helpdesk",
+    };
+    const targetUser = roleToUserMap[role];
+    if (targetUser && user?.role !== role) {
+      if (isDemoMode) {
+        loginAsDemoAccount(targetUser);
+      } else {
+        openLoginModal();
+      }
+    }
   };
 
   // Initialize theme from storage
@@ -169,11 +197,25 @@ export const App: React.FC = () => {
     let reconnectTimer: number | null = null;
     let attempts = 0;
 
-    const connect = () => {
+    const connect = async () => {
       setWsStatus("connecting");
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.host;
-      const wsUrl = `${protocol}//${host}/ws/events`;
+      let wsUrl = `${protocol}//${host}/ws/events`;
+
+      if (token) {
+        try {
+          const res = await apiFetch("/api/auth/ws-ticket", { method: "POST" });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.ticket) {
+              wsUrl = `${protocol}//${host}/ws/events?ticket=${encodeURIComponent(data.ticket)}`;
+            }
+          }
+        } catch {
+          // fallback to unauthenticated attempt
+        }
+      }
 
       try {
         socket = new WebSocket(wsUrl);
@@ -233,7 +275,7 @@ export const App: React.FC = () => {
       if (socket) socket.close();
       if (reconnectTimer) clearTimeout(reconnectTimer);
     };
-  }, []);
+  }, [token]);
 
   // Playback timer for timeline scrubber
   useEffect(() => {
@@ -266,7 +308,7 @@ export const App: React.FC = () => {
     setLoading(true);
 
     try {
-      const scenRes = await fetch(`/api/scenarios/${selectedScenario}`);
+      const scenRes = await apiFetch(`/api/scenarios/${selectedScenario}`);
       let scenData = await scenRes.json();
 
       const isOrg = selectedScenario.includes("organizer") || selectedScenario.endsWith(".jsonl");
@@ -330,7 +372,7 @@ export const App: React.FC = () => {
         setTransformationsCount(isOrg ? 11 : 4);
       }
 
-      const diagRes = await fetch("/api/diagnose", {
+      const diagRes = await apiFetch("/api/diagnose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(scenData),
@@ -343,7 +385,7 @@ export const App: React.FC = () => {
       const reportData: UnifiedDiagnosticReport = await diagRes.json();
       setReport(reportData);
 
-      const envRes = await fetch(`/api/incidents/${reportData.incident_id}/envelopes`);
+      const envRes = await apiFetch(`/api/incidents/${reportData.incident_id}/envelopes`);
       if (envRes.ok) {
         const envData: EnvelopeLogItem[] = await envRes.json();
         if (envData && envData.length > 0) {
@@ -519,12 +561,51 @@ export const App: React.FC = () => {
               </button>
             </div>
 
+            {/* Authenticated User Badge & Controls */}
+            <div className="flex items-center gap-2 border border-[#E5E5E3] dark:border-[#2A2A2D] px-2.5 py-1 text-[11px]">
+              <span className="text-[#6B6B66] dark:text-[#888884] uppercase">User:</span>
+              <span className="font-semibold text-[#111111] dark:text-[#EDEDEA]">
+                {user ? `${user.username} (${user.role})` : "Unauthenticated"}
+              </span>
+              <button
+                onClick={openLoginModal}
+                className="ml-1 px-1.5 py-0.5 border border-[#111111] dark:border-[#EDEDEA] hover:bg-[#111111]/5 dark:hover:bg-[#EDEDEA]/10 text-[10px] uppercase font-medium"
+                title="Switch Account or Login"
+              >
+                Switch
+              </button>
+              {user && (
+                <button
+                  onClick={logout}
+                  className="px-1.5 py-0.5 border border-[#9A5B5B] text-[#9A5B5B] hover:bg-[#9A5B5B]/10 text-[10px] uppercase font-medium"
+                  title="Log out"
+                >
+                  Logout
+                </button>
+              )}
+            </div>
+
             <ThemeToggle />
           </div>
         </header>
 
         {/* Main Content Area */}
         <main className="flex-1 p-4 sm:p-6 space-y-6 max-w-7xl w-full mx-auto">
+          {/* Server-Side 403 Forbidden Alert Banner */}
+          {lastForbiddenError && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 p-3 text-xs flex items-center justify-between font-mono">
+              <div>
+                <span className="font-semibold uppercase tracking-wider block mb-0.5">Permission Denied (HTTP 403 Forbidden)</span>
+                {lastForbiddenError}
+              </div>
+              <button
+                onClick={clearForbiddenError}
+                className="text-xs uppercase tracking-wider font-semibold ml-4 hover:underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
           {/* Universal Scenario Picker and Fault Injection Bar */}
           <ScenarioPicker
             scenarios={scenarios}
@@ -727,6 +808,7 @@ export const App: React.FC = () => {
           <div>Team inSANE MITRA | IIT Bhubaneswar Grand Finale</div>
         </footer>
       </div>
+      <LoginModal />
     </div>
   );
 };
