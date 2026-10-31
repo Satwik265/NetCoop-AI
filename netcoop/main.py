@@ -41,6 +41,7 @@ app.add_middleware(
 
 SCENARIOS_DIR = Path(__file__).parent.parent / "data" / "scenarios"
 ORGANIZER_SAMPLES_DIR = Path(__file__).parent.parent / "data" / "organizer" / "samples"
+EVAL_RESULTS_DIR = Path(__file__).parent.parent / "eval" / "results"
 SCHEMAS_DIR = Path(__file__).parent.parent / "schemas"
 
 
@@ -313,6 +314,30 @@ def get_schema_endpoint(schema_name: str) -> Dict[str, Any]:
     with open(schema_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
+
+
+
+@app.get("/api/eval/results")
+def get_latest_eval_results() -> Dict[str, Any]:
+    """Retrieve latest evaluation benchmark results or mock fixture."""
+    if EVAL_RESULTS_DIR.exists():
+        candidates = sorted(EVAL_RESULTS_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        non_mock = [p for p in candidates if p.name != "mock.json"]
+        target = non_mock[0] if non_mock else (candidates[0] if candidates else None)
+        if target and target.exists():
+            with open(target, "r", encoding="utf-8") as f:
+                return json.load(f)
+    raise HTTPException(status_code=404, detail="No evaluation results found.")
+
+
+@app.get("/api/eval/results/{filename}")
+def get_named_eval_results(filename: str) -> Dict[str, Any]:
+    """Retrieve a specific evaluation benchmark results file."""
+    file_path = EVAL_RESULTS_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Evaluation results file not found.")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 # Serve dashboard static assets if built
 DASHBOARD_DIST = Path(__file__).parent.parent / "dashboard" / "dist"

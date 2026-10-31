@@ -9,8 +9,12 @@ import { StreamingTimeline } from "./components/StreamingTimeline";
 import { CorrelationPanel } from "./components/CorrelationPanel";
 import { ReportCard } from "./components/ReportCard";
 import { ScenarioPicker } from "./components/ScenarioPicker";
+import { TopologyView } from "./components/TopologyView";
+import { InteroperabilityInspector } from "./components/InteroperabilityInspector";
+import { ProofTab } from "./components/ProofTab";
 import { EnvelopeSlideOver } from "./components/EnvelopeSlideOver";
 import { ThemeToggle } from "./components/ThemeToggle";
+import { TypedValidationErrorItem } from "./components/DataQualityBanner";
 import { MOCK_ENVELOPES } from "./mock/envelopes";
 
 export const App: React.FC = () => {
@@ -22,8 +26,21 @@ export const App: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [activeEnvelope, setActiveEnvelope] = useState<EnvelopeLogItem | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "report" | "graph">("dashboard");
+  const [activeTab, setActiveTab] = useState<"workspace" | "topology" | "interop" | "proof">("workspace");
   const [wsConnected, setWsConnected] = useState<boolean>(false);
+
+  // Topology state
+  const [currentTopology, setCurrentTopology] = useState<{ nodes: any[]; links: any[] }>({
+    nodes: [],
+    links: [],
+  });
+
+  // Chaos & Data Quality state
+  const [isChaosActive, setIsChaosActive] = useState<boolean>(false);
+  const [qualityScore, setQualityScore] = useState<number>(0.98);
+  const [detectedFormat, setDetectedFormat] = useState<string>("canonical");
+  const [validationErrors, setValidationErrors] = useState<TypedValidationErrorItem[]>([]);
+  const [transformationsCount, setTransformationsCount] = useState<number>(11);
 
   const playbackTimerRef = useRef<number | null>(null);
 
@@ -51,25 +68,24 @@ export const App: React.FC = () => {
         }
       })
       .catch(() => {
-        // Fallback default scenario list if backend API is offline
         const fallbackScenarios: ScenarioMeta[] = [
           {
             filename: "organizer_normal.jsonl",
             incident_id: "inc-organizer-normal",
             network_id: "iit-bbs-campus-fabric",
-            description: "Organizer Sample: Normal campus baseline telemetry",
+            description: "Organizer Sample: Normal campus baseline telemetry (JSONL)",
           },
           {
             filename: "organizer_latency_spike.jsonl",
             incident_id: "inc-organizer-latency",
             network_id: "iit-bbs-campus-fabric",
-            description: "Organizer Sample: Latency spike on core switches",
+            description: "Organizer Sample: Latency spike on core switches (JSONL)",
           },
           {
             filename: "organizer_hardware_failure.jsonl",
             incident_id: "inc-organizer-hardware",
             network_id: "iit-bbs-campus-fabric",
-            description: "Organizer Sample: CRC and hardware degradation",
+            description: "Organizer Sample: CRC and hardware degradation (JSONL)",
           },
           {
             filename: "link_congestion.json",
@@ -98,11 +114,7 @@ export const App: React.FC = () => {
     let socket: WebSocket | null = null;
     try {
       socket = new WebSocket(wsUrl);
-
-      socket.onopen = () => {
-        setWsConnected(true);
-      };
-
+      socket.onopen = () => setWsConnected(true);
       socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
@@ -114,17 +126,11 @@ export const App: React.FC = () => {
             });
           }
         } catch {
-          // ignore parse errors
+          // ignore
         }
       };
-
-      socket.onclose = () => {
-        setWsConnected(false);
-      };
-
-      socket.onerror = () => {
-        setWsConnected(false);
-      };
+      socket.onclose = () => setWsConnected(false);
+      socket.onerror = () => setWsConnected(false);
     } catch {
       setWsConnected(false);
     }
@@ -167,7 +173,72 @@ export const App: React.FC = () => {
     try {
       // 1. Fetch scenario or organizer sample payload
       const scenRes = await fetch(`/api/scenarios/${selectedScenario}`);
-      const scenData = await scenRes.json();
+      let scenData = await scenRes.json();
+
+      // Check if organizer data or standard
+      const isOrg = selectedScenario.includes("organizer") || selectedScenario.endsWith(".jsonl");
+      setDetectedFormat(isChaosActive ? "chaos_injected" : isOrg ? "organizer" : "canonical");
+
+      // Ingest topology if present
+      if (scenData.topology) {
+        setCurrentTopology(scenData.topology);
+      } else {
+        // Organizer data has no topology links
+        setCurrentTopology({ nodes: [], links: [] });
+      }
+
+      // If chaos is active, corrupt the payload live
+      if (isChaosActive) {
+        scenData = JSON.parse(JSON.stringify(scenData)); // deep clone
+        scenData.schema_version = "9.9.9"; // Invalid schema
+
+        if (scenData.telemetry && Array.isArray(scenData.telemetry)) {
+          scenData.telemetry = scenData.telemetry.map((rec: any, idx: number) => {
+            const mutated = { ...rec };
+            if (idx % 3 === 0) {
+              mutated.loss_ratio_raw = mutated.packet_loss_pct || mutated.value;
+              delete mutated.packet_loss_pct;
+            }
+            if (idx % 4 === 0) {
+              mutated.unit = "furlongs_per_fortnight";
+            }
+            return mutated;
+          });
+        }
+
+        setQualityScore(0.64);
+        setValidationErrors([
+          {
+            code: "ERR_UNSUPPORTED_SCHEMA_VERSION",
+            field: "schema_version",
+            explanation: "Incompatible schema version 9.9.9 detected. Degraded mode fallback applied.",
+            suggested_fix: "Specify supported semantic schema version 1.0.0.",
+          },
+          {
+            code: "ERR_RENAMED_FIELD",
+            field: "loss_ratio_raw",
+            explanation: "Unrecognized field name 'loss_ratio_raw' aliased to 'packet_loss_pct'.",
+            suggested_fix: "Use standard canonical metric name 'packet_loss_pct'.",
+          },
+          {
+            code: "ERR_UNSUPPORTED_UNIT",
+            field: "unit",
+            explanation: "Unsupported unit 'furlongs_per_fortnight' coerced to default unit 'percent'.",
+            suggested_fix: "Provide standard SI units from protocol specification.",
+          },
+          {
+            code: "ERR_CLOCK_SKEW",
+            field: "timestamp_utc",
+            explanation: "Observed clock skew exceeding 600s boundary between disparate device streams.",
+            suggested_fix: "Synchronize distributed edge nodes using NTP.",
+          },
+        ]);
+        setTransformationsCount(18);
+      } else {
+        setQualityScore(0.98);
+        setValidationErrors([]);
+        setTransformationsCount(isOrg ? 11 : 4);
+      }
 
       // 2. Trigger multi-agent consensus diagnosis
       const diagRes = await fetch("/api/diagnose", {
@@ -194,7 +265,7 @@ export const App: React.FC = () => {
       }
     } catch (err) {
       console.error("Diagnosis error:", err);
-      // In offline or simulated mode, construct local report
+      // Construct fallback offline report
       const mockReport: UnifiedDiagnosticReport = {
         incident_id: `inc-${Date.now().toString(36)}`,
         network_id: "iit-bbs-campus-fabric",
@@ -245,7 +316,7 @@ export const App: React.FC = () => {
             commands: ["configure terminal", "interface et-0/0/1", "rate-limit 10000000000", "commit"],
             rollback_commands: ["configure terminal", "interface et-0/0/1", "no rate-limit", "commit"],
             risk_level: "low",
-            blast_radius_devices: ["spine-01"],
+            blast_radius_devices: ["spine-01", "leaf-02"],
             is_simulated: true,
             status: "recommended",
           },
@@ -260,6 +331,7 @@ export const App: React.FC = () => {
   };
 
   const currentEnvelope = envelopes[currentIndex] || null;
+  const blastRadiusList = report?.remediation_actions?.flatMap((a) => a.blast_radius_devices) || [];
 
   return (
     <div className="min-h-screen bg-[#FAFAF9] dark:bg-[#0F0F10] text-[#111111] dark:text-[#EDEDEA] flex flex-col font-sans transition-colors duration-200">
@@ -296,32 +368,33 @@ export const App: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
-        {/* Scenario Selection & Data Quality Audit Banner */}
+        {/* Scenario Selection, Chaos Toggle, and Data Quality Audit Banner */}
         <ScenarioPicker
           scenarios={scenarios}
           selectedScenario={selectedScenario}
           onSelectScenario={setSelectedScenario}
           onRunDiagnosis={handleRunDiagnosis}
           loading={loading}
-          telemetryStats={{
-            recordCount: envelopes.length * 12,
-            deviceCount: 4,
-            hasAnomalies: report ? report.status === "diagnosed" : false,
-            dataQualityScore: 98,
-          }}
+          qualityScore={qualityScore}
+          detectedFormat={detectedFormat}
+          validationErrors={validationErrors}
+          transformationsCount={transformationsCount}
+          isChaosActive={isChaosActive}
+          onToggleChaos={() => setIsChaosActive((prev) => !prev)}
         />
 
         {/* View Selection Tabs */}
-        <nav className="flex gap-4 border-b border-[#E5E5E3] dark:border-[#2A2A2D] font-mono text-xs uppercase tracking-wider">
+        <nav className="flex gap-4 border-b border-[#E5E5E3] dark:border-[#2A2A2D] font-mono text-xs uppercase tracking-wider overflow-x-auto">
           {[
-            { id: "dashboard", label: "Consensus Workspace" },
-            { id: "graph", label: "Topology Graph" },
-            { id: "report", label: "Diagnostic Report Card" },
+            { id: "workspace", label: "Consensus Workspace" },
+            { id: "topology", label: "Topology & Blast Radius" },
+            { id: "interop", label: "Interoperability Inspector" },
+            { id: "proof", label: "Proof & Evaluation" },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`py-2.5 font-medium border-b-2 transition-colors ${
+              className={`py-2.5 font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? "border-[#475569] text-[#111111] dark:text-[#EDEDEA]"
                   : "border-transparent text-[#6B6B66] dark:text-[#888884] hover:text-[#111111] dark:hover:text-[#EDEDEA]"
@@ -332,8 +405,8 @@ export const App: React.FC = () => {
           ))}
         </nav>
 
-        {/* Tab 1: Consensus Workspace (Agent Graph + Streaming Timeline + Correlation Panel) */}
-        {activeTab === "dashboard" && (
+        {/* Tab 1: Consensus Workspace */}
+        {activeTab === "workspace" && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Left Column: Live Agent Graph */}
@@ -365,28 +438,31 @@ export const App: React.FC = () => {
               currentIndex={currentIndex}
             />
 
-            {/* Quick Report Summary */}
+            {/* Final Diagnostic Report Card */}
             <ReportCard report={report} loading={loading} />
           </div>
         )}
 
-        {/* Tab 2: Topology Graph Focus View */}
-        {activeTab === "graph" && (
+        {/* Tab 2: Topology Map & Blast Radius */}
+        {activeTab === "topology" && (
           <div className="space-y-4">
-            <AgentGraph
-              activeEnvelope={currentEnvelope}
-              envelopes={envelopes}
-              onSelectEnvelope={(env) => setActiveEnvelope(env)}
+            <TopologyView
+              nodes={currentTopology.nodes}
+              links={currentTopology.links}
+              affectedDevices={report?.affected_devices || []}
+              blastRadiusDevices={blastRadiusList}
             />
-            <div className="p-4 bg-[#FFFFFF] dark:bg-[#161618] border border-[#E5E5E3] dark:border-[#2A2A2D] font-mono text-xs text-[#6B6B66] dark:text-[#888884]">
-              Inter-agent communication routes dynamically highlight envelope transmissions between ports 8000 through 8006. Click any envelope in the timeline to inspect the exact wire payload.
-            </div>
           </div>
         )}
 
-        {/* Tab 3: Diagnostic Report Card Focus View */}
-        {activeTab === "report" && (
-          <ReportCard report={report} loading={loading} />
+        {/* Tab 3: Interoperability Inspector */}
+        {activeTab === "interop" && (
+          <InteroperabilityInspector />
+        )}
+
+        {/* Tab 4: Proof & Benchmark Evaluation */}
+        {activeTab === "proof" && (
+          <ProofTab />
         )}
       </main>
 

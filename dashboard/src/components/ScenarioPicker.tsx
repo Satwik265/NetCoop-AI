@@ -1,5 +1,6 @@
 import React from "react";
 import { ScenarioMeta } from "../types/protocol";
+import { DataQualityBanner, TypedValidationErrorItem } from "./DataQualityBanner";
 
 interface ScenarioPickerProps {
   scenarios: ScenarioMeta[];
@@ -7,12 +8,12 @@ interface ScenarioPickerProps {
   onSelectScenario: (scenarioFilename: string) => void;
   onRunDiagnosis: () => void;
   loading: boolean;
-  telemetryStats?: {
-    recordCount: number;
-    deviceCount: number;
-    hasAnomalies: boolean;
-    dataQualityScore: number;
-  };
+  qualityScore: number;
+  detectedFormat: string;
+  validationErrors: TypedValidationErrorItem[];
+  transformationsCount: number;
+  isChaosActive: boolean;
+  onToggleChaos: () => void;
 }
 
 export const ScenarioPicker: React.FC<ScenarioPickerProps> = ({
@@ -21,17 +22,18 @@ export const ScenarioPicker: React.FC<ScenarioPickerProps> = ({
   onSelectScenario,
   onRunDiagnosis,
   loading,
-  telemetryStats,
+  qualityScore,
+  detectedFormat,
+  validationErrors,
+  transformationsCount,
+  isChaosActive,
+  onToggleChaos,
 }) => {
   // Separate standard benchmark scenarios and organizer samples
   const standardScenarios = scenarios.filter((s) => !s.filename.includes("organizer"));
   const organizerScenarios = scenarios.filter((s) => s.filename.includes("organizer"));
 
   const currentScenario = scenarios.find((s) => s.filename === selectedScenario);
-
-  // Quality score defaults to high unless insufficient or corrupted
-  const qualityScore = telemetryStats?.dataQualityScore ?? 98;
-  const isOrganizer = selectedScenario.includes("organizer");
 
   return (
     <div className="bg-[#FFFFFF] dark:bg-[#161618] border border-[#E5E5E3] dark:border-[#2A2A2D] p-5 space-y-4 font-mono">
@@ -70,37 +72,34 @@ export const ScenarioPicker: React.FC<ScenarioPickerProps> = ({
           <button
             onClick={onRunDiagnosis}
             disabled={loading || !selectedScenario}
-            className="w-full md:w-auto px-6 py-2.5 bg-[#111111] dark:bg-[#EDEDEA] text-[#FFFFFF] dark:text-[#111111] hover:opacity-90 transition-opacity text-xs uppercase tracking-wider font-semibold disabled:opacity-40"
+            className={`w-full md:w-auto px-6 py-2.5 text-[#FFFFFF] dark:text-[#111111] text-xs uppercase tracking-wider font-semibold transition-all disabled:opacity-40 ${
+              isChaosActive
+                ? "bg-[#9A5B5B] hover:bg-[#854B4B]"
+                : "bg-[#111111] dark:bg-[#EDEDEA] hover:opacity-90"
+            }`}
           >
-            {loading ? "Diagnosing Consensus..." : "Run Diagnosis"}
+            {loading
+              ? "Diagnosing Consensus..."
+              : isChaosActive
+              ? "Run Diagnosis (Chaos Active)"
+              : "Run Diagnosis"}
           </button>
         </div>
       </div>
 
-      {/* Data Quality & Telemetry Banner */}
-      <div className="p-3 bg-[#FAFAF9] dark:bg-[#0F0F10] border border-[#E5E5E3] dark:border-[#2A2A2D] flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-[10px] text-[#6B6B66] dark:text-[#888884] uppercase">
-            Data Quality Audit:
-          </span>
-          <span className="px-2 py-0.5 bg-[#5E7A6A]/10 border border-[#5E7A6A]/30 text-[#5E7A6A] text-[10px] uppercase font-semibold">
-            Health: {qualityScore}% Verified
-          </span>
-          <span className="text-[10px] text-[#6B6B66] dark:text-[#888884]">
-            Schema: v1.0.0
-          </span>
-          {isOrganizer && (
-            <span className="px-2 py-0.5 border border-[#475569] text-[#475569] text-[10px] uppercase">
-              Organizer Adapter Ingested
-            </span>
-          )}
-        </div>
+      {/* Embedded Data Quality Banner & Live Chaos Controls */}
+      <DataQualityBanner
+        score={qualityScore}
+        detectedFormat={detectedFormat}
+        validationErrors={validationErrors}
+        transformationsCount={transformationsCount}
+        isChaosActive={isChaosActive}
+        onToggleChaos={onToggleChaos}
+      />
 
-        <div className="text-[10px] text-[#6B6B66] dark:text-[#888884]">
-          {currentScenario?.description || "Ready for multi-agent diagnostic orchestration."}
-        </div>
+      <div className="text-[10px] text-[#6B6B66] dark:text-[#888884]">
+        {currentScenario?.description || "Select a scenario to execute multi-agent diagnostic consensus."}
       </div>
     </div>
   );
 };
-

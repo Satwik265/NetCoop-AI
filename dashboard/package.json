@@ -4,7 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "predev": "python ../scripts/sync_eval_results.py || true",
     "dev": "vite",
+    "prebuild": "python ../scripts/sync_eval_results.py || true",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
