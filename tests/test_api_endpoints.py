@@ -46,3 +46,4 @@ def test_websocket_events_stream():
         websocket.send_text("ping")
         pong = websocket.receive_text()
         assert pong == "pong"
+

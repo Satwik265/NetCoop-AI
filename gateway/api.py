@@ -63,3 +63,4 @@ async def ingest_endpoint(request: Request) -> Dict[str, Any]:
 def create_gateway_app() -> FastAPI:
     """Factory creating the gateway FastAPI application."""
     return app
+

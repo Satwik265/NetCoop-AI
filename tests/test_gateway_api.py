@@ -46,3 +46,4 @@ def test_gateway_ingest_raw_telemetry():
     assert record["latency_ms"] == 12.5
     assert record["packet_loss_pct"] == 0.0
     assert record["throughput_mbps"] == 50.0  # kbps converted to mbps
+

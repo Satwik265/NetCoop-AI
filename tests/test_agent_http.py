@@ -69,3 +69,4 @@ def test_telemetry_agent_process_via_http_client():
     assert resp_env.header.correlation_id == "corr-http-001"
     assert resp_env.header.sender == AgentRole.TELEMETRY_AGENT
     assert len(resp_env.payload.observations) >= 1
+

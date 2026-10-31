@@ -91,3 +91,4 @@ The Orchestrator and API broadcast diagnostic events to connected dashboard clie
 1. **No Guessing**: A root cause hypothesis may only be accepted when supporting observations satisfy domain correlation rules.
 2. **Ambiguity / Missing Telemetry**: If prerequisite corroboration is absent or uncertainty is high, status must be `insufficient_evidence`.
 3. **Simulated Remediation Only**: All remediation commands are simulated and sandboxed; real network hardware is never contacted.
+
