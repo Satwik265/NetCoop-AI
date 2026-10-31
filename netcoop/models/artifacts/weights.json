@@ -9,10 +9,11 @@
     "upstream_failure_cascade",
     "normal_operation"
   ],
-  "conformal_q_hat": 0.0,
+  "conformal_q_hat": 0.15,
+  "min_probability_threshold": 0.85,
   "confidence_cutoffs": {
-    "high": 0.4,
-    "medium": 0.4,
+    "high": 0.8,
+    "medium": 0.6,
     "low": 0.4
   },
   "empirical_precisions": {

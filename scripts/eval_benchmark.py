@@ -3,6 +3,10 @@
 import argparse
 import json
 import sys
+import os
+os.environ["AGENTS_MODE"] = "in_process"
+from netcoop.config import settings
+settings.agents_mode = "in_process"
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).parent.parent

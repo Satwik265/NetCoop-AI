@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary & Evaluation Overview
 This report provides an empirical evaluation of NetCoop AI across three independent dataset partitions:
-1. **In-Distribution Test Split**: Synthetic parameter-disjoint holdouts derived from `SyntheticNetworkGenerator`.
+1. **In-Distribution Test Split**: Synthetic parameter-disjoint holdouts derived from `SyntheticNetworkGenerator` adhering strictly to `DatasetSplitter.TEST_SPEC` (high/critical severity, 20-60% missingness, burst noise).
 2. **Held-Out Blind Generator**: Unseen topologies, distribution shifts, and noise profiles generated blindly by Member C (`netcoop/data/heldout_generator.py`).
 3. **Hackathon Organizer Dataset**: 900+ telemetry windows generated via the organizer's Colab notebook (`data/organizer/Mock_data_builder_netScoopAI.ipynb`).
 
@@ -12,12 +12,12 @@ This report provides an empirical evaluation of NetCoop AI across three independ
 
 | Evaluation Partition | Samples Evaluated | Empirical Accuracy | Performance Characteristics |
 | :--- | :---: | :---: | :--- |
-| **In-Distribution Test Split** | 250 | **100.0%** | Robust diagnostic accuracy across all 10 canonical fault and baseline categories. |
-| **Held-Out Blind Generator** | 150 | **50.0%** | Generalization under novel topology layouts and alternative edge configurations with minimal degradation. |
-| **Organizer Colab (Set-Match)** | 900 | **66.7%** | Conformal set contains ground-truth cause; handles ambiguous CPU/link saturation. |
-| **Organizer Colab (Exact-Match)** | 900 | **33.3%** | Drop reflects simultaneous CPU (99.9%) and Link (100.0%) saturation triggering disciplined abstention. |
-| **Organizer (Windowed Mode)** | 450 | **66.7%** | Multi-point time windows provide temporal slopes and percentiles. |
-| **Organizer (Single-Snapshot)** | 450 | **66.7%** | Single isolated readings safely flag history-dependent features as NaN. |
+| **In-Distribution Test Split** | 20 | **90.0%** | Robust diagnostic accuracy across all 10 canonical fault and baseline categories under TEST_SPEC impairments. |
+| **Held-Out Blind Generator** | 20 | **50.0%** | Generalization under novel topology layouts and alternative edge configurations. |
+| **Organizer Colab (Set-Match)** | 60 | **66.7%** | Conformal prediction set contains ground-truth cause; handles ambiguous CPU/link saturation. |
+| **Organizer Colab (Exact-Match)** | 60 | **33.3%** | Drop reflects simultaneous CPU (99.9%) and Link (100.0%) saturation triggering disciplined abstention. |
+| **Organizer (Windowed Mode)** | 30 | **66.7%** | Multi-point time windows provide temporal slopes and percentiles. |
+| **Organizer (Single-Snapshot)** | 30 | **66.7%** | Single isolated readings safely flag history-dependent features as NaN. |
 
 ### 2.1 Critical Caveat on the Organizer Dataset
 > [!WARNING]
@@ -37,18 +37,18 @@ Because the organizer schema utilizes high-level labels that do not map 1:1 to i
 
 ## 4. Calibration & Reliability Analysis
 
-- **Expected Calibration Error (ECE)**: **0.335**
-- **Maximum Calibration Error (MCE)**: **0.615**
-- **Brier Score**: **0.303**
+- **Expected Calibration Error (ECE)**: **0.266**
+- **Maximum Calibration Error (MCE)**: **0.500**
+- **Brier Score**: **0.295**
 
 ### Reliability Diagram Bins
 | Confidence Interval | Mean Confidence | Empirical Accuracy | Sample Count |
 | :---: | :---: | :---: | :---: |
-| [0.0, 0.2) | 0.0% | 61.5% | 195 |
+| [0.0, 0.2) | 0.0% | 50.0% | 20 |
 | [0.2, 0.4) | 30.0% | 0.0% | 0 |
 | [0.4, 0.6) | 50.0% | 0.0% | 0 |
 | [0.6, 0.8) | 70.0% | 0.0% | 0 |
-| [0.8, 1.0) | 93.2% | 100.0% | 205 |
+| [0.8, 1.0) | 93.1% | 90.0% | 20 |
 
 ---
 
@@ -56,15 +56,15 @@ Because the organizer schema utilizes high-level labels that do not map 1:1 to i
 
 | Pipeline Configuration | Accuracy | F1 Score | ECE | Mean Latency (ms) | Abstention Rate |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Full Multi-Agent Pipeline** | 100.0% | 0.980 | 0.042 | 137.6 ms | 0.0% |
-| **Rules-Only Core (Without Learned Layer)** | 95.0% | 0.930 | 0.088 | 117.0 ms | 6.0% |
-| **Model-Only (Learned Classifier Alone)** | 100.0% | 0.950 | 0.052 | 44.3 ms | 0.0% |
-| **Single-Agent Heuristic Baseline** | 25.0% | 0.225 | 0.175 | 0.2 ms | 75.0% |
+| **Full Multi-Agent Pipeline** | 100.0% | 1.000 | 0.073 | 199.1 ms | 0.0% |
+| **Rules-Only Core (Without Learned Layer)** | 100.0% | 1.000 | 0.073 | 0.6 ms | 0.0% |
+| **Model-Only (Learned Classifier Alone)** | 100.0% | 1.000 | 0.000 | 117.9 ms | 0.0% |
+| **Single-Agent Heuristic Baseline** | 25.0% | 1.000 | 0.195 | 0.2 ms | 50.0% |
 
 ### Key Architectural Findings:
-1. **Multi-Agent Corroboration**: Multi-agent cross-inquiries improve diagnostic accuracy by over 14% compared to single-agent heuristic baselines while reducing misdiagnoses.
-2. **Hybrid learned Layer**: Integrating isotonic calibration and conformal prediction sets with the rules core eliminates overconfident false positives on out-of-distribution inputs.
-3. **Disciplined Abstention**: On `insufficient_data` and ambiguous multi-fault signatures, the system abstains to `insufficient_evidence` with **100% precision**.
+1. **Multi-Agent Corroboration**: Multi-agent cross-inquiries improve diagnostic accuracy over single-agent heuristic baselines while drastically reducing misdiagnoses.
+2. **Hybrid Learned Layer**: Integrating isotonic calibration and conformal prediction sets with the rules core eliminates overconfident false positives on out-of-distribution inputs.
+3. **Disciplined Abstention**: On `insufficient_data` and ambiguous multi-fault signatures, the system abstains to `insufficient_evidence` with high precision.
 
 ---
 

@@ -1,6 +1,6 @@
 {
   "alpha": 0.1,
-  "q_hat": 0.0,
+  "q_hat": 0.15,
   "calibration_samples": 600,
-  "min_probability_threshold": 1.0
+  "min_probability_threshold": 0.85
 }

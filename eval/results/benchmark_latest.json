@@ -1,22 +1,36 @@
 {
   "version": "1.0.0",
-  "generated_at": "2026-10-31T12:03:22Z",
+  "generated_at": "2026-10-31T17:51:01Z",
+  "reproducibility": {
+    "python_version": "3.13.15",
+    "seed_ranges": {
+      "in_distribution": "seeds 301-302 (TEST_SPEC)",
+      "held_out": "seeds 501-502",
+      "organizer": "seeds 6000-6009 (windowed), 7000-7009 (single-snapshot)",
+      "stress_missing": "seeds 3000-3009",
+      "stress_corruption": "seeds 3500-3509",
+      "ablations": "seeds 4000-4007"
+    },
+    "split_specification": "DatasetSplitter.TEST_SPEC",
+    "conformal_alpha": 0.1
+  },
   "summary": {
-    "total_samples": 1300,
-    "overall_accuracy": 0.812,
-    "macro_f1": 0.836,
-    "weighted_f1": 0.836,
-    "expected_calibration_error": 0.335,
-    "brier_score": 0.303
+    "total_samples": 100,
+    "primary_benchmark_samples": 40,
+    "overall_accuracy": 0.7,
+    "macro_f1": 0.724,
+    "weighted_f1": 0.724,
+    "expected_calibration_error": 0.266,
+    "brier_score": 0.295
   },
   "dataset_splits": {
-    "in_distribution_accuracy": 1.0,
-    "in_distribution_samples": 250,
+    "in_distribution_accuracy": 0.9,
+    "in_distribution_samples": 20,
     "held_out_accuracy": 0.5,
-    "held_out_samples": 150,
+    "held_out_samples": 20,
     "organizer_accuracy": 0.667,
     "organizer_exact_accuracy": 0.333,
-    "organizer_samples": 900,
+    "organizer_samples": 60,
     "organizer_single_snapshot_accuracy": 0.667,
     "organizer_windowed_accuracy": 0.667
   },
@@ -25,61 +39,61 @@
       "precision": 1.0,
       "recall": 1.0,
       "f1": 1.0,
-      "support": 40
+      "support": 4
     },
     "link_congestion": {
       "precision": 1.0,
       "recall": 1.0,
       "f1": 1.0,
-      "support": 40
+      "support": 4
     },
     "weak_wifi_signal": {
-      "precision": 1.0,
-      "recall": 0.625,
-      "f1": 0.769,
-      "support": 40
+      "precision": 0.667,
+      "recall": 0.5,
+      "f1": 0.571,
+      "support": 4
     },
     "ethernet_interface_fault": {
       "precision": 1.0,
-      "recall": 0.625,
-      "f1": 0.769,
-      "support": 40
+      "recall": 0.5,
+      "f1": 0.667,
+      "support": 4
     },
     "dns_failure": {
       "precision": 1.0,
-      "recall": 0.625,
-      "f1": 0.769,
-      "support": 40
+      "recall": 0.5,
+      "f1": 0.667,
+      "support": 4
     },
     "dhcp_failure": {
       "precision": 1.0,
-      "recall": 0.625,
-      "f1": 0.769,
-      "support": 40
+      "recall": 0.5,
+      "f1": 0.667,
+      "support": 4
     },
     "device_cpu_overload": {
-      "precision": 1.0,
+      "precision": 0.8,
       "recall": 1.0,
-      "f1": 1.0,
-      "support": 40
+      "f1": 0.889,
+      "support": 4
     },
     "upstream_failure_cascade": {
       "precision": 1.0,
-      "recall": 0.625,
-      "f1": 0.769,
-      "support": 40
+      "recall": 0.5,
+      "f1": 0.667,
+      "support": 4
     },
     "ambiguous_multi_fault": {
       "precision": 1.0,
-      "recall": 1.0,
-      "f1": 1.0,
-      "support": 40
+      "recall": 0.5,
+      "f1": 0.667,
+      "support": 4
     },
     "insufficient_data": {
-      "precision": 0.348,
+      "precision": 0.286,
       "recall": 1.0,
-      "f1": 0.516,
-      "support": 40
+      "f1": 0.444,
+      "support": 4
     }
   },
   "confusion_matrix": {
@@ -97,7 +111,7 @@
     ],
     "matrix": [
       [
-        40,
+        4,
         0,
         0,
         0,
@@ -110,7 +124,7 @@
       ],
       [
         0,
-        40,
+        4,
         0,
         0,
         0,
@@ -123,50 +137,38 @@
       [
         0,
         0,
-        25,
+        2,
         0,
         0,
         0,
         0,
         0,
         0,
-        15
+        2
       ],
       [
         0,
         0,
         0,
-        25,
+        2,
         0,
         0,
         0,
         0,
         0,
-        15
-      ],
-      [
-        0,
-        0,
-        0,
-        0,
-        25,
-        0,
-        0,
-        0,
-        0,
-        15
+        2
       ],
       [
         0,
         0,
         0,
         0,
-        0,
-        25,
-        0,
+        2,
         0,
         0,
-        15
+        0,
+        0,
+        2
       ],
       [
         0,
@@ -174,8 +176,20 @@
         0,
         0,
         0,
+        2,
         0,
-        40,
+        0,
+        0,
+        2
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4,
         0,
         0,
         0
@@ -188,20 +202,20 @@
         0,
         0,
         0,
-        25,
+        2,
         0,
-        15
+        2
       ],
       [
         0,
         0,
+        1,
         0,
         0,
         0,
+        1,
         0,
-        0,
-        0,
-        40,
+        2,
         0
       ],
       [
@@ -214,20 +228,20 @@
         0,
         0,
         0,
-        40
+        4
       ]
     ]
   },
   "calibration": {
-    "expected_calibration_error": 0.335,
-    "max_calibration_error": 0.615,
+    "expected_calibration_error": 0.266,
+    "max_calibration_error": 0.5,
     "reliability_bins": [
       {
         "bin_lower": 0.0,
         "bin_upper": 0.2,
         "mean_confidence": 0.0,
-        "accuracy": 0.615,
-        "sample_count": 195
+        "accuracy": 0.5,
+        "sample_count": 20
       },
       {
         "bin_lower": 0.2,
@@ -253,9 +267,9 @@
       {
         "bin_lower": 0.8,
         "bin_upper": 1.0,
-        "mean_confidence": 0.932,
-        "accuracy": 1.0,
-        "sample_count": 205
+        "mean_confidence": 0.931,
+        "accuracy": 0.9,
+        "sample_count": 20
       }
     ]
   },
@@ -264,120 +278,120 @@
       {
         "missing_rate": 0.0,
         "accuracy": 1.0,
-        "samples": 30
+        "samples": 9
       },
       {
         "missing_rate": 0.1,
         "accuracy": 1.0,
-        "samples": 30
+        "samples": 9
       },
       {
         "missing_rate": 0.2,
-        "accuracy": 0.967,
-        "samples": 30
+        "accuracy": 1.0,
+        "samples": 9
       },
       {
         "missing_rate": 0.3,
-        "accuracy": 0.867,
-        "samples": 30
+        "accuracy": 1.0,
+        "samples": 9
       },
       {
         "missing_rate": 0.4,
-        "accuracy": 0.833,
-        "samples": 30
+        "accuracy": 1.0,
+        "samples": 9
       },
       {
         "missing_rate": 0.5,
-        "accuracy": 0.567,
-        "samples": 30
+        "accuracy": 0.667,
+        "samples": 9
       },
       {
         "missing_rate": 0.6,
-        "accuracy": 0.533,
-        "samples": 30
+        "accuracy": 0.556,
+        "samples": 9
       },
       {
         "missing_rate": 0.7,
-        "accuracy": 0.433,
-        "samples": 30
+        "accuracy": 0.556,
+        "samples": 9
       }
     ],
     "accuracy_vs_corruption_rate": [
       {
         "corruption_rate": 0.0,
         "accuracy": 1.0,
-        "samples": 30
+        "samples": 9
       },
       {
         "corruption_rate": 0.1,
         "accuracy": 1.0,
-        "samples": 30
+        "samples": 9
       },
       {
         "corruption_rate": 0.2,
         "accuracy": 1.0,
-        "samples": 30
+        "samples": 9
       },
       {
         "corruption_rate": 0.3,
         "accuracy": 1.0,
-        "samples": 30
+        "samples": 9
       },
       {
         "corruption_rate": 0.4,
         "accuracy": 1.0,
-        "samples": 30
+        "samples": 9
       },
       {
         "corruption_rate": 0.5,
         "accuracy": 1.0,
-        "samples": 30
+        "samples": 9
       },
       {
         "corruption_rate": 0.6,
         "accuracy": 1.0,
-        "samples": 30
+        "samples": 9
       }
     ]
   },
   "risk_coverage": [
     {
       "coverage": 1.0,
-      "risk": 0.188,
+      "risk": 0.3,
       "confidence_threshold": 0.0
     },
     {
-      "coverage": 0.512,
-      "risk": 0.0,
+      "coverage": 0.5,
+      "risk": 0.1,
       "confidence_threshold": 0.4
     },
     {
-      "coverage": 0.512,
-      "risk": 0.0,
+      "coverage": 0.5,
+      "risk": 0.1,
       "confidence_threshold": 0.6
     },
     {
-      "coverage": 0.512,
-      "risk": 0.0,
+      "coverage": 0.5,
+      "risk": 0.1,
       "confidence_threshold": 0.75
     },
     {
-      "coverage": 0.512,
-      "risk": 0.0,
+      "coverage": 0.5,
+      "risk": 0.1,
       "confidence_threshold": 0.82
     },
     {
-      "coverage": 0.512,
-      "risk": 0.0,
+      "coverage": 0.5,
+      "risk": 0.1,
       "confidence_threshold": 0.88
     },
     {
-      "coverage": 0.45,
-      "risk": 0.0,
+      "coverage": 0.425,
+      "risk": 0.059,
       "confidence_threshold": 0.92
     },
     {
-      "coverage": 0.125,
+      "coverage": 0.1,
       "risk": 0.0,
       "confidence_threshold": 0.95
     }
@@ -386,34 +400,34 @@
     {
       "configuration": "Full Multi-Agent Pipeline",
       "accuracy": 1.0,
-      "f1_score": 0.98,
-      "ece": 0.042,
-      "avg_latency_ms": 137.6,
+      "f1_score": 1.0,
+      "ece": 0.073,
+      "avg_latency_ms": 199.1,
       "insufficient_evidence_rate": 0.0
     },
     {
       "configuration": "Rules-Only Core (Without Learned Layer)",
-      "accuracy": 0.95,
-      "f1_score": 0.93,
-      "ece": 0.088,
-      "avg_latency_ms": 117.0,
-      "insufficient_evidence_rate": 0.06
+      "accuracy": 1.0,
+      "f1_score": 1.0,
+      "ece": 0.073,
+      "avg_latency_ms": 0.6,
+      "insufficient_evidence_rate": 0.0
     },
     {
       "configuration": "Model-Only (Learned Classifier Alone)",
       "accuracy": 1.0,
-      "f1_score": 0.95,
-      "ece": 0.052,
-      "avg_latency_ms": 44.3,
+      "f1_score": 1.0,
+      "ece": 0.0,
+      "avg_latency_ms": 117.9,
       "insufficient_evidence_rate": 0.0
     },
     {
       "configuration": "Single-Agent Heuristic Baseline",
       "accuracy": 0.25,
-      "f1_score": 0.225,
-      "ece": 0.175,
+      "f1_score": 1.0,
+      "ece": 0.195,
       "avg_latency_ms": 0.2,
-      "insufficient_evidence_rate": 0.75
+      "insufficient_evidence_rate": 0.5
     }
   ]
 }

@@ -82,14 +82,14 @@ class ProbabilityCalibrator:
         val_labels: np.ndarray,
         target_precisions: Optional[Dict[str, float]] = None,
     ) -> Dict[str, float]:
-        """Compute minimum confidence thresholds meeting empirical validation precision requirements."""
+        """Compute monotonically decreasing confidence thresholds meeting empirical validation precision targets."""
         targets = target_precisions or {
             "high": 0.95,
             "medium": 0.85,
             "low": 0.70,
         }
 
-        # Flatten or evaluate max predicted probabilities against correctness
+        # Evaluate max predicted probabilities against correctness
         pred_classes = np.argmax(val_probs, axis=1)
         max_probs = np.max(val_probs, axis=1)
         correctness = (val_labels[np.arange(len(val_labels)), pred_classes] == 1).astype(int)
@@ -97,15 +97,26 @@ class ProbabilityCalibrator:
         cutoffs: Dict[str, float] = {}
         precisions: Dict[str, float] = {}
 
-        candidate_thresholds = np.linspace(0.4, 0.98, 59)
-        for cat, target_p in targets.items():
-            best_thresh = 0.85
+        # Distinct candidate ranges to guarantee meaningful separation:
+        # HIGH: >= 0.80 floor (automated remediation candidate)
+        # MEDIUM: [0.60, 0.79] floor (operator review)
+        # LOW: [0.40, 0.59] floor (tentative finding)
+        tier_ranges = {
+            "high": np.linspace(0.80, 0.95, 31),
+            "medium": np.linspace(0.60, 0.78, 37),
+            "low": np.linspace(0.40, 0.58, 37),
+        }
+
+        for cat in ["high", "medium", "low"]:
+            target_p = targets[cat]
+            candidates = tier_ranges[cat]
+            best_thresh = float(candidates[0])
             best_p = 1.0
             found = False
 
-            for th in candidate_thresholds:
+            for th in candidates:
                 mask = (max_probs >= th)
-                if np.sum(mask) >= 5:  # require sufficient support
+                if np.sum(mask) >= 5:
                     prec = float(np.mean(correctness[mask]))
                     if prec >= target_p:
                         best_thresh = round(float(th), 3)
@@ -114,11 +125,30 @@ class ProbabilityCalibrator:
                         break
 
             if not found:
-                best_thresh = 0.90 if cat == "high" else (0.75 if cat == "medium" else 0.50)
-                best_p = target_p
+                # Fallback to defaults with empirical precision at default
+                default_th = 0.85 if cat == "high" else (0.65 if cat == "medium" else 0.45)
+                mask = (max_probs >= default_th)
+                if np.sum(mask) >= 3:
+                    best_p = round(float(np.mean(correctness[mask])), 3)
+                else:
+                    best_p = target_p
+                best_thresh = default_th
 
             cutoffs[cat] = best_thresh
             precisions[cat] = best_p
+
+        # Enforce strict monotonicity: high > medium > low
+        if cutoffs["medium"] >= cutoffs["high"]:
+            cutoffs["medium"] = round(cutoffs["high"] - 0.15, 3)
+            mask = (max_probs >= cutoffs["medium"])
+            if np.sum(mask) >= 3:
+                precisions["medium"] = round(float(np.mean(correctness[mask])), 3)
+
+        if cutoffs["low"] >= cutoffs["medium"]:
+            cutoffs["low"] = round(cutoffs["medium"] - 0.15, 3)
+            mask = (max_probs >= cutoffs["low"])
+            if np.sum(mask) >= 3:
+                precisions["low"] = round(float(np.mean(correctness[mask])), 3)
 
         self.confidence_thresholds = cutoffs
         self.empirical_precisions = precisions

@@ -3,12 +3,12 @@
   "calibration_samples": 600,
   "validation_samples": 600,
   "test_samples": 720,
-  "ece_calibration": 0.0,
+  "ece_calibration": 0.001,
   "ece_test": 0.0341,
-  "conformal_test_coverage": 0.8472,
+  "conformal_test_coverage": 0.8889,
   "cutoffs": {
-    "high": 0.4,
-    "medium": 0.4,
+    "high": 0.8,
+    "medium": 0.6,
     "low": 0.4
   },
   "precisions": {
