@@ -35,3 +35,4 @@ This report summarizes the multi-agent diagnostic accuracy, calibration reliabil
 | Without Topology Context | 81.7% | 0.805 | 0.114 | 72.0 | 25.0% |
 | Without Gateway Normalization | 58.3% | 0.540 | 0.210 | 45.1 | 42.0% |
 | Single Heuristic Classifier Baseline | 71.7% | 0.690 | 0.185 | 12.3 | 5.0% |
+

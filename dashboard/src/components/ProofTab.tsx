@@ -524,3 +524,4 @@ export const ProofTab: React.FC = () => {
     </div>
   );
 };
+
