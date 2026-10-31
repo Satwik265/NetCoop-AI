@@ -330,6 +330,92 @@ def approve_remediation_cmd(
         )
 
 
+@app.command("replay")
+def replay_cmd(
+    incident_id: str = typer.Argument(..., help="Correlation incident identifier to replay"),
+) -> None:
+    """Replay and display the recorded monochrome execution trace for an incident."""
+    init_db()
+    logs = get_envelope_logs(incident_id)
+    rec = get_incident(incident_id)
+
+    if not logs and not rec:
+        console.print(f"[dim]No records found for incident correlation ID '{incident_id}'.[/dim]")
+        return
+
+    # Incident header panel
+    header_info = (
+        f"[bold]Incident ID:[/bold] {incident_id}\n"
+        f"[bold]Network ID:[/bold] {rec.network_id if rec else 'N/A'}\n"
+        f"[bold]Recorded Timestamp:[/bold] {rec.created_at if rec else 'N/A'}\n"
+        f"[bold]Diagnostic Status:[/bold] {rec.status if rec else 'N/A'}\n"
+        f"[bold]Probable Cause:[/bold] {rec.probable_cause if rec else 'N/A'}\n"
+        f"[bold]Confidence:[/bold] {f'{int(rec.confidence * 100)}%' if rec and rec.confidence is not None else 'N/A'}"
+    )
+    console.print(Panel(header_info, box=box.SQUARE, title="[bold]NetCoop Replay: Incident Audit Trace[/bold]"))
+
+    # Table of envelope exchanges
+    table = Table(title=f"Message Envelope Trace ({len(logs)} messages)", box=box.SQUARE)
+    table.add_column("Step", style="dim", justify="right")
+    table.add_column("Time UTC", style="dim")
+    table.add_column("Sender", style="bold")
+    table.add_column("Recipient", style="dim")
+    table.add_column("Message Type", style="white")
+    table.add_column("Priority", style="dim")
+    table.add_column("Payload Summary", style="white")
+
+    for idx, l in enumerate(logs, 1):
+        try:
+            payload = json.loads(l.payload_json)
+        except Exception:
+            payload = {}
+
+        obs_count = len(payload.get("observations", []))
+        hyp_count = len(payload.get("hypotheses", []))
+        inq_count = len(payload.get("inquiries", []))
+        summary = f"obs={obs_count}, hyp={hyp_count}, inq={inq_count}"
+
+        table.add_row(
+            str(idx),
+            l.timestamp_utc[11:19] if len(l.timestamp_utc) >= 19 else l.timestamp_utc,
+            l.sender,
+            l.recipient,
+            l.message_type,
+            l.priority,
+            summary,
+        )
+
+    console.print(table)
+
+    # If full report exists, print executive summary and actions
+    if rec and rec.report_json:
+        try:
+            report_data = json.loads(rec.report_json)
+            summary_txt = report_data.get("summary", "")
+            if summary_txt:
+                console.print(Panel(summary_txt, box=box.SQUARE, title="[bold]Synthesized Report Summary[/bold]"))
+
+            actions = report_data.get("remediation_actions", [])
+            if actions:
+                rem_table = Table(title="Remediation Plan (Simulated)", box=box.SQUARE)
+                rem_table.add_column("Action ID", style="bold")
+                rem_table.add_column("Title", style="white")
+                rem_table.add_column("Device", style="dim")
+                rem_table.add_column("Risk", style="white")
+                rem_table.add_column("Simulated", style="dim")
+                for a in actions:
+                    rem_table.add_row(
+                        a.get("action_id", ""),
+                        a.get("title", ""),
+                        a.get("device", ""),
+                        a.get("risk_level", ""),
+                        str(a.get("is_simulated", True)),
+                    )
+                console.print(rem_table)
+        except Exception:
+            pass
+
+
 @app.command("mcp-serve")
 def mcp_serve_cmd() -> None:
     """Launch Model Context Protocol (MCP) stdio server."""
