@@ -108,3 +108,114 @@ class RemediationEngine:
             "action": action.model_dump(),
         }
 
+    @classmethod
+    def approve_action(
+        cls,
+        action_id: str,
+        operator: str = "human_operator",
+        rationale: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Approve a pending remediation action and execute as a simulated action only."""
+        from netcoop.storage.db import get_remediation_action_log, record_hitl_decision
+
+        log_entry = get_remediation_action_log(action_id)
+        if not log_entry:
+            return {"success": False, "message": f"Remediation action '{action_id}' not found."}
+
+        # Record approval decision
+        record_hitl_decision(
+            action_id=action_id,
+            status="approved",
+            operator=operator,
+            rationale=rationale or "Approved by operator",
+        )
+
+        # Flow into simulated remediation engine
+        action_item = RemediationActionItem(
+            action_id=log_entry.action_id,
+            title=f"Remediation on {log_entry.device}",
+            description=f"Risk level {log_entry.risk_level}",
+            device=log_entry.device,
+            commands=json.loads(log_entry.commands_json),
+            rollback_commands=json.loads(log_entry.rollback_commands_json),
+            risk_level=log_entry.risk_level,
+            blast_radius_devices=[log_entry.device],
+            is_simulated=True,
+            status="approved",
+        )
+
+        exec_res = cls.execute_simulated_action(
+            incident_id=log_entry.incident_id,
+            action=action_item,
+            operator=operator,
+            all_devices=[log_entry.device, "gw-01", "gw-02"],
+        )
+
+        return {
+            "success": True,
+            "action_id": action_id,
+            "status": "approved",
+            "operator": operator,
+            "rationale": rationale,
+            "simulation": exec_res,
+        }
+
+    @classmethod
+    def reject_action(
+        cls,
+        action_id: str,
+        operator: str = "human_operator",
+        rationale: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Reject a pending remediation action and record the decision in event log."""
+        from netcoop.storage.db import get_remediation_action_log, record_hitl_decision
+
+        log_entry = get_remediation_action_log(action_id)
+        if not log_entry:
+            return {"success": False, "message": f"Remediation action '{action_id}' not found."}
+
+        record_hitl_decision(
+            action_id=action_id,
+            status="rejected",
+            operator=operator,
+            rationale=rationale or "Rejected by operator",
+        )
+        return {
+            "success": True,
+            "action_id": action_id,
+            "status": "rejected",
+            "operator": operator,
+            "rationale": rationale,
+        }
+
+    @classmethod
+    def modify_action(
+        cls,
+        action_id: str,
+        new_commands: List[str],
+        operator: str = "human_operator",
+        rationale: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Modify parameters/commands of a pending remediation action and log the change."""
+        from netcoop.storage.db import get_remediation_action_log, record_hitl_decision
+
+        log_entry = get_remediation_action_log(action_id)
+        if not log_entry:
+            return {"success": False, "message": f"Remediation action '{action_id}' not found."}
+
+        record_hitl_decision(
+            action_id=action_id,
+            status="modified",
+            operator=operator,
+            rationale=rationale or "Modified by operator",
+            modified_commands=new_commands,
+        )
+        return {
+            "success": True,
+            "action_id": action_id,
+            "status": "modified",
+            "modified_commands": new_commands,
+            "operator": operator,
+            "rationale": rationale,
+        }
+

@@ -22,10 +22,19 @@ Existing approaches fall into two failure modes:
 **The NetCoop AI Insight**:
 Network diagnosis is fundamentally a multi-perspective consensus problem. NetCoop AI decomposes network intelligence into isolated, domain-specialist microservices (Telemetry, Topology, Configuration, and Syslogs) operating as decoupled operating system processes. Agents share zero memory and communicate strictly through versioned, strongly-typed wire envelopes (`schemas/envelope.json`). A LangGraph state-machine orchestrator manages multi-turn mediation, routing targeted cross-inquiries (`payload.inquiries`) between specialists to corroborate empirical evidence (`Observation`) and debate causal hypotheses (`Hypothesis`). When evidence is incomplete, corrupted, or conflicting, the system strictly refuses to guess and emits an auditable `insufficient_evidence` determination.
 
+
 ---
 
 ## 2. What Makes This Different: Rubric Mapping
 
+| Evaluation Pillar | Hackathon Weight | NetCoop AI Implementation |
+| :--- | :---: | :--- |
+| **Interoperability & Protocol Design** | 30% | Versioned JSON schema envelope (v1.0.0), strict Pydantic v2 validation, explicit field semantics, SI unit enforcement, zero internal state leakage between agents (`docs/protocol.md`, `schemas/envelope.json`, `gateway/adapters/organizer_adapter.py`). |
+| **Diagnostic Accuracy & Evidence Quality** | 25% | Multi-evidence correlation graph, timestamp alignment, 21 ground-truth benchmark scenarios (100% accuracy), and strict enforcement of `status: "insufficient_evidence"` when criteria are unmet. |
+| **Orchestration & Conflict Resolution** | 15% | LangGraph state graph with supervisory mediation, message bus pub/sub, targeted peer inquiry passes, dynamic hypothesis ranking, and deterministic conflict arbitration matrix (`orchestrator/`, `core/bus.py`). |
+| **Robustness to Missing / Incompatible Data** | 15% | Clock skew normalization, unit converter layer (bps/Kbps/Mbps/Gbps, ms/us), fuzzy device alias mapping, and Hypothesis property-based fuzzing (`core/normalizer.py`, `gateway/adapters/organizer_adapter.py`, `tests/test_robustness_hypothesis.py`, `tests/test_chaos.py`). |
+| **Innovation, Usability, Extensibility** | 10% | Model Context Protocol (MCP) server for external AI tools, Human-in-the-Loop (HITL) approval gates, pause/resume persistence via SQLite, simulated remediation sandbox, twin UI (Web Dashboard + Typer CLI), seeded generator with chaos knobs (`data/generator.py`, `mcp_server/`, `dashboard/`, `cli/`). |
+| **Code Quality, Docs, and Demo** | 5% | 100% typed codebase, docstrings, structured logging, zero emojis, unified JSON output report, comprehensive setup scripts, 125 reproducible tests, Makefile, Docker Compose. |
 | Evaluation Dimension | Weight | Our Implementation & Architectural Advantage | Verifiable Benchmark Result |
 | :--- | :---: | :--- | :---: |
 | **Interoperability & Protocol Design** | **30%** | Dedicated HTTP REST microservices with zero shared memory. Fully documented wire schema (`schemas/envelope.json`), semantic versioning (`1.0.0`), strict SI unit conversions, and Ingestion Gateway with 12 typed validation error handlers for multi-vendor and organizer Colab telemetry. | **100% Schema Validation**<br/>Zero Protocol Leaks |
@@ -480,7 +489,6 @@ NetCoop-AI/
 `-- pyproject.toml              # Package configuration and dependencies
 ```
 
----
 
 ## 11. Compliance Matrix
 

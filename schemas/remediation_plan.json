@@ -4,19 +4,39 @@
   "title": "SimulatedRemediationPlan",
   "description": "Structure for simulated network remediation actions and pre-flight checks",
   "type": "object",
-  "required": ["incident_id", "actions", "pre_flight_checks", "human_approval_required"],
+  "required": [
+    "incident_id",
+    "actions",
+    "pre_flight_checks",
+    "human_approval_required"
+  ],
   "properties": {
-    "incident_id": { "type": "string" },
-    "human_approval_required": { "type": "boolean", "default": true },
+    "incident_id": {
+      "type": "string"
+    },
+    "human_approval_required": {
+      "type": "boolean",
+      "default": true
+    },
     "pre_flight_checks": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["check_name", "passed", "details"],
+        "required": [
+          "check_name",
+          "passed",
+          "details"
+        ],
         "properties": {
-          "check_name": { "type": "string" },
-          "passed": { "type": "boolean" },
-          "details": { "type": "string" }
+          "check_name": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "details": {
+            "type": "string"
+          }
         }
       }
     },
@@ -24,21 +44,54 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["action_id", "device", "commands", "is_simulated"],
+        "required": [
+          "action_id",
+          "device",
+          "commands",
+          "is_simulated"
+        ],
         "properties": {
-          "action_id": { "type": "string" },
-          "title": { "type": "string" },
-          "device": { "type": "string" },
-          "commands": { "type": "array", "items": { "type": "string" } },
-          "rollback_commands": { "type": "array", "items": { "type": "string" } },
-          "is_simulated": { "type": "boolean", "enum": [true] },
+          "action_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "device": {
+            "type": "string"
+          },
+          "commands": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rollback_commands": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "is_simulated": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
           "status": {
             "type": "string",
-            "enum": ["pending_approval", "approved", "simulated_executed", "aborted"]
+            "enum": [
+              "pending_approval",
+              "approved",
+              "simulated_executed",
+              "aborted",
+              "pending",
+              "modified",
+              "rejected"
+            ]
           }
         }
       }
     }
   }
 }
-

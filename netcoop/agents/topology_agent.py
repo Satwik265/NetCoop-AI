@@ -1,16 +1,18 @@
-"""Agent 2: Topology and Routing Analyzer Agent."""
+"""Agent 2: Topology and Routing Analyzer Agent (ConnectivityAgent)."""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from netcoop.agents.base import BaseAgent
 from netcoop.core.envelope import (
     AgentEnvelope,
     AgentRole,
     Hypothesis,
+    Inquiry,
     MessageType,
     Observation,
     ObservationCategory,
     Severity,
 )
+from netcoop.core.signatures import HypothesisKey, SIGNATURE_REGISTRY
 
 
 class TopologyAgent(BaseAgent):
@@ -19,19 +21,69 @@ class TopologyAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__(
             role=AgentRole.TOPOLOGY_AGENT,
-            name="Topology & Routing Analyzer",
+            name="Topology & Connectivity Analyzer",
         )
 
     def handle_envelope(self, envelope: AgentEnvelope) -> AgentEnvelope:
-        """Process topology and routing state to identify adjacencies and forwarding loops."""
+        """Process topology, routing state, or inquiries."""
+        if envelope.header.message_type == MessageType.INQUIRY_REQUEST:
+            return self._handle_inquiry(envelope)
+
+        return self._handle_dispatch(envelope)
+
+    def _handle_inquiry(self, envelope: AgentEnvelope) -> AgentEnvelope:
+        """Answer targeted topology inquiries from peer agents."""
+        response = self.create_response_envelope(envelope, MessageType.INQUIRY_RESPONSE)
+        raw_data = envelope.payload.raw_data or {}
+        topology = raw_data.get("topology") or {}
+        nodes = topology.get("nodes", [])
+        edges = topology.get("edges", [])
+
+        inquiries = envelope.payload.inquiries
+        for inq in inquiries:
+            q = inq.question.lower()
+            if not nodes and not edges:
+                inq.answer = "Topology unavailable: no network graph nodes or adjacencies provided."
+            elif "upstream" in q or "path" in q:
+                target = inq.target_entity
+                # Find connected edges
+                adjacent = [e for e in edges if e.get("source") == target or e.get("target") == target]
+                if adjacent:
+                    inq.answer = f"Adjacent hops for {target}: {[e.get('target') if e.get('source') == target else e.get('source') for e in adjacent]}"
+                else:
+                    inq.answer = f"No direct upstream adjacencies identified for {target}."
+            else:
+                inq.answer = f"Topology contains {len(nodes)} devices and {len(edges)} transit links."
+
+        response.payload.inquiries = inquiries
+        return response
+
+    def _handle_dispatch(self, envelope: AgentEnvelope) -> AgentEnvelope:
+        """Process topology, BGP neighbor states, and emit cross-inquiries when indicated."""
         response = self.create_response_envelope(envelope, MessageType.FINDING_SUBMISSION)
-        raw_routing = (envelope.payload.raw_data or {}).get("routing_state", {})
+        raw_data = envelope.payload.raw_data or {}
+        topology = raw_data.get("topology")
+        raw_routing = raw_data.get("routing_state", {})
+        if not isinstance(raw_routing, dict):
+            raw_routing = {}
+        raw_telemetry = raw_data.get("telemetry", [])
+
         bgp_sessions = raw_routing.get("bgp_sessions", [])
         stp_states = raw_routing.get("stp_state", [])
 
         observations: List[Observation] = []
+        limitations: List[str] = []
 
-        # Analyze BGP
+        # 1. Topology availability verification
+        if not topology or not topology.get("nodes"):
+            limitations.append("topology unavailable: no nodes or link adjacencies provided")
+            response.context["topology_status"] = "topology unavailable"
+        else:
+            response.context["topology_status"] = "available"
+            if topology.get("is_assumed", False):
+                response.payload.provenance = {"topology": "assumed"}
+
+        # 2. Analyze BGP Sessions
         for session in bgp_sessions:
             dev = session.get("device", "unknown")
             peer = session.get("peer_ip", "")
@@ -51,7 +103,7 @@ class TopologyAgent(BaseAgent):
                     )
                 )
 
-        # Analyze STP
+        # 3. Analyze STP
         for stp in stp_states:
             dev = stp.get("device", "unknown")
             bpdu_filtered = stp.get("bpdu_filter_enabled", False)
@@ -70,7 +122,36 @@ class TopologyAgent(BaseAgent):
                     )
                 )
 
+        # 4. Cross-agent inquiry generation:
+        # If telemetry shows elevated latency on access devices without local congestion,
+        # query TelemetryAgent for upstream core link utilization.
+        has_latency_without_local_congestion = False
+        edge_devices_with_delay = []
+        for rec in raw_telemetry:
+            dev = rec.get("device_id") or rec.get("device") or ""
+            metrics = rec.get("metrics", rec)
+            lat = float(metrics.get("latency_ms") or 0.0)
+            drops = int(metrics.get("queue_drops") or 0)
+            util = float(metrics.get("link_utilization_pct") or 0.0)
+
+            if lat > 50.0 and drops == 0 and util < 70.0:
+                has_latency_without_local_congestion = True
+                edge_devices_with_delay.append(dev)
+
+        inquiries: List[Inquiry] = []
+        if has_latency_without_local_congestion:
+            inquiries.append(
+                Inquiry(
+                    target_agent=AgentRole.TELEMETRY_AGENT,
+                    question="Audit upstream core link utilization and queue drops for transit hops along path to delayed devices.",
+                    target_entity="upstream_transit_path",
+                    parameters={"devices": edge_devices_with_delay},
+                )
+            )
+
         response.payload.observations = observations
+        response.payload.inquiries = inquiries
+        response.context["limitations"] = limitations
 
         obs_ids = [o.observation_id for o in observations]
         has_bgp_flaps = any(o.metric_name == "bgp_state_flaps" for o in observations)
@@ -97,3 +178,6 @@ class TopologyAgent(BaseAgent):
 
         return response
 
+
+# Export alias conforming to contract
+ConnectivityAgent = TopologyAgent

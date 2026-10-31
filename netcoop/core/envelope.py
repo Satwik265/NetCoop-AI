@@ -13,9 +13,12 @@ class AgentRole(str, Enum):
     ORCHESTRATOR = "orchestrator"
     TELEMETRY_AGENT = "telemetry_agent"
     TOPOLOGY_AGENT = "topology_agent"
+    CONNECTIVITY_AGENT = "connectivity_agent"
     CONFIG_AGENT = "config_agent"
     LOG_AGENT = "log_agent"
     SYNTHESIZER_AGENT = "synthesizer_agent"
+    CLASSIFIER_AGENT = "classifier_agent"
+    WIFI_SERVICES_AGENT = "wifi_services_agent"
     HUMAN_OPERATOR = "human_operator"
     BROADCAST = "broadcast"
 

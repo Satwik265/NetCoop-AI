@@ -63,3 +63,36 @@ def test_resume_incident_endpoint():
     assert data["success"] is True
     assert data["status"] == "resumed"
 
+
+def test_mcp_info_endpoint():
+    res = client.get("/api/mcp/info")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "ready"
+    assert data["server_name"] == "netcoop-mcp-server"
+    assert data["transport"] == "stdio"
+    assert len(data["tools"]) >= 5
+    tool_names = [t["name"] for t in data["tools"]]
+    assert "diagnose_network" in tool_names
+    assert "simulate_remediation" in tool_names
+
+
+def test_devices_endpoint():
+    res = client.get("/api/devices")
+    assert res.status_code == 200
+    devices = res.json()
+    assert isinstance(devices, list)
+    assert len(devices) >= 5
+    dev_ids = [d["device_id"] for d in devices]
+    assert "spine-01" in dev_ids
+    assert "leaf-01" in dev_ids
+
+
+def test_platform_status_endpoint():
+    res = client.get("/api/platform/status")
+    assert res.status_code == 200
+    status = res.json()
+    assert status["status"] == "healthy"
+    assert "database" in status
+    assert status["database"]["connected"] is True
+    assert len(status["microservices"]) >= 7

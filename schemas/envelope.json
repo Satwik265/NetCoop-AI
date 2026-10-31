@@ -4,7 +4,10 @@
   "title": "AgentEnvelope",
   "description": "Standardized inter-agent communication envelope for NetCoop AI v1.0",
   "type": "object",
-  "required": ["header", "payload"],
+  "required": [
+    "header",
+    "payload"
+  ],
   "properties": {
     "header": {
       "type": "object",
@@ -41,7 +44,10 @@
             "config_agent",
             "log_agent",
             "synthesizer_agent",
-            "human_operator"
+            "human_operator",
+            "connectivity_agent",
+            "classifier_agent",
+            "wifi_services_agent"
           ],
           "description": "Identifier of the transmitting agent"
         },
@@ -54,7 +60,10 @@
             "config_agent",
             "log_agent",
             "synthesizer_agent",
-            "broadcast"
+            "broadcast",
+            "connectivity_agent",
+            "classifier_agent",
+            "wifi_services_agent"
           ],
           "description": "Identifier of intended recipient"
         },
@@ -79,7 +88,12 @@
         },
         "priority": {
           "type": "string",
-          "enum": ["low", "normal", "high", "urgent"],
+          "enum": [
+            "low",
+            "normal",
+            "high",
+            "urgent"
+          ],
           "default": "normal"
         }
       },
@@ -87,20 +101,31 @@
     },
     "payload": {
       "type": "object",
-      "required": ["scope"],
+      "required": [
+        "scope"
+      ],
       "properties": {
         "scope": {
           "type": "object",
-          "required": ["network_id", "devices"],
+          "required": [
+            "network_id",
+            "devices"
+          ],
           "properties": {
-            "network_id": { "type": "string" },
+            "network_id": {
+              "type": "string"
+            },
             "devices": {
               "type": "array",
-              "items": { "type": "string" }
+              "items": {
+                "type": "string"
+              }
             },
             "interfaces": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "default": []
             }
           },
@@ -121,7 +146,9 @@
               "severity"
             ],
             "properties": {
-              "observation_id": { "type": "string" },
+              "observation_id": {
+                "type": "string"
+              },
               "category": {
                 "type": "string",
                 "enum": [
@@ -132,13 +159,28 @@
                   "state_transition"
                 ]
               },
-              "entity": { "type": "string", "description": "e.g., spine-01:et-0/0/1" },
-              "metric_name": { "type": "string" },
+              "entity": {
+                "type": "string",
+                "description": "e.g., spine-01:et-0/0/1"
+              },
+              "metric_name": {
+                "type": "string"
+              },
               "observed_value": {
-                "type": ["number", "string", "boolean", "null"]
+                "type": [
+                  "number",
+                  "string",
+                  "boolean",
+                  "null"
+                ]
               },
               "baseline_value": {
-                "type": ["number", "string", "boolean", "null"]
+                "type": [
+                  "number",
+                  "string",
+                  "boolean",
+                  "null"
+                ]
               },
               "unit": {
                 "type": "string",
@@ -146,14 +188,49 @@
               },
               "severity": {
                 "type": "string",
-                "enum": ["info", "warning", "critical"]
+                "enum": [
+                  "info",
+                  "warning",
+                  "critical"
+                ]
               },
-              "timestamp_start": { "type": ["string", "null"] },
-              "timestamp_end": { "type": ["string", "null"] },
-              "context": { "type": "object" },
-              "provenance": { "type": ["object", "null"] },
-              "confidence": { "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0 },
-              "data_quality": { "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0 }
+              "timestamp_start": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "timestamp_end": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "context": {
+                "type": "object"
+              },
+              "provenance": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "confidence": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0.0,
+                "maximum": 1.0
+              },
+              "data_quality": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0.0,
+                "maximum": 1.0
+              }
             },
             "additionalProperties": false
           },
@@ -171,8 +248,12 @@
               "supporting_observation_ids"
             ],
             "properties": {
-              "hypothesis_id": { "type": "string" },
-              "probable_cause": { "type": "string" },
+              "hypothesis_id": {
+                "type": "string"
+              },
+              "probable_cause": {
+                "type": "string"
+              },
               "confidence": {
                 "type": "number",
                 "minimum": 0.0,
@@ -180,21 +261,39 @@
               },
               "supporting_observation_ids": {
                 "type": "array",
-                "items": { "type": "string" }
+                "items": {
+                  "type": "string"
+                }
               },
               "refuting_observation_ids": {
                 "type": "array",
-                "items": { "type": "string" },
+                "items": {
+                  "type": "string"
+                },
                 "default": []
               },
               "required_corroboration": {
                 "type": "array",
-                "items": { "type": "string" },
+                "items": {
+                  "type": "string"
+                },
                 "description": "Agents or signals needed to verify this hypothesis",
                 "default": []
               },
-              "provenance": { "type": ["object", "null"] },
-              "data_quality": { "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0 }
+              "provenance": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "data_quality": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0.0,
+                "maximum": 1.0
+              }
             },
             "additionalProperties": false
           },
@@ -212,36 +311,81 @@
               "target_entity"
             ],
             "properties": {
-              "inquiry_id": { "type": "string" },
-              "target_agent": { "type": "string" },
-              "question": { "type": "string" },
-              "target_entity": { "type": "string" },
-              "parameters": { "type": "object" },
-              "answer": { "type": ["string", "object", "null"] },
-              "provenance": { "type": ["object", "null"] }
+              "inquiry_id": {
+                "type": "string"
+              },
+              "target_agent": {
+                "type": "string"
+              },
+              "question": {
+                "type": "string"
+              },
+              "target_entity": {
+                "type": "string"
+              },
+              "parameters": {
+                "type": "object"
+              },
+              "answer": {
+                "type": [
+                  "string",
+                  "object",
+                  "null"
+                ]
+              },
+              "provenance": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
             },
             "additionalProperties": false
           },
           "default": []
         },
         "raw_data": {
-          "type": ["object", "null"],
+          "type": [
+            "object",
+            "null"
+          ],
           "default": null
         },
         "error": {
-          "type": ["object", "null"],
+          "type": [
+            "object",
+            "null"
+          ],
           "properties": {
-            "error_code": { "type": "string" },
-            "message": { "type": "string" },
-            "field_path": { "type": ["string", "null"] }
+            "error_code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "field_path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           },
-          "required": ["error_code", "message"]
+          "required": [
+            "error_code",
+            "message"
+          ]
         },
         "data_quality": {
-          "type": ["object", "null"]
+          "type": [
+            "object",
+            "null"
+          ]
         },
         "provenance": {
-          "type": ["object", "null"]
+          "type": [
+            "object",
+            "null"
+          ]
         }
       },
       "additionalProperties": false
@@ -249,8 +393,15 @@
     "context": {
       "type": "object",
       "properties": {
-        "iteration": { "type": "integer", "minimum": 0, "default": 0 },
-        "environment": { "type": "string", "default": "simulation" }
+        "iteration": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "environment": {
+          "type": "string",
+          "default": "simulation"
+        }
       },
       "additionalProperties": true
     }

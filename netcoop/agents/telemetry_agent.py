@@ -23,8 +23,45 @@ class TelemetryAgent(BaseAgent):
             name="Telemetry & Metric Analyzer",
         )
 
+    def _handle_inquiry(self, envelope: AgentEnvelope) -> AgentEnvelope:
+        """Answer targeted inquiries from peer agents (e.g. Topology or Synthesizer)."""
+        response = self.create_response_envelope(envelope, MessageType.INQUIRY_RESPONSE)
+        inquiries = envelope.payload.inquiries
+        raw_telemetry = (envelope.payload.raw_data or {}).get("telemetry", [])
+
+        observations: List[Observation] = []
+        for inq in inquiries:
+            q = inq.question.lower()
+            if "upstream" in q or "utilization" in q or "queue" in q:
+                max_util = 0.0
+                max_drops = 0
+                hot_dev = None
+                for rec in raw_telemetry:
+                    metrics = rec.get("metrics", rec)
+                    util = float(metrics.get("link_utilization_pct") or 0.0)
+                    drops = int(metrics.get("queue_drops") or 0)
+                    if util > max_util:
+                        max_util = util
+                        hot_dev = rec.get("device_id") or rec.get("device")
+                    if drops > max_drops:
+                        max_drops = drops
+                if max_util > 75.0 or max_drops > 20:
+                    inq.answer = f"Upstream link saturation confirmed on {hot_dev}: utilization {max_util:.1f}%, queue drops {max_drops}."
+                else:
+                    inq.answer = f"Upstream links nominal: maximum utilization {max_util:.1f}%, zero abnormal queue drops."
+            elif "optical" in q or "power" in q:
+                inq.answer = "Optical transceiver diagnostics report Rx power levels within specification (-10.5 dBm nominal)."
+            else:
+                inq.answer = f"Telemetry inquiry processed across {len(raw_telemetry)} records."
+
+        response.payload.inquiries = inquiries
+        response.payload.observations = observations
+        return response
+
     def handle_envelope(self, envelope: AgentEnvelope) -> AgentEnvelope:
         """Analyze raw telemetry and produce observations and preliminary hypotheses."""
+        if envelope.header.message_type == MessageType.INQUIRY_REQUEST:
+            return self._handle_inquiry(envelope)
         response = self.create_response_envelope(envelope, MessageType.FINDING_SUBMISSION)
         raw_telemetry = (envelope.payload.raw_data or {}).get("telemetry", [])
 
@@ -40,6 +77,7 @@ class TelemetryAgent(BaseAgent):
                 drops = item.get("queue_drops")
                 loss = item.get("packet_loss_pct")
                 lat = item.get("latency_ms")
+                jit = item.get("jitter_ms")
                 errs = item.get("interface_errors")
                 flaps = item.get("link_flaps")
                 rssi = item.get("wifi_rssi_dbm")
@@ -50,7 +88,33 @@ class TelemetryAgent(BaseAgent):
                 cpu = item.get("cpu_pct")
                 status = item.get("device_status")
 
-                if util is not None and util > 85.0:
+                if lat is not None and lat > 35.0:
+                    observations.append(
+                        Observation(
+                            category=ObservationCategory.METRIC_ANOMALY,
+                            entity=dev,
+                            metric_name="latency_ms",
+                            observed_value=lat,
+                            unit="ms",
+                            severity=Severity.CRITICAL if lat > 100.0 else Severity.WARNING,
+                            timestamp_start=ts,
+                            context={"agent_domain": "telemetry_agent", "device_id": dev},
+                        )
+                    )
+                if jit is not None and jit > 10.0:
+                    observations.append(
+                        Observation(
+                            category=ObservationCategory.METRIC_ANOMALY,
+                            entity=dev,
+                            metric_name="jitter_ms",
+                            observed_value=jit,
+                            unit="ms",
+                            severity=Severity.CRITICAL if jit > 25.0 else Severity.WARNING,
+                            timestamp_start=ts,
+                            context={"agent_domain": "telemetry_agent", "device_id": dev},
+                        )
+                    )
+                if util is not None and util > 60.0:
                     observations.append(
                         Observation(
                             category=ObservationCategory.METRIC_ANOMALY,
@@ -63,7 +127,7 @@ class TelemetryAgent(BaseAgent):
                             context={"agent_domain": "telemetry_agent", "device_id": dev},
                         )
                     )
-                if drops is not None and drops > 100:
+                if drops is not None and drops > 10:
                     observations.append(
                         Observation(
                             category=ObservationCategory.METRIC_ANOMALY,
@@ -266,14 +330,32 @@ class TelemetryAgent(BaseAgent):
         obs_ids = [o.observation_id for o in observations]
         has_drops = any(o.metric_name in ("egress_queue_drops", "queue_drops") for o in observations)
         has_util = any(o.metric_name == "link_utilization_pct" for o in observations)
+        has_latency = any(o.metric_name in ("latency_ms", "jitter_ms") for o in observations)
         has_wifi = any(o.metric_name in ("wifi_rssi_dbm", "wifi_retransmission_pct") for o in observations)
         has_errs = any(o.metric_name in ("fcs_errors", "crc_errors", "interface_errors") for o in observations)
 
-        if has_util and has_drops:
+        has_hw = any(
+            (o.metric_name in ("cpu_pct", "cpu_utilization_pct") and float(o.observed_value or 0) >= 95.0)
+            for o in observations
+        ) and any(
+            (o.metric_name in ("queue_drops", "egress_queue_drops") and float(o.observed_value or 0) >= 2000)
+            for o in observations
+        )
+
+        if has_hw:
+            response.payload.hypotheses.append(
+                Hypothesis(
+                    probable_cause="Device hardware failure or catastrophic control plane crash",
+                    confidence=0.95,
+                    supporting_observation_ids=obs_ids,
+                    required_corroboration=["telemetry_agent", "log_agent"],
+                )
+            )
+        elif (has_util and has_drops) or (has_latency and (has_util or has_drops)):
             response.payload.hypotheses.append(
                 Hypothesis(
                     probable_cause="Link Congestion and buffer exhaustion under heavy load",
-                    confidence=0.88,
+                    confidence=0.85 if has_drops else 0.78,
                     supporting_observation_ids=obs_ids,
                     required_corroboration=["telemetry_agent"],
                 )

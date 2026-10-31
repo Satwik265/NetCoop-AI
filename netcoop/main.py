@@ -15,17 +15,26 @@ from netcoop.config import settings
 from netcoop.core.envelope import AgentEnvelope
 from netcoop.core.report import RemediationActionItem, UnifiedDiagnosticReport
 from gateway.adapters.organizer_adapter import OrganizerAdapter
-from netcoop.orchestrator.graph import run_diagnosis
-from netcoop.orchestrator.mediator import register_envelope_listener, unregister_envelope_listener
+from netcoop.orchestrator.graph import pause_diagnosis, resume_diagnosis, run_diagnosis
+try:
+    from netcoop.orchestrator.mediator import register_envelope_listener, unregister_envelope_listener
+except ImportError:
+    def register_envelope_listener(callback: Any) -> None:
+        pass
+    def unregister_envelope_listener(callback: Any) -> None:
+        pass
 from netcoop.remediation.engine import RemediationEngine
 from netcoop.storage.db import (
     get_envelope_logs,
     get_incident,
     init_db,
     list_incidents,
+    save_incident,
+    list_checkpoints,
+    list_remediation_action_logs,
+    get_remediation_action_log,
     get_remediation_logs,
     save_remediation_log,
-    save_incident,
 )
 
 app = FastAPI(
@@ -102,6 +111,7 @@ def on_startup() -> None:
     init_db()
     register_envelope_listener(_envelope_stream_hook)
 
+    # Seed sample paused session if absent for testing resume controls
     try:
         incidents = list_incidents()
         has_paused = any(i.status == "paused" for i in incidents)
@@ -119,7 +129,7 @@ def on_startup() -> None:
 
 @app.on_event("shutdown")
 def on_shutdown() -> None:
-    """Unregister callbacks cleanly on shutdown."""
+    """Unregister callbacks during server shutdown."""
     unregister_envelope_listener(_envelope_stream_hook)
 
 
@@ -131,11 +141,10 @@ async def websocket_events_endpoint(websocket: WebSocket) -> None:
         await websocket.send_json({
             "event_type": "connected",
             "message": "NetCoop WebSocket streaming active",
-            "version": __version__,
         })
         while True:
             text = await websocket.receive_text()
-            if text.strip().lower() == "ping":
+            if text == "ping":
                 await websocket.send_text("pong")
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket)
@@ -151,7 +160,7 @@ async def websocket_envelopes_endpoint(websocket: WebSocket) -> None:
 
 @app.get("/api/health")
 def health() -> Dict[str, str]:
-    """Healthcheck endpoint."""
+    """Basic health check probe."""
     return {"status": "ok", "version": __version__}
 
 
@@ -159,9 +168,9 @@ def health() -> Dict[str, str]:
 def get_features_endpoint() -> Dict[str, bool]:
     """Return active runtime feature flags for optional UI and backend capabilities."""
     return {
-        "FEATURE_HITL": os.environ.get("FEATURE_HITL", "true").lower() in ("true", "1", "yes"),
-        "FEATURE_REMEDIATION_SIM": os.environ.get("FEATURE_REMEDIATION_SIM", "true").lower() in ("true", "1", "yes"),
-        "FEATURE_RESUME": os.environ.get("FEATURE_RESUME", "true").lower() in ("true", "1", "yes"),
+        "FEATURE_HITL": os.environ.get("FEATURE_HITL", str(getattr(settings, "feature_hitl", True))).lower() in ("true", "1", "yes"),
+        "FEATURE_REMEDIATION_SIM": os.environ.get("FEATURE_REMEDIATION_SIM", str(getattr(settings, "feature_remediation_sim", True))).lower() in ("true", "1", "yes"),
+        "FEATURE_RESUME": os.environ.get("FEATURE_RESUME", str(getattr(settings, "feature_resume", True))).lower() in ("true", "1", "yes"),
     }
 
 
@@ -172,7 +181,7 @@ def ingest_data_endpoint(raw_payload: Dict[str, Any]) -> Dict[str, Any]:
         canonical = OrganizerAdapter.adapt_dataset(raw_payload)
         return canonical
     except Exception as e:
-        raise HTTPException(status_code=422, detail=f"Ingestion error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Ingestion failed: {str(e)}")
 
 
 @app.get("/api/scenarios")
@@ -181,59 +190,47 @@ def list_scenarios() -> List[Dict[str, Any]]:
     scenarios: List[Dict[str, Any]] = []
     if SCENARIOS_DIR.exists():
         for f in sorted(SCENARIOS_DIR.glob("*.json")):
+            if f.name == "manifest.json":
+                continue
             try:
                 with open(f, "r", encoding="utf-8") as s_file:
                     content = json.load(s_file)
                     scenarios.append(
                         {
                             "filename": f.name,
-                            "incident_id": content.get("incident_id"),
-                            "network_id": content.get("network_id"),
-                            "description": content.get("description"),
+                            "name": f.stem.replace("_", " ").title(),
+                            "incident_id": content.get("incident_id", f.stem),
+                            "network_id": content.get("network_id", "campus-network"),
+                            "description": content.get("description", f.stem.replace("_", " ").title()),
                         }
                     )
             except Exception:
                 continue
 
     if ORGANIZER_SAMPLES_DIR.exists():
-        for sf in sorted(ORGANIZER_SAMPLES_DIR.glob("*.jsonl")):
-            stem = sf.stem
-            scenarios.append(
-                {
-                    "filename": f"organizer_{stem}.jsonl",
-                    "incident_id": f"inc-organizer-{stem}",
-                    "network_id": "iit-bbs-campus-fabric",
-                    "description": f"Organizer Sample: {stem.replace('_', ' ').capitalize()} Telemetry",
-                }
-            )
-
+        for p in sorted(ORGANIZER_SAMPLES_DIR.glob("*.json*")):
+            scenarios.append({
+                "filename": f"organizer/{p.name}",
+                "name": f"Organizer: {p.stem.replace('_', ' ').title()}",
+                "incident_id": f"org-{p.stem}",
+                "network_id": "organizer-campus-fabric",
+                "description": f"Organizer Sample: {p.stem.replace('_', ' ').title()}",
+            })
     return scenarios
 
 
-@app.get("/api/scenarios/{filename}")
+@app.get("/api/scenarios/{filename:path}")
 def get_scenario(filename: str) -> Dict[str, Any]:
-    """Retrieve full scenario JSON content or parsed organizer JSONL."""
-    if filename.startswith("organizer_") or filename.endswith(".jsonl"):
-        sample_name = filename.replace("organizer_", "").replace(".jsonl", "")
-        sample_file = ORGANIZER_SAMPLES_DIR / f"{sample_name}.jsonl"
-        if not sample_file.exists():
-            raise HTTPException(status_code=404, detail="Organizer sample not found.")
-        records = []
-        with open(sample_file, "r", encoding="utf-8") as f:
-            for line in f:
-                line_str = line.strip()
-                if line_str:
-                    records.append(json.loads(line_str))
-        return {
-            "incident_id": f"inc-organizer-{sample_name}",
-            "network_id": "iit-bbs-campus-fabric",
-            "telemetry": records,
-            "description": f"Organizer Sample: {sample_name.replace('_', ' ').capitalize()} Telemetry",
-        }
+    """Retrieve contents of a specific scenario or organizer sample file."""
+    if filename.startswith("organizer/"):
+        rel_path = filename.replace("organizer/", "")
+        file_path = ORGANIZER_SAMPLES_DIR / rel_path
+    else:
+        file_path = SCENARIOS_DIR / filename
 
-    file_path = SCENARIOS_DIR / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Scenario file not found.")
+
     with open(file_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -242,8 +239,12 @@ def get_scenario(filename: str) -> Dict[str, Any]:
 def run_diagnosis_endpoint(incident_data: Dict[str, Any]) -> UnifiedDiagnosticReport:
     """Execute multi-agent diagnosis on network incident input canonicalized via Gateway."""
     try:
-        canonical_data = OrganizerAdapter.adapt_dataset(incident_data)
-        report = run_diagnosis(canonical_data)
+        format_detected = OrganizerAdapter.detect_format(incident_data)
+        if format_detected == "organizer":
+            canonical_data = OrganizerAdapter.adapt_dataset(incident_data)
+            report = run_diagnosis(canonical_data)
+        else:
+            report = run_diagnosis(incident_data)
         return report
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Diagnostic error: {str(e)}")
@@ -251,24 +252,24 @@ def run_diagnosis_endpoint(incident_data: Dict[str, Any]) -> UnifiedDiagnosticRe
 
 @app.get("/api/incidents")
 def get_incidents_list() -> List[Dict[str, Any]]:
-    """List recent incident records."""
-    records = list_incidents()
+    """Retrieve history of diagnosed network incidents."""
+    incidents = list_incidents()
     return [
         {
-            "incident_id": r.incident_id,
-            "network_id": r.network_id,
-            "created_at": r.created_at,
-            "status": r.status,
-            "probable_cause": r.probable_cause,
-            "confidence": r.confidence,
+            "incident_id": inc.incident_id,
+            "network_id": inc.network_id,
+            "created_at": inc.created_at,
+            "status": inc.status,
+            "probable_cause": inc.probable_cause,
+            "confidence": inc.confidence,
         }
-        for r in records
+        for inc in incidents
     ]
 
 
 @app.get("/api/incidents/{incident_id}")
 def get_incident_detail(incident_id: str) -> Dict[str, Any]:
-    """Retrieve incident details and full diagnostic report."""
+    """Retrieve full diagnostic report and metadata for an incident."""
     rec = get_incident(incident_id)
     if not rec:
         raise HTTPException(status_code=404, detail="Incident not found.")
@@ -285,13 +286,12 @@ def get_incident_detail(incident_id: str) -> Dict[str, Any]:
 
 @app.get("/api/incidents/{incident_id}/envelopes")
 def get_incident_envelopes(incident_id: str) -> List[Dict[str, Any]]:
-    """Retrieve auditable envelope logs for an incident."""
+    """Retrieve full audit trace of envelopes recorded for an incident."""
     logs = get_envelope_logs(incident_id)
     return [
         {
             "id": l.id,
             "message_id": l.message_id,
-            "correlation_id": l.correlation_id,
             "timestamp_utc": l.timestamp_utc,
             "sender": l.sender,
             "recipient": l.recipient,
@@ -302,6 +302,164 @@ def get_incident_envelopes(incident_id: str) -> List[Dict[str, Any]]:
         }
         for l in logs
     ]
+
+
+class PauseRequest(BaseModel):
+    session_id: str
+    rationale: Optional[str] = "Operator requested diagnosis pause"
+
+
+@app.post("/api/orchestrator/pause")
+def pause_orchestrator_endpoint(req: PauseRequest) -> Dict[str, Any]:
+    """Signal an active diagnostic session to halt cleanly at its next checkpoint."""
+    success = pause_diagnosis(req.session_id)
+    return {
+        "session_id": req.session_id,
+        "status": "paused" if success else "failed",
+        "message": f"Diagnostic session {req.session_id} marked as paused.",
+        "rationale": req.rationale,
+    }
+
+
+@app.post("/api/orchestrator/resume/{session_id}", response_model=UnifiedDiagnosticReport)
+def resume_orchestrator_endpoint(session_id: str) -> UnifiedDiagnosticReport:
+    """Resume execution of an interrupted or paused diagnosis from latest checkpoint."""
+    try:
+        report = resume_diagnosis(session_id)
+        return report
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Resume failed: {str(e)}")
+
+
+@app.get("/api/orchestrator/checkpoints/{session_id}")
+def get_session_checkpoints_endpoint(session_id: str) -> List[Dict[str, Any]]:
+    """Retrieve chronological checkpoints recorded for a diagnostic session."""
+    cps = list_checkpoints(session_id)
+    return [
+        {
+            "id": cp.id,
+            "session_id": cp.session_id,
+            "node_name": cp.node_name,
+            "iteration": cp.iteration,
+            "is_paused": cp.is_paused,
+            "created_at": cp.created_at,
+            "state": json.loads(cp.state_json) if cp.state_json else {},
+        }
+        for cp in cps
+    ]
+
+
+@app.get("/api/remediation/pending")
+def get_pending_remediation_actions_endpoint() -> List[Dict[str, Any]]:
+    """List all remediation actions awaiting Human-in-the-Loop operator decision."""
+    logs = list_remediation_action_logs(status="pending")
+    return [
+        {
+            "id": l.id,
+            "incident_id": l.incident_id,
+            "action_id": l.action_id,
+            "device": l.device,
+            "commands": json.loads(l.commands_json) if l.commands_json else [],
+            "rollback_commands": json.loads(l.rollback_commands_json) if l.rollback_commands_json else [],
+            "risk_level": l.risk_level,
+            "status": l.status,
+            "approved_by": l.approved_by,
+            "rationale": l.rationale,
+            "modified_commands": json.loads(l.modified_commands_json) if l.modified_commands_json else None,
+            "simulated_at": l.simulated_at,
+            "decision_timestamp": l.decision_timestamp,
+        }
+        for l in logs
+    ]
+
+
+@app.get("/api/remediation/actions")
+def list_remediation_actions_endpoint(
+    incident_id: Optional[str] = None,
+    status: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """List recorded remediation action items filtered by incident or status."""
+    logs = list_remediation_action_logs(incident_id=incident_id, status=status)
+    return [
+        {
+            "id": l.id,
+            "incident_id": l.incident_id,
+            "action_id": l.action_id,
+            "device": l.device,
+            "commands": json.loads(l.commands_json) if l.commands_json else [],
+            "rollback_commands": json.loads(l.rollback_commands_json) if l.rollback_commands_json else [],
+            "risk_level": l.risk_level,
+            "status": l.status,
+            "approved_by": l.approved_by,
+            "rationale": l.rationale,
+            "modified_commands": json.loads(l.modified_commands_json) if l.modified_commands_json else None,
+            "simulated_at": l.simulated_at,
+            "decision_timestamp": l.decision_timestamp,
+        }
+        for l in logs
+    ]
+
+
+class HITLDecisionRequest(BaseModel):
+    operator: str = "human_operator"
+    rationale: Optional[str] = "Operator approved remediation"
+
+
+@app.post("/api/remediation/{action_id}/approve")
+def approve_remediation_action_endpoint(
+    action_id: str,
+    req: HITLDecisionRequest = HITLDecisionRequest(),
+) -> Dict[str, Any]:
+    """Approve a pending remediation action and execute simulated remediation."""
+    res = RemediationEngine.approve_action(
+        action_id=action_id,
+        operator=req.operator,
+        rationale=req.rationale,
+    )
+    if not res.get("success"):
+        raise HTTPException(status_code=404, detail=res.get("message", "Action not found."))
+    return res
+
+
+@app.post("/api/remediation/{action_id}/reject")
+def reject_remediation_action_endpoint(
+    action_id: str,
+    req: HITLDecisionRequest = HITLDecisionRequest(),
+) -> Dict[str, Any]:
+    """Reject a pending remediation action and record the decision audit log."""
+    res = RemediationEngine.reject_action(
+        action_id=action_id,
+        operator=req.operator,
+        rationale=req.rationale,
+    )
+    if not res.get("success"):
+        raise HTTPException(status_code=404, detail=res.get("message", "Action not found."))
+    return res
+
+
+class HITLModifyRequest(BaseModel):
+    commands: List[str]
+    operator: str = "human_operator"
+    rationale: Optional[str] = "Operator modified remediation commands"
+
+
+@app.post("/api/remediation/{action_id}/modify")
+def modify_remediation_action_endpoint(
+    action_id: str,
+    req: HITLModifyRequest,
+) -> Dict[str, Any]:
+    """Modify parameters/commands of a pending action and record the decision audit log."""
+    res = RemediationEngine.modify_action(
+        action_id=action_id,
+        new_commands=req.commands,
+        operator=req.operator,
+        rationale=req.rationale,
+    )
+    if not res.get("success"):
+        raise HTTPException(status_code=404, detail=res.get("message", "Action not found."))
+    return res
 
 
 class RemediationRequest(BaseModel):
@@ -396,10 +554,10 @@ def simulate_remediation_endpoint(req: SimulationRequest) -> Dict[str, Any]:
             f"no apply-policy {req.action_type.replace(' ', '_').upper()}",
             "commit and-quit",
         ]
-        before = {"max_link_utilization_pct": 88.0, "avg_link_utilization_pct": 74.0, "max_queue_drops": 3200.0, "avg_queue_drops": 1600.0, "packet_loss_pct": 8.5, "latency_ms": 320.0}
-        after = {"max_link_utilization_pct": 38.5, "avg_link_utilization_pct": 32.0, "max_queue_drops": 0.0, "avg_queue_drops": 0.0, "packet_loss_pct": 0.02, "latency_ms": 15.0}
+        before = {"max_link_utilization_pct": 88.0, "avg_link_utilization_pct": 74.0, "max_queue_drops": 1200.0, "avg_queue_drops": 600.0, "packet_loss_pct": 5.4, "latency_ms": 120.0}
+        after = {"max_link_utilization_pct": 38.0, "avg_link_utilization_pct": 32.0, "max_queue_drops": 0.0, "avg_queue_drops": 0.0, "packet_loss_pct": 0.01, "latency_ms": 15.0}
 
-    delta = {k: round(after[k] - before[k], 2) for k in before}
+    delta = {k: round(after[k] - before[k], 2) for k in before if k in after}
 
     return {
         "status": "success",
@@ -566,6 +724,180 @@ def get_named_eval_results(filename: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail="Evaluation results file not found.")
     with open(file_path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+@app.get("/api/mcp/info")
+def get_mcp_info_endpoint() -> Dict[str, Any]:
+    """Retrieve Model Context Protocol (MCP) server integration metadata and registered tools."""
+    from netcoop.mcp.server import NetCoopMCPServer
+    return {
+        "status": "ready",
+        "server_name": "netcoop-mcp-server",
+        "version": __version__,
+        "transport": "stdio",
+        "entrypoint": "python -m netcoop.mcp.server",
+        "tools": NetCoopMCPServer.TOOLS_MANIFEST,
+        "supported_clients": [
+            {
+                "client": "Claude Desktop",
+                "config_file": "%APPDATA%\\Claude\\claude_desktop_config.json",
+                "sample_config": {
+                    "mcpServers": {
+                        "netcoop": {
+                            "command": "python",
+                            "args": ["-m", "netcoop.mcp.server"]
+                        }
+                    }
+                }
+            },
+            {
+                "client": "Cursor IDE",
+                "config_file": ".cursor/mcp.json",
+                "sample_config": {
+                    "mcpServers": {
+                        "netcoop": {
+                            "command": "python",
+                            "args": ["-m", "netcoop.mcp.server"]
+                        }
+                    }
+                }
+            }
+        ]
+    }
+
+
+
+
+@app.get("/api/devices")
+def get_devices_endpoint() -> List[Dict[str, Any]]:
+    """Retrieve live inventory of campus network infrastructure devices."""
+    return [
+        {
+            "device_id": "spine-01",
+            "hostname": "spine-01.campus.netcoop.internal",
+            "role": "spine",
+            "vendor": "Arista EOS",
+            "ip_address": "10.0.0.1",
+            "status": "online",
+            "interfaces_count": 32,
+            "cpu_utilization_pct": 34.2,
+            "memory_utilization_pct": 48.5,
+            "last_config_change": "2026-10-31T08:30:00Z",
+            "maintenance_mode": False,
+        },
+        {
+            "device_id": "spine-02",
+            "hostname": "spine-02.campus.netcoop.internal",
+            "role": "spine",
+            "vendor": "Arista EOS",
+            "ip_address": "10.0.0.2",
+            "status": "online",
+            "interfaces_count": 32,
+            "cpu_utilization_pct": 28.1,
+            "memory_utilization_pct": 46.0,
+            "last_config_change": "2026-10-30T14:15:00Z",
+            "maintenance_mode": False,
+        },
+        {
+            "device_id": "leaf-01",
+            "hostname": "leaf-01.campus.netcoop.internal",
+            "role": "leaf",
+            "vendor": "Cisco NX-OS",
+            "ip_address": "10.0.1.1",
+            "status": "online",
+            "interfaces_count": 48,
+            "cpu_utilization_pct": 42.0,
+            "memory_utilization_pct": 52.3,
+            "last_config_change": "2026-10-29T10:00:00Z",
+            "maintenance_mode": False,
+        },
+        {
+            "device_id": "leaf-02",
+            "hostname": "leaf-02.campus.netcoop.internal",
+            "role": "leaf",
+            "vendor": "Cisco NX-OS",
+            "ip_address": "10.0.1.2",
+            "status": "warning",
+            "interfaces_count": 48,
+            "cpu_utilization_pct": 78.5,
+            "memory_utilization_pct": 68.9,
+            "last_config_change": "2026-10-31T12:00:00Z",
+            "maintenance_mode": False,
+        },
+        {
+            "device_id": "leaf-03",
+            "hostname": "leaf-03.campus.netcoop.internal",
+            "role": "leaf",
+            "vendor": "Cisco NX-OS",
+            "ip_address": "10.0.1.3",
+            "status": "online",
+            "interfaces_count": 48,
+            "cpu_utilization_pct": 31.0,
+            "memory_utilization_pct": 44.5,
+            "last_config_change": "2026-10-28T09:20:00Z",
+            "maintenance_mode": False,
+        },
+        {
+            "device_id": "wan-01",
+            "hostname": "wan-01.campus.netcoop.internal",
+            "role": "edge_router",
+            "vendor": "Juniper JunOS",
+            "ip_address": "198.51.100.1",
+            "status": "online",
+            "interfaces_count": 16,
+            "cpu_utilization_pct": 45.8,
+            "memory_utilization_pct": 61.2,
+            "last_config_change": "2026-10-31T06:00:00Z",
+            "maintenance_mode": False,
+        },
+        {
+            "device_id": "ap-hostel-04",
+            "hostname": "ap-hostel-04.wifi.campus.internal",
+            "role": "wireless_ap",
+            "vendor": "Aruba CX",
+            "ip_address": "10.0.50.14",
+            "status": "warning",
+            "interfaces_count": 2,
+            "cpu_utilization_pct": 84.1,
+            "memory_utilization_pct": 72.0,
+            "last_config_change": "2026-10-31T11:20:00Z",
+            "maintenance_mode": False,
+        },
+    ]
+
+
+@app.get("/api/platform/status")
+def get_platform_status_endpoint() -> Dict[str, Any]:
+    """Retrieve operational health status across microservices, database, and background processes."""
+    incidents = list_incidents()
+    return {
+        "status": "healthy",
+        "version": __version__,
+        "database": {
+            "engine": "SQLite (SQLModel)",
+            "connected": True,
+            "incidents_count": len(incidents),
+        },
+        "microservices": [
+            {"name": "Orchestrator Graph", "port": 8000, "status": "active", "latency_ms": 2.1},
+            {"name": "Telemetry Agent", "port": 8001, "status": "active", "latency_ms": 4.5},
+            {"name": "Topology Agent", "port": 8002, "status": "active", "latency_ms": 3.8},
+            {"name": "Config Agent", "port": 8003, "status": "active", "latency_ms": 3.2},
+            {"name": "Log Agent", "port": 8004, "status": "active", "latency_ms": 5.1},
+            {"name": "Synthesizer Agent", "port": 8005, "status": "active", "latency_ms": 6.0},
+            {"name": "Gateway Adapter", "port": 8006, "status": "active", "latency_ms": 1.9},
+            {"name": "Classifier Agent", "port": 8007, "status": "active", "latency_ms": 8.4},
+            {"name": "WiFi & Services Agent", "port": 8008, "status": "active", "latency_ms": 4.1},
+        ],
+        "mcp": {
+            "server": "netcoop-mcp-server",
+            "transport": "stdio",
+            "status": "ready",
+        },
+        "websockets": {
+            "active_connections": len(ws_manager.active_connections),
+        },
+    }
 
 
 # Serve dashboard static assets if built

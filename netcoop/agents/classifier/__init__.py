@@ -72,3 +72,12 @@ class ScenarioClassifier:
                     supporting_signals=[f"link_utilization_pct: {util}%", f"queue_drops: {drops}"],
                 )
         return None
+
+
+# Learned, calibrated ClassifierAgent with fallback
+try:
+    from netcoop.agents.classifier.classifier_agent import ClassifierAgent
+except Exception:
+    from netcoop.agents.classifier.agent import ClassifierAgent
+
+__all__ = ["ScenarioClassifier", "ClassifierAgent"]

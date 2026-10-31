@@ -23,3 +23,4 @@ class ScenarioEvaluationResult(BaseModel):
     confidence: float
     is_correct: bool
     latency_ms: float
+

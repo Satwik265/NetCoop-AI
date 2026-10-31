@@ -17,15 +17,30 @@
     "remediation_actions"
   ],
   "properties": {
-    "incident_id": { "type": "string" },
-    "network_id": { "type": "string" },
-    "timestamp_utc": { "type": "string", "format": "date-time" },
+    "incident_id": {
+      "type": "string"
+    },
+    "network_id": {
+      "type": "string"
+    },
+    "timestamp_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
     "status": {
       "type": "string",
-      "enum": ["diagnosed", "insufficient_evidence", "inconclusive", "benign"]
+      "enum": [
+        "diagnosed",
+        "insufficient_evidence",
+        "inconclusive",
+        "benign"
+      ]
     },
     "probable_cause": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Deterministic root cause explanation, or null if insufficient_evidence"
     },
     "confidence": {
@@ -36,34 +51,78 @@
     },
     "affected_devices": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "affected_interfaces": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "default": []
     },
     "evidence": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["source_agent", "category", "finding", "severity"],
+        "required": [
+          "source_agent",
+          "category",
+          "finding",
+          "severity"
+        ],
         "properties": {
-          "source_agent": { "type": "string" },
-          "category": { "type": "string" },
-          "finding": { "type": "string" },
-          "entity": { "type": "string" },
-          "metric_name": { "type": "string" },
-          "value": { "type": ["number", "string", "boolean", "null"] },
-          "unit": { "type": "string" },
-          "severity": { "type": "string", "enum": ["info", "warning", "critical"] },
-          "timestamp": { "type": "string" }
+          "source_agent": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "finding": {
+            "type": "string"
+          },
+          "entity": {
+            "type": "string"
+          },
+          "metric_name": {
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "number",
+              "string",
+              "boolean",
+              "null"
+            ]
+          },
+          "unit": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "info",
+              "warning",
+              "critical"
+            ]
+          },
+          "timestamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
         }
       }
     },
     "uncertainty": {
       "type": "object",
-      "required": ["score", "reasons", "missing_evidence"],
+      "required": [
+        "score",
+        "reasons",
+        "missing_evidence"
+      ],
       "properties": {
         "score": {
           "type": "number",
@@ -73,11 +132,15 @@
         },
         "reasons": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "missing_evidence": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Specific telemetry or diagnostic data needed to reach certainty"
         },
         "alternative_hypotheses": {
@@ -85,8 +148,12 @@
           "items": {
             "type": "object",
             "properties": {
-              "cause": { "type": "string" },
-              "confidence": { "type": "number" }
+              "cause": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "number"
+              }
             }
           },
           "default": []
@@ -97,35 +164,69 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["action_id", "title", "device", "risk_level", "is_simulated"],
+        "required": [
+          "action_id",
+          "title",
+          "device",
+          "risk_level",
+          "is_simulated"
+        ],
         "properties": {
-          "action_id": { "type": "string" },
-          "title": { "type": "string" },
-          "description": { "type": "string" },
-          "device": { "type": "string" },
+          "action_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "device": {
+            "type": "string"
+          },
           "commands": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           },
           "rollback_commands": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           },
           "risk_level": {
             "type": "string",
-            "enum": ["low", "medium", "high"]
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
           },
           "blast_radius_devices": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           },
           "is_simulated": {
             "type": "boolean",
-            "enum": [true]
+            "enum": [
+              true
+            ]
           },
           "status": {
             "type": "string",
-            "enum": ["recommended", "pending_approval", "simulated_success", "rejected"]
+            "enum": [
+              "recommended",
+              "pending_approval",
+              "simulated_success",
+              "rejected",
+              "pending",
+              "approved",
+              "modified"
+            ]
           }
         }
       }
@@ -136,7 +237,78 @@
     },
     "processing_time_ms": {
       "type": "number"
+    },
+    "causal_chain": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Deterministic step-by-step causal reasoning sequence"
+    },
+    "conflicts_resolved": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "default": [],
+      "description": "Multi-agent contradictions and arbitration rationales"
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Missing metrics, temporal sparsity, or uncorroborated domains"
+    },
+    "provenance": {
+      "type": "object",
+      "default": {},
+      "description": "Source generator or adapter attribution metadata"
+    },
+    "confidence_breakdown": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "rules_score": {
+          "type": "number"
+        },
+        "model_score": {
+          "type": "number"
+        },
+        "blended_score": {
+          "type": "number"
+        },
+        "calibrated_confidence": {
+          "type": "number"
+        }
+      },
+      "description": "Decomposition of hybrid confidence scores between rule engine and learned classifier"
+    },
+    "conformal_prediction_set": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Split conformal prediction set with statistical coverage guarantees"
+    },
+    "confidence_category": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "high",
+        "medium",
+        "low",
+        "abstain",
+        null
+      ],
+      "description": "Empirical confidence tier based on precision cutoffs"
     }
   }
 }
-
