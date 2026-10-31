@@ -92,3 +92,30 @@ The Orchestrator and API broadcast diagnostic events to connected dashboard clie
 2. **Ambiguity / Missing Telemetry**: If prerequisite corroboration is absent or uncertainty is high, status must be `insufficient_evidence`.
 3. **Simulated Remediation Only**: All remediation commands are simulated and sandboxed; real network hardware is never contacted.
 
+---
+
+## 7. Authoritative Message Envelope and Concept Mapping
+
+The existing message envelope (`AgentEnvelope` in `netcoop/core/envelope.py`) is authoritative and binding:
+
+### Envelope Field Map
+- `payload.scope`: Network boundary (`network_id`, `devices`, `interfaces`).
+- `payload.observations`: Structured empirical observations discovered by specialist agents.
+- `payload.hypotheses`: Proposed diagnostic fault hypotheses with bounded confidence scores.
+- `payload.inquiries`: Cross-agent corroboration requests.
+- `context.iteration`: Monotonically increasing round counter for debate and conflict resolution managed by the mediator agent.
+
+### Conceptual Terminology Mapping
+| Abstract Term | Authoritative Envelope Field | Description |
+| :--- | :--- | :--- |
+| **Evidence Query** | `payload.inquiries` | Targeted corroboration questions sent across agents |
+| **Findings** | `payload.observations` & `payload.hypotheses` | Empirical metric anomalies and proposed causal hypotheses |
+| **Debate / Conflict Rounds** | `context.iteration` | Multi-turn reconciliation cycle coordinated by mediator |
+
+### Additive and Backward-Compatible Extensions
+All envelope extensions must be strictly **additive** without renaming or deleting existing fields:
+- `schema_version`: Maintained in header as `"1.0.0"` (or `"1.x.y"`).
+- `units`: Enforced via canonical unit dictionary in `Observation.validate_unit` with alias support.
+- `provenance`: Optional metadata dictionary tracing agent origin, data source, or transformation history.
+- `data_quality`: Optional quality rating (0.0 to 1.0) and anomaly trace per observation or payload.
+- `confidence`: Calibrated float bounded in `[0.0, 1.0]` across hypotheses and diagnostic conclusions.

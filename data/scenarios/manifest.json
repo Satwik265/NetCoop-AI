@@ -233,6 +233,26 @@
       ],
       "target_confidence_min": 0.7,
       "description": "Single-quoted raw JSON input."
+    },
+    {
+      "name": "compound_cpu_and_link",
+      "file": "compound_cpu_and_link.json",
+      "category": "compound",
+      "ground_truth": "Simultaneous Router CPU overload and Link Congestion",
+      "expected_status": "insufficient_evidence",
+      "expected_devices": [],
+      "target_confidence_min": 0.0,
+      "description": "Two concurrent fault signatures trigger conflict resolution fallback."
+    },
+    {
+      "name": "compound_wifi_and_dns",
+      "file": "compound_wifi_and_dns.json",
+      "category": "compound",
+      "ground_truth": "Simultaneous Wi-Fi attenuation and campus-wide DNS failure",
+      "expected_status": "insufficient_evidence",
+      "expected_devices": [],
+      "target_confidence_min": 0.0,
+      "description": "Dual simultaneous wireless and DNS service degradations."
     }
   ]
 }

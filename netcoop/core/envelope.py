@@ -104,11 +104,25 @@ class Observation(BaseModel):
     timestamp_start: Optional[str] = None
     timestamp_end: Optional[str] = None
     context: Dict[str, Any] = Field(default_factory=dict)
+    provenance: Optional[Dict[str, Any]] = None
+    confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    data_quality: Optional[float] = Field(default=None, ge=0.0, le=1.0)
 
     @field_validator("unit")
     @classmethod
     def validate_unit(cls, v: str) -> str:
-        """Ensure standard SI or telemetry unit representation."""
+        """Ensure standard SI or telemetry unit representation with alias mapping."""
+        unit_map = {
+            "%": "percent",
+            "pct": "percent",
+            "percentage": "percent",
+            "sec": "s",
+            "seconds": "s",
+            "second": "s",
+            "millisecond": "ms",
+            "milliseconds": "ms",
+        }
+        val = unit_map.get(v.lower().strip(), v.lower().strip())
         valid_units = {
             "bps",
             "kbps",
@@ -130,11 +144,11 @@ class Observation(BaseModel):
             "boolean",
             "text",
         }
-        if v.lower() not in valid_units:
+        if val not in valid_units:
             raise ValueError(
                 f"Unknown unit '{v}'. Allowed units include: {sorted(list(valid_units))}"
             )
-        return v.lower()
+        return val
 
 
 class Hypothesis(BaseModel):
@@ -146,6 +160,8 @@ class Hypothesis(BaseModel):
     supporting_observation_ids: List[str]
     refuting_observation_ids: List[str] = Field(default_factory=list)
     required_corroboration: List[str] = Field(default_factory=list)
+    provenance: Optional[Dict[str, Any]] = None
+    data_quality: Optional[float] = Field(default=None, ge=0.0, le=1.0)
 
 
 class Inquiry(BaseModel):
@@ -157,6 +173,7 @@ class Inquiry(BaseModel):
     target_entity: str
     parameters: Dict[str, Any] = Field(default_factory=dict)
     answer: Optional[Union[str, Dict[str, Any]]] = None
+    provenance: Optional[Dict[str, Any]] = None
 
 
 class ProtocolErrorDetail(BaseModel):
@@ -176,6 +193,8 @@ class EnvelopePayload(BaseModel):
     inquiries: List[Inquiry] = Field(default_factory=list)
     raw_data: Optional[Dict[str, Any]] = None
     error: Optional[ProtocolErrorDetail] = None
+    data_quality: Optional[Dict[str, Any]] = None
+    provenance: Optional[Dict[str, Any]] = None
 
 
 class AgentEnvelope(BaseModel):
@@ -218,4 +237,3 @@ class AgentEnvelope(BaseModel):
             ),
             context={"iteration": original.context.get("iteration", 0)},
         )
-
