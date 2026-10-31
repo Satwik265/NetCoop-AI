@@ -77,17 +77,8 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
     raw_data = state["raw_data"]
     devices = state["scope_devices"]
 
-    # Specialist agents roster
-    specialist_roles = [
-        AgentRole.TELEMETRY_AGENT,
-        AgentRole.TOPOLOGY_AGENT,
-        AgentRole.CONFIG_AGENT,
-        AgentRole.LOG_AGENT,
-        AgentRole.WIFI_SERVICES_AGENT,
-    ]
-    # Dynamically include ClassifierAgent if registered
-    if AgentRole.CLASSIFIER_AGENT in mediator._in_process_agents:
-        specialist_roles.append(AgentRole.CLASSIFIER_AGENT)
+    # Specialist agents roster sourced from dynamic registry
+    specialist_roles = [r for r in mediator.registry.registered_roles if r != AgentRole.SYNTHESIZER_AGENT]
 
     all_obs: List[Dict[str, Any]] = list(state.get("accumulated_observations", []))
     all_hyps: List[Dict[str, Any]] = list(state.get("accumulated_hypotheses", []))
@@ -529,6 +520,7 @@ compiled_diagnostic_graph = build_diagnostic_graph().compile(checkpointer=checkp
 
 def run_diagnosis(incident_data: Dict[str, Any]) -> UnifiedDiagnosticReport:
     """High-level runner executing full diagnostic pipeline on network incident input."""
+    mediator.reset_dead_agents()
     init_db()
 
     incident_id = incident_data.get("incident_id", "inc-default")

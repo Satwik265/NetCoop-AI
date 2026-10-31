@@ -10,26 +10,53 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - HOST=0.0.0.0
+      - BIND_HOST=0.0.0.0
       - PORT=8000
       - DATABASE_URL=sqlite:///./netcoop.db
       - AGENTS_MODE=http
+      - IN_PROCESS_FALLBACK=false
+      - TELEMETRY_AGENT_HOST=telemetry-agent
+      - TOPOLOGY_AGENT_HOST=topology-agent
+      - CONFIG_AGENT_HOST=config-agent
+      - LOG_AGENT_HOST=log-agent
+      - SYNTHESIZER_AGENT_HOST=synthesizer-agent
+      - GATEWAY_HOST=gateway
+      - CLASSIFIER_AGENT_HOST=classifier-agent
+      - WIFI_SERVICES_AGENT_HOST=wifi-services-agent
       - TELEMETRY_AGENT_PORT=8001
       - TOPOLOGY_AGENT_PORT=8002
       - CONFIG_AGENT_PORT=8003
       - LOG_AGENT_PORT=8004
       - SYNTHESIZER_AGENT_PORT=8005
       - GATEWAY_PORT=8006
+      - CLASSIFIER_AGENT_PORT=8007
+      - WIFI_SERVICES_AGENT_PORT=8008
     volumes:
       - ./data:/app/data
       - netcoop-db:/app/storage
     depends_on:
-      - telemetry-agent
-      - topology-agent
-      - config-agent
-      - log-agent
-      - synthesizer-agent
-      - gateway
+      telemetry-agent:
+        condition: service_healthy
+      topology-agent:
+        condition: service_healthy
+      config-agent:
+        condition: service_healthy
+      log-agent:
+        condition: service_healthy
+      synthesizer-agent:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+      classifier-agent:
+        condition: service_healthy
+      wifi-services-agent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
     restart: unless-stopped
 
   telemetry-agent:
@@ -40,6 +67,12 @@ services:
     command: ["python", "-m", "agents.server", "--role", "telemetry_agent", "--host", "0.0.0.0", "--port", "8001"]
     ports:
       - "8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
     restart: unless-stopped
 
   topology-agent:
@@ -50,6 +83,12 @@ services:
     command: ["python", "-m", "agents.server", "--role", "topology_agent", "--host", "0.0.0.0", "--port", "8002"]
     ports:
       - "8002:8002"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
     restart: unless-stopped
 
   config-agent:
@@ -60,6 +99,12 @@ services:
     command: ["python", "-m", "agents.server", "--role", "config_agent", "--host", "0.0.0.0", "--port", "8003"]
     ports:
       - "8003:8003"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8003/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
     restart: unless-stopped
 
   log-agent:
@@ -70,6 +115,12 @@ services:
     command: ["python", "-m", "agents.server", "--role", "log_agent", "--host", "0.0.0.0", "--port", "8004"]
     ports:
       - "8004:8004"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
     restart: unless-stopped
 
   synthesizer-agent:
@@ -80,6 +131,12 @@ services:
     command: ["python", "-m", "agents.server", "--role", "synthesizer_agent", "--host", "0.0.0.0", "--port", "8005"]
     ports:
       - "8005:8005"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8005/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
     restart: unless-stopped
 
   gateway:
@@ -90,6 +147,44 @@ services:
     command: ["uvicorn", "gateway.api:app", "--host", "0.0.0.0", "--port", "8006"]
     ports:
       - "8006:8006"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8006/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    restart: unless-stopped
+
+  classifier-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: netcoop-classifier-agent
+    command: ["python", "-m", "agents.server", "--role", "classifier_agent", "--host", "0.0.0.0", "--port", "8007"]
+    ports:
+      - "8007:8007"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8007/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    restart: unless-stopped
+
+  wifi-services-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: netcoop-wifi-services-agent
+    command: ["python", "-m", "agents.server", "--role", "wifi_services_agent", "--host", "0.0.0.0", "--port", "8008"]
+    ports:
+      - "8008:8008"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8008/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
     restart: unless-stopped
 
 volumes:

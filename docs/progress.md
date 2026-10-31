@@ -35,7 +35,7 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 | **Fault Diagnosis with Evidence** | Corroborated root cause identification with evidentiary chain | `netcoop/core/evidence.py`<br/>`netcoop/core/correlation.py`<br/>`netcoop/core/signatures.py`<br/>`netcoop/core/thresholds.py` | `scripts/eval_benchmark.py`<br/>(21/21 scenarios passed, 100%) | **Complete** |
 | **Unified JSON Report** | Exact output format (incident_id, status, cause, confidence, devices, evidence, uncertainty, actions, causal_chain, conflicts_resolved, limitations, provenance, confidence_breakdown, conformal_prediction_set, confidence_category) | `netcoop/core/report.py`<br/>`schemas/diagnostic_report.json` | `tests/test_scenarios.py`<br/>`tests/test_insufficient_evidence.py`<br/>`tests/test_chaos.py` (18/18 passed) | **Complete** |
 | **Validation & Error Handling** | Schema validation, unit conversions, null/NaN sanitization, skew handling | `gateway/adapters/organizer_adapter.py`<br/>`netcoop/core/normalizer.py`<br/>`gateway/api.py` | `tests/test_organizer_adapter.py`<br/>`tests/test_robustness_hypothesis.py`<br/>`tests/test_b1_gateway_robustness.py`<br/>`tests/test_chaos.py` | **Complete** |
-| **Reproducible Tests, Samples & Demo** | Single command demo, sample inputs, setup instructions, unit & fuzz tests | `Makefile`<br/>`scripts/demo.py`<br/>`scripts/demo_organizer.py`<br/>`data/scenarios/` | `pytest tests/ -q` (125/125 passed)<br/>`python scripts/eval_benchmark.py` (21/21 passed) | **Complete** |
+| **Reproducible Tests, Samples & Demo** | Single command demo, sample inputs, setup instructions, unit & fuzz tests | `Makefile`<br/>`scripts/demo.py`<br/>`scripts/demo_organizer.py`<br/>`data/scenarios/` | `pytest tests/ -q` (136/136 passed)<br/>`python scripts/eval_benchmark.py` (21/21 passed) | **Complete** |
 
 ---
 
@@ -82,7 +82,7 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 | **Orchestration & Conflict Resolution** | 15% | `orchestrator/graph.py`<br/>`orchestrator/mediator.py`<br/>`orchestrator/conflict_resolver.py`<br/>`core/bus.py` | `tests/test_conflict_resolution.py`<br/>`tests/test_signatures_and_conflicts.py`<br/>`tests/test_scenarios.py` | complete |
 | **Robustness to Missing / Incompatible Data** | 15% | `core/normalizer.py`<br/>`gateway/adapters/organizer_adapter.py`<br/>`gateway/api.py`<br/>`tests/test_chaos.py`<br/>`docs/robustness.md` | `tests/test_robustness_hypothesis.py`<br/>`tests/test_organizer_adapter.py`<br/>`tests/test_b1_gateway_robustness.py`<br/>`tests/test_chaos.py` (18/18 passed) | complete |
 | **Innovation, Usability, Extensibility** | 10% | `mcp_server/server.py`<br/>`remediation/engine.py`<br/>`dashboard/` (React Dashboard)<br/>`cli/main.py` (`diagnose`, `replay`)<br/>`Makefile` (`up`, `down`, `demo`) | `tests/test_mcp_server.py`<br/>`tests/test_remediation_safety.py` | complete |
-| **Code Quality, Docs, and Demo** | 5% | `docs/progress.md`<br/>`docs/contract.md`<br/>`docs/handoff.md`<br/>`docs/organizer_format.md`<br/>`docs/eval_results_format.md`<br/>`docs/robustness.md`<br/>`docs/confidence.md`<br/>`README.md`<br/>`Makefile` | Full test suite execution (125/125 green) | complete |
+| **Code Quality, Docs, and Demo** | 5% | `docs/progress.md`<br/>`docs/contract.md`<br/>`docs/handoff.md`<br/>`docs/organizer_format.md`<br/>`docs/eval_results_format.md`<br/>`docs/robustness.md`<br/>`docs/confidence.md`<br/>`README.md`<br/>`Makefile` | Full test suite execution (136/136 green) | complete |
 
 ---
 

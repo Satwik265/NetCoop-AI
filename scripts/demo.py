@@ -27,6 +27,8 @@ from storage.db import get_envelope_logs, get_incident, init_db
 console = Console()
 
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 SCENARIOS_DIR = PROJECT_ROOT / "data" / "scenarios"
 
 DEMO_SCENARIOS = [
@@ -36,9 +38,18 @@ DEMO_SCENARIOS = [
 ]
 
 
+_DEMO_CHILD_PROCS: List[Any] = []
+
+
 def ensure_agents_running() -> bool:
-    """Check if agent microservices are running; launch them if not."""
+    """Check if agent microservices are running; launch them as supervised processes if not."""
     import httpx
+    from scripts.run_agents import (
+        AGENT_ROLES,
+        GATEWAY_SERVICE,
+        start_agent_process,
+        start_gateway_process,
+    )
 
     ports = [
         settings.telemetry_agent_port,
@@ -47,12 +58,14 @@ def ensure_agents_running() -> bool:
         settings.log_agent_port,
         settings.synthesizer_agent_port,
         settings.gateway_port,
+        settings.classifier_agent_port,
+        settings.wifi_services_agent_port,
     ]
 
     missing = []
     for port in ports:
         try:
-            with httpx.Client(timeout=0.8) as client:
+            with httpx.Client(timeout=0.5) as client:
                 res = client.get(f"http://127.0.0.1:{port}/health")
                 if res.status_code != 200:
                     missing.append(port)
@@ -60,10 +73,43 @@ def ensure_agents_running() -> bool:
             missing.append(port)
 
     if missing:
-        console.print(f"[dim]Launching {len(missing)} inactive agent microservices...[/dim]")
-        run_script = PROJECT_ROOT / "scripts" / "run_agents.py"
-        subprocess.run([sys.executable, str(run_script), "--daemon"], check=False)
-        time.sleep(2.0)
+        console.print(f"[dim]Launching {len(missing)} inactive agent microservices as supervised child processes...[/dim]")
+        if settings.gateway_port in missing:
+            gw_proc = start_gateway_process(settings.gateway_port, PROJECT_ROOT)
+            _DEMO_CHILD_PROCS.append(gw_proc)
+
+        for role, port in AGENT_ROLES:
+            if port in missing:
+                proc = start_agent_process(role, port, PROJECT_ROOT)
+                _DEMO_CHILD_PROCS.append(proc)
+
+        # Wait for all to be healthy concurrently
+        all_services = AGENT_ROLES + [GATEWAY_SERVICE]
+        pending = {r: p for r, p in all_services if p in missing}
+        start_wait = time.time()
+        timeout = 25.0
+        while pending and (time.time() - start_wait < timeout):
+            for role in list(pending.keys()):
+                port = pending[role]
+                url = f"http://127.0.0.1:{port}/health"
+                try:
+                    with httpx.Client(timeout=0.5) as client:
+                        res = client.get(url)
+                        if res.status_code == 200:
+                            del pending[role]
+                except Exception:
+                    pass
+            if pending:
+                time.sleep(0.5)
+
+        for role, port in all_services:
+            try:
+                with httpx.Client(timeout=0.5) as client:
+                    res = client.get(f"http://127.0.0.1:{port}/health")
+                    status = "healthy" if res.status_code == 200 else "UNRESPONSIVE"
+            except Exception:
+                status = "UNRESPONSIVE"
+            console.print(f"  [dim]{role:<22} (port {port}): {status}[/dim]")
 
     return True
 
@@ -91,9 +137,20 @@ def run_scenario_demo(scenario_name: str, scenario_path: Path) -> Dict[str, Any]
         )
     )
 
-    # 1. Gateway Ingestion and Canonicalization
-    console.print("[dim]1. Ingesting and canonicalizing telemetry through Gateway adapter...[/dim]")
-    canonical_data = OrganizerAdapter.adapt_dataset(raw_dataset)
+    # 1. Gateway Ingestion and Canonicalization over HTTP
+    console.print(f"[dim]1. Ingesting and canonicalizing telemetry through Gateway HTTP microservice (port {settings.gateway_port})...[/dim]")
+    import httpx
+    gateway_url = settings.get_gateway_url()
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            resp = client.post(gateway_url, json=raw_dataset)
+            if resp.status_code == 200:
+                canonical_data = resp.json()
+            else:
+                raise RuntimeError(f"Gateway HTTP error {resp.status_code}: {resp.text}")
+    except Exception as exc:
+        console.print(f"[bold red]Gateway service unreachable at {gateway_url}: {exc}[/bold red]")
+        raise
 
     # 2. Multi-Agent Orchestration
     console.print("[dim]2. Orchestrating specialist agents across HTTP loopback microservices...[/dim]")
@@ -161,36 +218,47 @@ def main() -> None:
         )
     )
 
-    ensure_agents_running()
+    try:
+        ensure_agents_running()
 
-    results = []
-    for name, path in DEMO_SCENARIOS:
-        console.print(f"\n[bold]--- Running Demonstration Scenario: {name} ---[/bold]\n")
-        res = run_scenario_demo(name, path)
-        results.append((name, res.get("status"), res.get("probable_cause"), res.get("confidence")))
+        results = []
+        for name, path in DEMO_SCENARIOS:
+            console.print(f"\n[bold]--- Running Demonstration Scenario: {name} ---[/bold]\n")
+            res = run_scenario_demo(name, path)
+            results.append((name, res.get("status"), res.get("probable_cause"), res.get("confidence")))
 
-    # Final summary banner
-    summary_table = Table(title="Demonstration Execution Summary", box=box.SQUARE)
-    summary_table.add_column("Scenario", style="bold")
-    summary_table.add_column("Diagnostic Status", style="white")
-    summary_table.add_column("Confidence", style="white")
-    summary_table.add_column("Probable Cause", style="dim")
+        # Final summary banner
+        summary_table = Table(title="Demonstration Execution Summary", box=box.SQUARE)
+        summary_table.add_column("Scenario", style="bold")
+        summary_table.add_column("Diagnostic Status", style="white")
+        summary_table.add_column("Confidence", style="white")
+        summary_table.add_column("Probable Cause", style="dim")
 
-    for name, status, cause, conf in results:
-        conf_str = f"{int((conf or 0.0) * 100)}%" if conf is not None else "N/A"
-        summary_table.add_row(name, status or "unknown", conf_str, cause or "N/A")
+        for name, status, cause, conf in results:
+            conf_str = f"{int((conf or 0.0) * 100)}%" if conf is not None else "N/A"
+            summary_table.add_row(name, status or "unknown", conf_str, cause or "N/A")
 
-    console.print("\n")
-    console.print(summary_table)
-    console.print(
-        Panel(
-            "Demo run finished successfully.\n"
-            "Use 'netcoop replay <incident_id>' to replay any individual trace.\n"
-            "Example: netcoop replay inc-link-congestion-42",
-            box=box.SQUARE,
-            title="[bold]Demo Completed[/bold]",
+        console.print("\n")
+        console.print(summary_table)
+        console.print(
+            Panel(
+                "Demo run finished successfully.\n"
+                "Use 'netcoop replay <incident_id>' to replay any individual trace.\n"
+                "Example: netcoop replay inc-link-congestion-42",
+                box=box.SQUARE,
+                title="[bold]Demo Completed[/bold]",
+            )
         )
-    )
+    finally:
+        from scripts.run_agents import terminate_pid
+        if _DEMO_CHILD_PROCS:
+            console.print("\n[dim]Cleaning up supervised demo microservice processes...[/dim]")
+            for p in _DEMO_CHILD_PROCS:
+                try:
+                    terminate_pid(p.pid)
+                except Exception:
+                    pass
+            _DEMO_CHILD_PROCS.clear()
 
 
 if __name__ == "__main__":
