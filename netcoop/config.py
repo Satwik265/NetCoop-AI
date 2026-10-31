@@ -30,10 +30,15 @@ class Settings(BaseSettings):
     log_agent_port: int = 8004
     synthesizer_agent_port: int = 8005
     gateway_port: int = 8006
+    classifier_agent_port: int = 8007
 
     # Communication mode: "http" enforces microservice HTTP calls
     agents_mode: str = "http"
     in_process_fallback: bool = True
+
+    # Feature flags
+    feature_mcp: bool = True
+    feature_remediation_sim: bool = True
 
     # Persistence
     database_url: str = "sqlite:///./netcoop.db"
@@ -57,6 +62,7 @@ class Settings(BaseSettings):
             AgentRole.CONFIG_AGENT: self.config_agent_port,
             AgentRole.LOG_AGENT: self.log_agent_port,
             AgentRole.SYNTHESIZER_AGENT: self.synthesizer_agent_port,
+            AgentRole.CLASSIFIER_AGENT: self.classifier_agent_port,
         }
         return port_mapping.get(role, self.port)
 
@@ -72,3 +78,7 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Global feature flags
+FEATURE_MCP: bool = settings.feature_mcp
+FEATURE_REMEDIATION_SIM: bool = settings.feature_remediation_sim

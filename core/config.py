@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     agents_mode: str = "http"
     in_process_fallback: bool = True
 
+    # Feature flags
+    feature_mcp: bool = True
+    feature_remediation_sim: bool = True
+
     # Persistence
     database_url: str = "sqlite:///./netcoop.db"
 
@@ -74,3 +78,7 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Global feature flags
+FEATURE_MCP: bool = settings.feature_mcp
+FEATURE_REMEDIATION_SIM: bool = settings.feature_remediation_sim

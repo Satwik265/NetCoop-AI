@@ -114,3 +114,111 @@ class RemediationCatalog:
             status="pending_approval",
         )
 
+    @classmethod
+    def create_rebalance_traffic_action(
+        cls, device: str, interface: str = "et-0/0/1"
+    ) -> RemediationActionItem:
+        """Generate simulated command to dynamically rebalance traffic across parallel links."""
+        return RemediationActionItem(
+            action_id=f"act-rebalance-{device}",
+            title=f"Rebalance traffic across ECMP next-hops from {device} {interface}",
+            description="Re-weight hash buckets to steer egress flows across parallel paths and relieve congestion.",
+            device=device,
+            commands=[
+                f"configure terminal",
+                f"interface {interface}",
+                f"load-interval 30",
+                f"traffic-policy REBALANCE_ECMP",
+                f"commit and-quit",
+            ],
+            rollback_commands=[
+                f"configure terminal",
+                f"interface {interface}",
+                f"no traffic-policy REBALANCE_ECMP",
+                f"commit and-quit",
+            ],
+            risk_level="low",
+            blast_radius_devices=[device],
+            is_simulated=True,
+            status="pending_approval",
+        )
+
+    @classmethod
+    def create_clear_counters_action(
+        cls, device: str, interface: str = "et-0/0/1"
+    ) -> RemediationActionItem:
+        """Generate simulated command to clear interface CRC and drop counters."""
+        return RemediationActionItem(
+            action_id=f"act-clear-counters-{device}",
+            title=f"Clear interface counters and queue drops on {device} {interface}",
+            description="Reset transient CRC and buffer overflow metrics to verify remediation efficacy.",
+            device=device,
+            commands=[
+                f"clear counters {interface}",
+                f"clear interface {interface} queue-drops",
+            ],
+            rollback_commands=[],
+            risk_level="low",
+            blast_radius_devices=[device],
+            is_simulated=True,
+            status="pending_approval",
+        )
+
+    @classmethod
+    def create_raise_qos_action(
+        cls, device: str, interface: str = "et-0/0/1"
+    ) -> RemediationActionItem:
+        """Generate simulated command to raise QoS priority for latency-sensitive traffic."""
+        return RemediationActionItem(
+            action_id=f"act-qos-{device}",
+            title=f"Raise QoS priority and buffer reserve on {device} {interface}",
+            description="Prioritize delay-sensitive flows and allocate strict priority queue bandwidth.",
+            device=device,
+            commands=[
+                f"configure terminal",
+                f"interface {interface}",
+                f"service-policy type qos output EXPEDITE_VOICE_VIDEO",
+                f"commit and-quit",
+            ],
+            rollback_commands=[
+                f"configure terminal",
+                f"interface {interface}",
+                f"no service-policy type qos output EXPEDITE_VOICE_VIDEO",
+                f"commit and-quit",
+            ],
+            risk_level="low",
+            blast_radius_devices=[device],
+            is_simulated=True,
+            status="pending_approval",
+        )
+
+    @classmethod
+    def create_failover_link_action(
+        cls, device: str, interface: str = "et-0/0/1", peer_device: Optional[str] = None
+    ) -> RemediationActionItem:
+        """Generate simulated command to administratively fail over a degraded link."""
+        blast = [device]
+        if peer_device:
+            blast.append(peer_device)
+        return RemediationActionItem(
+            action_id=f"act-failover-{device}",
+            title=f"Fail over link {device}:{interface} to redundant secondary circuit",
+            description="Isolate degraded link to trigger instantaneous failover to secondary path.",
+            device=device,
+            commands=[
+                f"configure terminal",
+                f"interface {interface}",
+                f"shutdown",
+                f"commit and-quit",
+            ],
+            rollback_commands=[
+                f"configure terminal",
+                f"interface {interface}",
+                f"no shutdown",
+                f"commit and-quit",
+            ],
+            risk_level="medium",
+            blast_radius_devices=blast,
+            is_simulated=True,
+            status="pending_approval",
+        )

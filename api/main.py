@@ -254,6 +254,59 @@ class RemediationRequest(BaseModel):
     operator: str = "human_operator"
 
 
+class SimulationRequest(BaseModel):
+    scenario_or_incident_id: Optional[str] = None
+    incident_data: Optional[Dict[str, Any]] = None
+    action_type: str = "rebalance traffic"
+    device: Optional[str] = None
+    interface: Optional[str] = "et-0/0/1"
+    peer_device: Optional[str] = None
+    operator: str = "operator"
+
+
+@app.post("/api/remediate/simulate")
+def simulate_remediation_endpoint(req: SimulationRequest) -> Dict[str, Any]:
+    """Execute in-memory remediation simulation with before/after metrics delta."""
+    if not getattr(settings, "feature_remediation_sim", True):
+        raise HTTPException(status_code=403, detail="FEATURE_REMEDIATION_SIM is disabled.")
+
+    target_data = req.incident_data
+    if not target_data and req.scenario_or_incident_id:
+        target_name = req.scenario_or_incident_id
+        scenario_file = SCENARIOS_DIR / target_name
+        if not scenario_file.exists() and not target_name.endswith(".json"):
+            scenario_file = SCENARIOS_DIR / f"{target_name}.json"
+
+        if scenario_file.exists():
+            with open(scenario_file, "r", encoding="utf-8") as f:
+                target_data = json.load(f)
+        else:
+            rec = get_incident(target_name)
+            if rec and rec.report_json:
+                target_data = json.loads(rec.report_json)
+
+    if not target_data:
+        default_file = SCENARIOS_DIR / "link_congestion.json"
+        if default_file.exists():
+            with open(default_file, "r", encoding="utf-8") as f:
+                target_data = json.load(f)
+        else:
+            raise HTTPException(status_code=400, detail="No incident or scenario data available for simulation.")
+
+    try:
+        res = RemediationEngine.simulate_proposed_action(
+            scenario_data=target_data,
+            action_name=req.action_type,
+            device=req.device,
+            interface=req.interface,
+            peer_device=req.peer_device,
+            operator=req.operator,
+        )
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Simulation error: {str(e)}")
+
+
 @app.post("/api/incidents/{incident_id}/remediate")
 def execute_remediation_endpoint(
     incident_id: str, req: RemediationRequest

@@ -15,8 +15,8 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 | **Conflict Resolution & Mediation**| Yes | Yes | None | Evaluates hypothesis overlap, triggers cross-agent inquiries, scores corroboration matrix. |
 | **Zero-LLM Offline Engine** | Yes | Yes | None | 100% deterministic rule-based correlation and evidence scoring with zero LLM dependence. |
 | **Optional LLM Bridge (Gemini)** | Yes | Yes | None | Summaries and tie-breaking only. Gracefully degrades to rule-based fallback when absent. |
-| **Simulated Remediation** | Yes | Yes | None | Safety pre-flight checks, blast radius limits, rollback commands, simulated execution audit log. |
-| **Model Context Protocol (MCP)** | Yes | Yes | None | FastMCP / JSON-RPC stdio server exposing diagnose, report, logs, and remediation tools. |
+| **Simulated Remediation Engine** | Yes | Yes | None | In-memory state mutation, before/after metric deltas, hard-blocked network calls, HITL approval. |
+| **Model Context Protocol (MCP)** | Yes | Yes | None | FastMCP / JSON-RPC stdio server exposing 10 tools, resources, and Windows client configs. |
 | **Persistent Storage & Event Log**| Yes | Yes | None | SQLite database storing incidents, raw envelope events, and remediation logs. Replay supported. |
 | **CLI (`netcoop`)** | Yes | Yes | None | Typer + Rich monochrome CLI supporting `diagnose`, `replay`, `gen`, `incidents`, `envelopes`, `remediate`. |
 | **React Web Dashboard** | Yes | Yes | None | Minimalist monochrome UI (Vite + React + TS + Tailwind), streaming live envelopes via WebSockets. |
@@ -42,7 +42,7 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 
 | Service | Protocol / Transport | Host Binding | HTTP Port | Endpoints | Status |
 | :--- | :--- | :--- | :---: | :--- | :---: |
-| Orchestrator & REST/WS API | HTTP / WebSocket | `127.0.0.1` | **8000** | `GET /api/health`<br/>`POST /api/diagnose`<br/>`POST /api/ingest`<br/>`WS /ws/events` | complete |
+| Orchestrator & REST/WS API | HTTP / WebSocket | `127.0.0.1` | **8000** | `GET /api/health`<br/>`POST /api/diagnose`<br/>`POST /api/ingest`<br/>`POST /api/remediate/simulate`<br/>`WS /ws/events` | complete |
 | Telemetry Agent | HTTP POST | `127.0.0.1` | **8001** | `GET /health`<br/>`POST /process` | complete |
 | Topology Agent | HTTP POST | `127.0.0.1` | **8002** | `GET /health`<br/>`POST /process` | complete |
 | Config Agent | HTTP POST | `127.0.0.1` | **8003** | `GET /health`<br/>`POST /process` | complete |
@@ -57,9 +57,10 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 
 | Feature | Target Criteria | Implementation File(s) | Verification / Test | Status |
 | :--- | :--- | :--- | :--- | :---: |
-| **Model Context Protocol (MCP)** | Stdio JSON-RPC server with tool registry for IDE/agent interaction | `mcp_server/server.py`<br/>`netcoop/mcp/server.py` | `tests/test_mcp_server.py` | complete |
-| **Simulated Remediation** | Action catalog, pre-flight safety checks, blast radius bounds, rollback commands | `netcoop/remediation/engine.py`<br/>`netcoop/remediation/actions.py`<br/>`netcoop/remediation/safety.py` | `tests/test_remediation_safety.py` | complete |
-| **Human-in-the-Loop (HITL)** | Operator approval gate before executing risky remediation actions | `netcoop/remediation/engine.py`<br/>`netcoop/cli.py` (`remediate --approve`) | `tests/test_remediation_safety.py`<br/>Manual operator CLI gate | complete |
+| **Model Context Protocol (MCP)** | Stdio JSON-RPC server with tool and resource registry for IDE/agent interaction | `mcp_server/server.py`<br/>`netcoop/mcp/server.py` | `tests/test_mcp_and_remediation.py` | complete |
+| **Simulated Remediation** | Action catalog, pre-flight safety checks, blast radius bounds, in-memory state application, before/after metrics | `netcoop/remediation/engine.py`<br/>`netcoop/remediation/actions.py`<br/>`netcoop/remediation/safety.py` | `tests/test_mcp_and_remediation.py`<br/>`tests/test_remediation_safety.py` | complete |
+| **Network Hard-Block Sandbox** | Code-level enforcement preventing any socket connection or subprocess network commands | `netcoop/remediation/engine.py` (`network_sandbox_guard`) | `tests/test_mcp_and_remediation.py::test_hard_block_*` | complete |
+| **Human-in-the-Loop (HITL)** | Operator approval gate before executing simulated remediation actions | `netcoop/remediation/engine.py`<br/>`api/main.py` (`POST /api/incidents/{id}/remediate`) | `tests/test_remediation_safety.py` | complete |
 | **Persistent State & Pause/Resume**| Checkpointing graph state across turns, incident persistence in DB | `netcoop/orchestrator/graph.py` (`MemorySaver`)<br/>`netcoop/storage/db.py` (`IncidentRecord`) | `tests/test_scenarios.py`<br/>`netcoop replay <incident_id>` | complete |
 | **Message & Finding Logs** | Complete envelope and finding audit trails in SQLite | `netcoop/storage/db.py`<br/>`netcoop/storage/models.py` (`EnvelopeLog`) | `netcoop envelopes`<br/>`WS /ws/envelopes` | complete |
 | **Interactive Dashboard + CLI** | Rich monochrome terminal CLI and web-based streaming UI | `netcoop/cli.py`<br/>`dashboard/` (React + Tailwind) | `netcoop --help`<br/>`cd dashboard && npm run build` | complete |
@@ -113,20 +114,35 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 
 ---
 
-## 8. Hackathon Evaluation Criteria Mapping
+## 8. MCP Server & Remediation Simulation (B-S)
 
-| Evaluation Area | Weight | Implementation Modules | Test Modules | Status |
-| :--- | :---: | :--- | :--- | :--- |
-| **Interoperability & Protocol Design** | 30% | `schemas/*.json`<br/>`core/envelope.py`<br/>`gateway/api.py`<br/>`gateway/adapters/organizer_adapter.py`<br/>`gateway/adapters/unit_inference.py`<br/>`gateway/adapters/field_matcher.py`<br/>`docs/protocol.md`<br/>`docs/contract.md` | `tests/test_protocol_envelope.py`<br/>`tests/test_gateway_api.py`<br/>`tests/test_agent_http.py`<br/>`tests/test_b1_gateway_robustness.py`<br/>`tests/test_b2_learned_layer.py` | complete |
-| **Diagnostic Accuracy & Evidence Quality** | 25% | `core/evidence.py`<br/>`core/correlation.py`<br/>`core/scoring.py`<br/>`core/report.py`<br/>`netcoop/models/`<br/>`netcoop/agents/classifier/`<br/>`eval/run_eval.py` | `tests/test_scenarios.py`<br/>`tests/test_insufficient_evidence.py`<br/>`tests/test_b2_learned_layer.py`<br/>`scripts/eval_benchmark.py` (21/21 PASS, 1300 samples evaluated) | complete |
-| **Orchestration & Conflict Resolution** | 15% | `orchestrator/graph.py`<br/>`orchestrator/mediator.py`<br/>`orchestrator/conflict_resolver.py`<br/>`core/bus.py` | `tests/test_conflict_resolution.py`<br/>`tests/test_scenarios.py` | complete |
-| **Robustness to Missing / Incompatible Data** | 15% | `core/normalizer.py`<br/>`gateway/adapters/organizer_adapter.py`<br/>`gateway/adapters/unit_inference.py`<br/>`gateway/adapters/field_matcher.py`<br/>`netcoop/models/conformal.py` | `tests/test_robustness_hypothesis.py`<br/>`tests/test_organizer_adapter.py`<br/>`tests/test_b1_gateway_robustness.py`<br/>`tests/test_b2_learned_layer.py` | complete |
-| **Innovation, Usability, Extensibility** | 10% | `mcp_server/server.py`<br/>`remediation/engine.py`<br/>`dashboard/` (React Dashboard)<br/>`cli/main.py` (`diagnose`, `replay`)<br/>`netcoop/models/conformal.py`<br/>`Makefile` (`up`, `down`, `demo`, `train`, `eval`, `eval-quick`) | `tests/test_mcp_server.py`<br/>`tests/test_remediation_safety.py`<br/>`tests/test_b2_learned_layer.py` | complete |
-| **Code Quality, Docs, and Demo** | 5% | `docs/progress.md`<br/>`docs/contract.md`<br/>`docs/handoff.md`<br/>`docs/organizer_format.md`<br/>`docs/eval_results_format.md`<br/>`docs/confidence.md`<br/>`docs/eval_report.md`<br/>`netcoop/models/MODEL_CARD.md`<br/>`README.md`<br/>`Makefile` | Full test suite execution (86 passed) | complete |
+| Component | Implementation File(s) | Verification Test(s) | Status |
+| :--- | :--- | :--- | :--- |
+| FastMCP 10-Tool Manifest (`get_telemetry`, `list_devices`, `get_topology`, `run_diagnosis`, etc.) | `netcoop/mcp/server.py`<br/>`mcp_server/server.py` | `tests/test_mcp_and_remediation.py::test_mcp_*` | complete |
+| MCP Resource Registry (`scenario://*`, `organizer://*`, `report://latest`) | `netcoop/mcp/server.py` | `tests/test_mcp_and_remediation.py::test_mcp_resources_*` | complete |
+| In-Memory Remediation Simulation (`rebalance traffic`, `clear counters`, `raise QoS`, `failover`) | `netcoop/remediation/engine.py`<br/>`netcoop/remediation/actions.py` | `tests/test_mcp_and_remediation.py::test_remediation_simulation_*` | complete |
+| Before / After Metric Deltas & "Simulated, no production changes" Disclaimer | `netcoop/remediation/engine.py` | `tests/test_mcp_and_remediation.py` | complete |
+| Hard-Block Sandbox Enforcement (sockets & network subprocess blocked) | `netcoop/remediation/engine.py` (`network_sandbox_guard`) | `tests/test_mcp_and_remediation.py::test_hard_block_*` | complete |
+| Feature Flags (`FEATURE_MCP`, `FEATURE_REMEDIATION_SIM`) | `netcoop/config.py`<br/>`core/config.py` | `tests/test_mcp_and_remediation.py::test_feature_*` | complete |
+| REST Simulation Endpoint (`POST /api/remediate/simulate`) | `api/main.py`<br/>`netcoop/main.py` | API validation | complete |
+| Protocol Documentation & Windows Config (`docs/mcp.md`, `docs/contract_changes.md`) | `docs/mcp.md`<br/>`docs/contract_changes.md` | Doc review | complete |
 
 ---
 
-## 9. Hard Constraints Checklist
+## 9. Hackathon Evaluation Criteria Mapping
+
+| Evaluation Area | Weight | Implementation Modules | Test Modules | Status |
+| :--- | :---: | :--- | :--- | :--- |
+| **Interoperability & Protocol Design** | 30% | `schemas/*.json`<br/>`core/envelope.py`<br/>`gateway/api.py`<br/>`gateway/adapters/organizer_adapter.py`<br/>`gateway/adapters/unit_inference.py`<br/>`gateway/adapters/field_matcher.py`<br/>`docs/protocol.md`<br/>`docs/contract.md` | `tests/test_protocol_envelope.py`<br/>`tests/test_gateway_api.py`<br/>`tests/test_agent_http.py`<br/>`tests/test_b1_gateway_robustness.py`<br/>`tests/test_b2_learned_layer.py`<br/>`tests/test_mcp_and_remediation.py` | complete |
+| **Diagnostic Accuracy & Evidence Quality** | 25% | `core/evidence.py`<br/>`core/correlation.py`<br/>`core/scoring.py`<br/>`core/report.py`<br/>`netcoop/models/`<br/>`netcoop/agents/classifier/`<br/>`eval/run_eval.py` | `tests/test_scenarios.py`<br/>`tests/test_insufficient_evidence.py`<br/>`tests/test_b2_learned_layer.py`<br/>`scripts/eval_benchmark.py` (21/21 PASS, 1300 samples evaluated) | complete |
+| **Orchestration & Conflict Resolution** | 15% | `orchestrator/graph.py`<br/>`orchestrator/mediator.py`<br/>`orchestrator/conflict_resolver.py`<br/>`core/bus.py` | `tests/test_conflict_resolution.py`<br/>`tests/test_scenarios.py` | complete |
+| **Robustness to Missing / Incompatible Data** | 15% | `core/normalizer.py`<br/>`gateway/adapters/organizer_adapter.py`<br/>`gateway/adapters/unit_inference.py`<br/>`gateway/adapters/field_matcher.py`<br/>`netcoop/models/conformal.py` | `tests/test_robustness_hypothesis.py`<br/>`tests/test_organizer_adapter.py`<br/>`tests/test_b1_gateway_robustness.py`<br/>`tests/test_b2_learned_layer.py` | complete |
+| **Innovation, Usability, Extensibility** | 10% | `mcp_server/server.py`<br/>`remediation/engine.py`<br/>`dashboard/` (React Dashboard)<br/>`cli/main.py` (`diagnose`, `replay`)<br/>`netcoop/models/conformal.py`<br/>`Makefile` (`up`, `down`, `demo`, `train`, `eval`, `eval-quick`) | `tests/test_mcp_server.py`<br/>`tests/test_remediation_safety.py`<br/>`tests/test_b2_learned_layer.py`<br/>`tests/test_mcp_and_remediation.py` | complete |
+| **Code Quality, Docs, and Demo** | 5% | `docs/progress.md`<br/>`docs/contract.md`<br/>`docs/handoff.md`<br/>`docs/organizer_format.md`<br/>`docs/eval_results_format.md`<br/>`docs/confidence.md`<br/>`docs/eval_report.md`<br/>`docs/mcp.md`<br/>`docs/contract_changes.md`<br/>`netcoop/models/MODEL_CARD.md`<br/>`README.md`<br/>`Makefile` | Full test suite execution (107 passed) | complete |
+
+---
+
+## 10. Hard Constraints Checklist
 
 - [x] Zero emojis across all code, comments, logs, CLI output, UI, docs, commit messages.
 - [x] Core pipeline functions fully offline with zero LLM calls.
