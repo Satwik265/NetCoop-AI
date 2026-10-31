@@ -1,0 +1,588 @@
+{
+  "schema_version": "2.0.0",
+  "report_id": "rep-17b7c35875",
+  "incident_id": "inc-demo-iitbbsr-001",
+  "network_id": "iitbbsr_argul_campus",
+  "created_at": "2026-10-31T19:48:11.902800+00:00",
+  "executive": {
+    "report_id": "rep-17b7c35875",
+    "incident_id": "inc-demo-iitbbsr-001",
+    "generated_timestamp": "2026-10-31T19:48:11.902675+00:00",
+    "diagnostic_status": "diagnosed",
+    "severity": "critical",
+    "confidence": 0.884,
+    "confidence_category": "high",
+    "is_confidence_calibrated": true,
+    "confidence_type": "calibrated_probability",
+    "affected_devices": [
+      "IITBBSR-CORE-RTR-01",
+      "IITBBSR-AGG-ACAD-01"
+    ],
+    "affected_site_ids": [
+      "site_admin",
+      "zone_academic"
+    ],
+    "affected_site_names": [
+      "Administrative Building",
+      "Academic zone"
+    ],
+    "affected_sites": [
+      "Administrative Building",
+      "Academic zone"
+    ],
+    "probable_root_cause": "Optical Transceiver Degradation",
+    "root_cause_status": "probable",
+    "executive_summary": "Diagnosed Optical Transceiver Degradation affecting trunk link between Administrative Building Core and Academic Zone Aggregation router.",
+    "key_observations": [
+      {
+        "metric_name": "optical_tx_power_dbm",
+        "value": -13.2,
+        "unit": "dbm",
+        "entity": "IITBBSR-CORE-RTR-01:HundredGigE0/0/0/0",
+        "source": "telemetry_agent",
+        "timestamp": "2026-11-01T00:30:00Z",
+        "provenance": {
+          "collector": "snmp_dom_poller"
+        },
+        "severity": "critical",
+        "is_available": true
+      },
+      {
+        "metric_name": "fcs_error_rate",
+        "value": 420.0,
+        "unit": "frames",
+        "entity": "IITBBSR-CORE-RTR-01:HundredGigE0/0/0/0",
+        "source": "telemetry_agent",
+        "timestamp": "2026-11-01T00:30:15Z",
+        "provenance": {
+          "collector": "interface_counter_poller"
+        },
+        "severity": "warning",
+        "is_available": true
+      },
+      {
+        "metric_name": "syslog_alarm_count",
+        "value": 14,
+        "unit": "count",
+        "entity": "IITBBSR-CORE-RTR-01",
+        "source": "log_agent",
+        "timestamp": "2026-11-01T00:30:20Z",
+        "provenance": {
+          "collector": "syslog_parser"
+        },
+        "severity": "critical",
+        "is_available": true
+      },
+      {
+        "metric_name": "ambient_temperature_celsius",
+        "value": null,
+        "unit": null,
+        "entity": null,
+        "source": "telemetry_collector",
+        "timestamp": null,
+        "provenance": {
+          "status": "not_reported_by_telemetry_source"
+        },
+        "severity": "unknown",
+        "is_available": false
+      },
+      {
+        "metric_name": "fan_speed_rpm",
+        "value": null,
+        "unit": null,
+        "entity": null,
+        "source": "telemetry_collector",
+        "timestamp": null,
+        "provenance": {
+          "status": "not_reported_by_telemetry_source"
+        },
+        "severity": "unknown",
+        "is_available": false
+      }
+    ],
+    "supporting_evidence_summary": "Corroborated across 3 evidence records from 2 specialist agents.",
+    "agent_investigation_status": [
+      {
+        "agent_role": "telemetry_agent",
+        "agent_name": "Telemetry Specialist",
+        "status": "completed",
+        "execution_time_ms": null,
+        "observations_count": 2,
+        "findings_summary": "Participated and contributed 2 evidence records.",
+        "error_message": null
+      },
+      {
+        "agent_role": "topology_agent",
+        "agent_name": "Topology Specialist",
+        "status": "skipped",
+        "execution_time_ms": null,
+        "observations_count": 0,
+        "findings_summary": "No anomalous findings or observations recorded in domain.",
+        "error_message": null
+      },
+      {
+        "agent_role": "config_agent",
+        "agent_name": "Configuration Specialist",
+        "status": "skipped",
+        "execution_time_ms": null,
+        "observations_count": 0,
+        "findings_summary": "No anomalous findings or observations recorded in domain.",
+        "error_message": null
+      },
+      {
+        "agent_role": "log_agent",
+        "agent_name": "Syslog Specialist",
+        "status": "completed",
+        "execution_time_ms": null,
+        "observations_count": 1,
+        "findings_summary": "Participated and contributed 1 evidence records.",
+        "error_message": null
+      },
+      {
+        "agent_role": "wifi_services_agent",
+        "agent_name": "WiFi & Core Services Specialist",
+        "status": "skipped",
+        "execution_time_ms": null,
+        "observations_count": 0,
+        "findings_summary": "No anomalous findings or observations recorded in domain.",
+        "error_message": null
+      },
+      {
+        "agent_role": "classifier_agent",
+        "agent_name": "Statistical ML Classifier",
+        "status": "skipped",
+        "execution_time_ms": null,
+        "observations_count": 0,
+        "findings_summary": "No anomalous findings or observations recorded in domain.",
+        "error_message": null
+      },
+      {
+        "agent_role": "synthesizer_agent",
+        "agent_name": "Root Cause Synthesizer",
+        "status": "completed",
+        "execution_time_ms": null,
+        "observations_count": 0,
+        "findings_summary": "Concluded root cause synthesis with status 'diagnosed'.",
+        "error_message": null
+      }
+    ],
+    "recommended_actions": [
+      {
+        "action_id": "act-drain-IITBBSR-CORE-RTR-01",
+        "title": "Drain and reroute traffic off degraded optical link IITBBSR-CORE-RTR-01:HundredGigE0/0/0/0",
+        "description": "Increase IGP metric to max to smoothly reroute traffic to redundant link before transceiver replacement.",
+        "target_device": "IITBBSR-CORE-RTR-01",
+        "commands": [
+          "configure terminal",
+          "router isis backbone",
+          "interface HundredGigE0/0/0/0",
+          "metric 16777214",
+          "commit and-quit"
+        ],
+        "rollback_commands": [
+          "configure terminal",
+          "router isis backbone",
+          "interface HundredGigE0/0/0/0",
+          "no metric 16777214",
+          "commit and-quit"
+        ],
+        "risk_level": "medium",
+        "blast_radius_devices": [
+          "IITBBSR-CORE-RTR-01",
+          "IITBBSR-AGG-ACAD-01"
+        ],
+        "is_simulated": true,
+        "status": "approved",
+        "is_advisory": true,
+        "advisory_notice": "Action is advisory and simulated only. No production network change has occurred."
+      }
+    ],
+    "recovery_verification_status": "pending_verification",
+    "data_provenance": {
+      "source": "synthetic_scenario_runner",
+      "fixture": true
+    },
+    "limitations": [
+      "All actions are simulated proposals only.",
+      "Topology references denote demonstration campus inventory."
+    ]
+  },
+  "technical": {
+    "sections": [
+      {
+        "section_id": "incident_context",
+        "title": "Incident and Diagnostic Context",
+        "order": 1,
+        "is_available": true,
+        "summary": "Primary incident telemetry context, processing duration, and runtime invocation metadata.",
+        "data": {
+          "incident_id": "inc-demo-iitbbsr-001",
+          "network_id": "iitbbsr_argul_campus",
+          "timestamp_utc": "2026-10-31T19:48:11.902449+00:00",
+          "processing_time_ms": 142.5,
+          "status": "diagnosed",
+          "affected_devices": [
+            "IITBBSR-CORE-RTR-01",
+            "IITBBSR-AGG-ACAD-01"
+          ],
+          "affected_interfaces": [
+            "HundredGigE0/0/0/0"
+          ]
+        }
+      },
+      {
+        "section_id": "input_telemetry",
+        "title": "Input Telemetry and Normalization",
+        "order": 2,
+        "is_available": true,
+        "summary": "Telemetry ingestion audit, domain distributions, and normalized units.",
+        "data": {
+          "total_evidence_items": 3,
+          "normalized_units": [
+            "dbm",
+            "frames",
+            "count"
+          ],
+          "entities_covered": [
+            "IITBBSR-CORE-RTR-01:HundredGigE0/0/0/0",
+            "IITBBSR-CORE-RTR-01"
+          ],
+          "domains_represented": [
+            "log_pattern",
+            "metric_anomaly"
+          ]
+        }
+      },
+      {
+        "section_id": "topology_and_paths",
+        "title": "Topology Context and Affected Paths",
+        "order": 3,
+        "is_available": true,
+        "summary": "Demonstration campus topology linkage and logical hop paths.",
+        "data": {
+          "campus_id": "iitbbsr_argul_campus",
+          "affected_node_ids": [
+            "IITBBSR-CORE-RTR-01",
+            "IITBBSR-AGG-ACAD-01"
+          ],
+          "affected_site_ids": [
+            "site_admin",
+            "zone_academic"
+          ],
+          "affected_site_names": [
+            "Administrative Building",
+            "Academic zone"
+          ],
+          "affected_path_ids": [
+            "PATH-DEMO-CORE-SBS-01"
+          ],
+          "topology_provenance": {
+            "model_type": "simulated_demonstration_topology",
+            "institution": "IIT Bhubaneswar",
+            "campus_location": "Argul, Khordha, Odisha 752050",
+            "disclaimer": "All router devices, interface links, and routing paths in this dataset are synthetic demonstration inventory. Official campus maps establish physical building landmarks only and contain zero network routing equipment records."
+          },
+          "simulated_inventory": true,
+          "disclaimer": "All network equipment, nodes, links, and paths are synthetic demonstration inventory. Official campus maps establish physical building landmarks only and contain zero network routing equipment records."
+        }
+      },
+      {
+        "section_id": "anomaly_detection",
+        "title": "Anomaly and Fault-Detection Findings",
+        "order": 4,
+        "is_available": true,
+        "summary": "Metric anomaly detections filtered against baseline thresholds.",
+        "data": {
+          "anomalies": [
+            {
+              "metric": "optical_tx_power_dbm",
+              "entity": "IITBBSR-CORE-RTR-01:HundredGigE0/0/0/0",
+              "observed_value": -13.2,
+              "unit": "dbm",
+              "severity": "critical",
+              "finding": "Laser Tx optical power dropped below -12.5 dBm warning threshold"
+            },
+            {
+              "metric": "fcs_error_rate",
+              "entity": "IITBBSR-CORE-RTR-01:HundredGigE0/0/0/0",
+              "observed_value": 420.0,
+              "unit": "frames",
+              "severity": "warning",
+              "finding": "Physical FCS cyclic redundancy check error rate spiked to 420 pkts/s"
+            },
+            {
+              "metric": "syslog_alarm_count",
+              "entity": "IITBBSR-CORE-RTR-01",
+              "observed_value": 14,
+              "unit": "count",
+              "severity": "critical",
+              "finding": "Optics DOM ALARM low transmit power threshold violated in syslog"
+            }
+          ]
+        }
+      },
+      {
+        "section_id": "hypotheses_evaluation",
+        "title": "Root-Cause Hypotheses and Causal Inference",
+        "order": 5,
+        "is_available": true,
+        "summary": "Hypothesis ranking, deterministic signature matching, and causal chain inference.",
+        "data": {
+          "evaluated_cause": "Optical Transceiver Degradation",
+          "confidence": 0.884,
+          "causal_chain": [
+            "Physical laser diode degradation on transceiver",
+            "Optical Tx power drops below receiver sensitivity",
+            "Framing errors and CRC drops accumulate on HundredGigE0/0/0/0",
+            "Core to Aggregation trunk incurs sporadic packet drops"
+          ],
+          "alternative_hypotheses": [
+            {
+              "cause": "Dirty Fiber Connector Endface",
+              "confidence": 0.28
+            }
+          ],
+          "uncertainty_score": 0.116,
+          "missing_evidence_domains": [
+            "OTDR physical fiber distance measurement"
+          ]
+        }
+      },
+      {
+        "section_id": "evidence_records",
+        "title": "Evidence Records and Source References",
+        "order": 6,
+        "is_available": true,
+        "summary": "Normalized, traceable evidence inventory with stable IDs and agent source attribution.",
+        "data": {
+          "records": [
+            {
+              "evidence_id": "evi-opt-001",
+              "source_agent": "telemetry_agent",
+              "category": "metric_anomaly",
+              "finding": "Laser Tx optical power dropped below -12.5 dBm warning threshold",
+              "entity": "IITBBSR-CORE-RTR-01:HundredGigE0/0/0/0",
+              "metric_name": "optical_tx_power_dbm",
+              "value": -13.2,
+              "unit": "dbm",
+              "severity": "critical",
+              "timestamp": "2026-11-01T00:30:00Z",
+              "provenance": {
+                "collector": "snmp_dom_poller"
+              },
+              "weight": 1.0
+            },
+            {
+              "evidence_id": "evi-opt-002",
+              "source_agent": "telemetry_agent",
+              "category": "metric_anomaly",
+              "finding": "Physical FCS cyclic redundancy check error rate spiked to 420 pkts/s",
+              "entity": "IITBBSR-CORE-RTR-01:HundredGigE0/0/0/0",
+              "metric_name": "fcs_error_rate",
+              "value": 420.0,
+              "unit": "frames",
+              "severity": "warning",
+              "timestamp": "2026-11-01T00:30:15Z",
+              "provenance": {
+                "collector": "interface_counter_poller"
+              },
+              "weight": 0.8
+            },
+            {
+              "evidence_id": "evi-log-003",
+              "source_agent": "log_agent",
+              "category": "log_pattern",
+              "finding": "Optics DOM ALARM low transmit power threshold violated in syslog",
+              "entity": "IITBBSR-CORE-RTR-01",
+              "metric_name": "syslog_alarm_count",
+              "value": 14,
+              "unit": "count",
+              "severity": "critical",
+              "timestamp": "2026-11-01T00:30:20Z",
+              "provenance": {
+                "collector": "syslog_parser"
+              },
+              "weight": 0.9
+            }
+          ]
+        }
+      },
+      {
+        "section_id": "specialist_findings",
+        "title": "Specialist-Agent Findings Breakdown",
+        "order": 7,
+        "is_available": true,
+        "summary": "Domain-specific evaluations produced across specialist agent envelopes.",
+        "data": {
+          "contributing_specialists": [
+            "log_agent",
+            "telemetry_agent"
+          ],
+          "findings_by_agent": {
+            "log_agent": [
+              {
+                "entity": "IITBBSR-CORE-RTR-01",
+                "finding": "Optics DOM ALARM low transmit power threshold violated in syslog",
+                "severity": "critical"
+              }
+            ],
+            "telemetry_agent": [
+              {
+                "entity": "IITBBSR-CORE-RTR-01:HundredGigE0/0/0/0",
+                "finding": "Laser Tx optical power dropped below -12.5 dBm warning threshold",
+                "severity": "critical"
+              },
+              {
+                "entity": "IITBBSR-CORE-RTR-01:HundredGigE0/0/0/0",
+                "finding": "Physical FCS cyclic redundancy check error rate spiked to 420 pkts/s",
+                "severity": "warning"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "section_id": "arbitration",
+        "title": "Mediator Arbitration and Conflict Resolution",
+        "order": 8,
+        "is_available": true,
+        "summary": "No contradictory hypotheses detected between specialist agents.",
+        "data": {
+          "conflicts_resolved": [],
+          "arbitration_rule": "Direct Telemetry > Correlated Telemetry > Topology Inference",
+          "conflict_status": "concordant"
+        }
+      },
+      {
+        "section_id": "confidence_calibration",
+        "title": "Confidence Calibration and Statistical Abstention",
+        "order": 9,
+        "is_available": true,
+        "summary": "Scientific calibration breakdown, isotonic probabilities, and conformal coverage bounds.",
+        "data": {
+          "rules_score": 0.89,
+          "raw_rules_score": 0.89,
+          "model_score": 0.875,
+          "blended_score": 0.884,
+          "calibrated_confidence": 0.884,
+          "calibration_method": "isotonic_plus_conformal",
+          "conformal_prediction_set": [
+            "optical_transceiver_degradation"
+          ],
+          "confidence_category": "high",
+          "is_calibrated": true,
+          "notes": "Calibrated via held-out split conformal nonconformity bounds."
+        }
+      },
+      {
+        "section_id": "remediation_plan",
+        "title": "Recommended Remediation and Approval State",
+        "order": 10,
+        "is_available": true,
+        "summary": "Simulated remediation actions, CLI syntax, rollback safety, and operator gate status.",
+        "data": {
+          "is_simulated_only": true,
+          "actions": [
+            {
+              "action_id": "act-drain-IITBBSR-CORE-RTR-01",
+              "title": "Drain and reroute traffic off degraded optical link IITBBSR-CORE-RTR-01:HundredGigE0/0/0/0",
+              "description": "Increase IGP metric to max to smoothly reroute traffic to redundant link before transceiver replacement.",
+              "target_device": "IITBBSR-CORE-RTR-01",
+              "commands": [
+                "configure terminal",
+                "router isis backbone",
+                "interface HundredGigE0/0/0/0",
+                "metric 16777214",
+                "commit and-quit"
+              ],
+              "rollback_commands": [
+                "configure terminal",
+                "router isis backbone",
+                "interface HundredGigE0/0/0/0",
+                "no metric 16777214",
+                "commit and-quit"
+              ],
+              "risk_level": "medium",
+              "blast_radius_devices": [
+                "IITBBSR-CORE-RTR-01",
+                "IITBBSR-AGG-ACAD-01"
+              ],
+              "is_simulated": true,
+              "status": "approved",
+              "is_advisory": true,
+              "advisory_notice": "Action is advisory and simulated only. No production network change has occurred."
+            }
+          ]
+        }
+      },
+      {
+        "section_id": "audit_replay",
+        "title": "Audit and Replay Trace References",
+        "order": 11,
+        "is_available": true,
+        "summary": "Traceability references linking report to persistent SQLite envelope logs and checkpoints.",
+        "data": {
+          "audit_logged": true,
+          "storage_engine": "sqlite",
+          "incident_record_id": "inc-demo-iitbbsr-001",
+          "checkpoint_id": "ckpt-specialists-01",
+          "envelope_count": 6,
+          "replay_trace_id": "trace-inc-demo-iitbbsr-001",
+          "notes": "Verified persistent audit trace in SQLite database."
+        }
+      },
+      {
+        "section_id": "recovery_limitations",
+        "title": "Recovery Verification and Data Limitations",
+        "order": 12,
+        "is_available": true,
+        "summary": "Independent recovery verification status, data caveats, and boundary conditions.",
+        "data": {
+          "recovery_status": "pending_verification",
+          "data_limitations": [
+            "All actions are simulated proposals only.",
+            "Topology references denote demonstration campus inventory."
+          ],
+          "unresolved_ambiguity_reasons": [
+            "Reflected optical attenuation confirmed on local transceiver interface."
+          ]
+        }
+      }
+    ]
+  },
+  "topology_reference": {
+    "campus_id": "iitbbsr_argul_campus",
+    "affected_node_ids": [
+      "IITBBSR-CORE-RTR-01",
+      "IITBBSR-AGG-ACAD-01"
+    ],
+    "affected_site_ids": [
+      "site_admin",
+      "zone_academic"
+    ],
+    "affected_site_names": [
+      "Administrative Building",
+      "Academic zone"
+    ],
+    "affected_path_ids": [
+      "PATH-DEMO-CORE-SBS-01"
+    ],
+    "topology_provenance": {
+      "model_type": "simulated_demonstration_topology",
+      "institution": "IIT Bhubaneswar",
+      "campus_location": "Argul, Khordha, Odisha 752050",
+      "disclaimer": "All router devices, interface links, and routing paths in this dataset are synthetic demonstration inventory. Official campus maps establish physical building landmarks only and contain zero network routing equipment records."
+    },
+    "simulated_inventory": true,
+    "disclaimer": "All network equipment, nodes, links, and paths are synthetic demonstration inventory. Official campus maps establish physical building landmarks only and contain zero network routing equipment records."
+  },
+  "audit": {
+    "audit_logged": true,
+    "storage_engine": "sqlite",
+    "incident_record_id": "inc-demo-iitbbsr-001",
+    "checkpoint_id": "ckpt-specialists-01",
+    "envelope_count": 6,
+    "replay_trace_id": "trace-inc-demo-iitbbsr-001",
+    "notes": "Verified persistent audit trace in SQLite database."
+  }
+}
