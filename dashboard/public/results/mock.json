@@ -1,0 +1,220 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2026-10-31T12:00:00Z",
+  "summary": {
+    "total_samples": 120,
+    "overall_accuracy": 0.958,
+    "macro_f1": 0.952,
+    "weighted_f1": 0.958,
+    "expected_calibration_error": 0.042,
+    "brier_score": 0.038
+  },
+  "dataset_splits": {
+    "in_distribution_accuracy": 0.985,
+    "in_distribution_samples": 65,
+    "held_out_accuracy": 0.933,
+    "held_out_samples": 30,
+    "organizer_accuracy": 0.920,
+    "organizer_samples": 25
+  },
+  "per_class_metrics": {
+    "normal_operation": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 15
+    },
+    "link_congestion": {
+      "precision": 0.941,
+      "recall": 0.941,
+      "f1": 0.941,
+      "support": 17
+    },
+    "weak_wifi_signal": {
+      "precision": 0.923,
+      "recall": 1.0,
+      "f1": 0.960,
+      "support": 12
+    },
+    "ethernet_interface_fault": {
+      "precision": 1.0,
+      "recall": 0.923,
+      "f1": 0.960,
+      "support": 13
+    },
+    "dns_failure": {
+      "precision": 0.923,
+      "recall": 1.0,
+      "f1": 0.960,
+      "support": 12
+    },
+    "dhcp_failure": {
+      "precision": 1.0,
+      "recall": 0.909,
+      "f1": 0.952,
+      "support": 11
+    },
+    "device_cpu_overload": {
+      "precision": 0.923,
+      "recall": 0.923,
+      "f1": 0.923,
+      "support": 13
+    },
+    "upstream_failure_cascade": {
+      "precision": 0.909,
+      "recall": 0.909,
+      "f1": 0.909,
+      "support": 11
+    },
+    "ambiguous_multi_fault": {
+      "precision": 1.0,
+      "recall": 0.875,
+      "f1": 0.933,
+      "support": 8
+    },
+    "insufficient_data": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 8
+    }
+  },
+  "confusion_matrix": {
+    "classes": [
+      "normal_operation",
+      "link_congestion",
+      "weak_wifi_signal",
+      "ethernet_interface_fault",
+      "dns_failure",
+      "dhcp_failure",
+      "device_cpu_overload",
+      "upstream_failure_cascade",
+      "ambiguous_multi_fault",
+      "insufficient_data"
+    ],
+    "matrix": [
+      [15, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 16, 0, 0, 0, 0, 1, 0, 0, 0],
+      [0, 0, 12, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 12, 0, 0, 0, 1, 0, 0],
+      [0, 0, 0, 0, 12, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 1, 10, 0, 0, 0, 0],
+      [0, 1, 0, 0, 0, 0, 12, 0, 0, 0],
+      [0, 0, 1, 0, 0, 0, 0, 10, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 7, 1],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 8]
+    ]
+  },
+  "calibration": {
+    "expected_calibration_error": 0.042,
+    "max_calibration_error": 0.086,
+    "reliability_bins": [
+      {
+        "bin_lower": 0.0,
+        "bin_upper": 0.2,
+        "mean_confidence": 0.12,
+        "accuracy": 0.14,
+        "sample_count": 14
+      },
+      {
+        "bin_lower": 0.2,
+        "bin_upper": 0.4,
+        "mean_confidence": 0.31,
+        "accuracy": 0.29,
+        "sample_count": 8
+      },
+      {
+        "bin_lower": 0.4,
+        "bin_upper": 0.6,
+        "mean_confidence": 0.52,
+        "accuracy": 0.50,
+        "sample_count": 12
+      },
+      {
+        "bin_lower": 0.6,
+        "bin_upper": 0.8,
+        "mean_confidence": 0.72,
+        "accuracy": 0.75,
+        "sample_count": 28
+      },
+      {
+        "bin_lower": 0.8,
+        "bin_upper": 1.0,
+        "mean_confidence": 0.94,
+        "accuracy": 0.96,
+        "sample_count": 58
+      }
+    ]
+  },
+  "stress_tests": {
+    "accuracy_vs_missing_data_rate": [
+      { "missing_rate": 0.0, "accuracy": 0.985, "samples": 60 },
+      { "missing_rate": 0.1, "accuracy": 0.967, "samples": 60 },
+      { "missing_rate": 0.2, "accuracy": 0.950, "samples": 60 },
+      { "missing_rate": 0.3, "accuracy": 0.917, "samples": 60 },
+      { "missing_rate": 0.4, "accuracy": 0.883, "samples": 60 },
+      { "missing_rate": 0.5, "accuracy": 0.817, "samples": 60 },
+      { "missing_rate": 0.6, "accuracy": 0.733, "samples": 60 },
+      { "missing_rate": 0.7, "accuracy": 0.650, "samples": 60 }
+    ],
+    "accuracy_vs_corruption_rate": [
+      { "corruption_rate": 0.0, "accuracy": 0.985, "samples": 60 },
+      { "corruption_rate": 0.1, "accuracy": 0.950, "samples": 60 },
+      { "corruption_rate": 0.2, "accuracy": 0.917, "samples": 60 },
+      { "corruption_rate": 0.3, "accuracy": 0.867, "samples": 60 },
+      { "corruption_rate": 0.4, "accuracy": 0.800, "samples": 60 },
+      { "corruption_rate": 0.5, "accuracy": 0.717, "samples": 60 },
+      { "corruption_rate": 0.6, "accuracy": 0.617, "samples": 60 }
+    ]
+  },
+  "risk_coverage": [
+    { "coverage": 1.00, "risk": 0.042, "confidence_threshold": 0.00 },
+    { "coverage": 0.95, "risk": 0.026, "confidence_threshold": 0.60 },
+    { "coverage": 0.90, "risk": 0.018, "confidence_threshold": 0.75 },
+    { "coverage": 0.85, "risk": 0.010, "confidence_threshold": 0.82 },
+    { "coverage": 0.80, "risk": 0.000, "confidence_threshold": 0.88 },
+    { "coverage": 0.70, "risk": 0.000, "confidence_threshold": 0.92 }
+  ],
+  "ablation_table": [
+    {
+      "configuration": "Full Multi-Agent Pipeline",
+      "accuracy": 0.958,
+      "f1_score": 0.952,
+      "ece": 0.042,
+      "avg_latency_ms": 115.4,
+      "insufficient_evidence_rate": 0.133
+    },
+    {
+      "configuration": "Without Cross-Inquiry Corroboration",
+      "accuracy": 0.875,
+      "f1_score": 0.862,
+      "ece": 0.089,
+      "avg_latency_ms": 78.2,
+      "insufficient_evidence_rate": 0.210
+    },
+    {
+      "configuration": "Without Topology Context",
+      "accuracy": 0.817,
+      "f1_score": 0.805,
+      "ece": 0.114,
+      "avg_latency_ms": 72.0,
+      "insufficient_evidence_rate": 0.250
+    },
+    {
+      "configuration": "Without Gateway Canonical Normalization",
+      "accuracy": 0.583,
+      "f1_score": 0.540,
+      "ece": 0.210,
+      "avg_latency_ms": 45.1,
+      "insufficient_evidence_rate": 0.420
+    },
+    {
+      "configuration": "Single Heuristic Classifier Baseline",
+      "accuracy": 0.717,
+      "f1_score": 0.690,
+      "ece": 0.185,
+      "avg_latency_ms": 12.3,
+      "insufficient_evidence_rate": 0.050
+    }
+  ]
+}

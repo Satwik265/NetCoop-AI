@@ -1,16 +1,19 @@
+@import "./tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    background-color: #0F0F10;
-    color: #EDEDEA;
-    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-sans);
+    transition: background-color var(--motion-duration) var(--motion-ease), color var(--motion-duration) var(--motion-ease);
   }
 
   code, pre {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
   }
 }
 
@@ -21,15 +24,14 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #161618;
+  background: var(--surface-color);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2A2A2D;
+  background: var(--border-color);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: var(--accent-slate);
 }
-

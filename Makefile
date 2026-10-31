@@ -1,7 +1,7 @@
 # NetCoop AI Automation Makefile
 # Target platforms: Linux, macOS, and Windows (via PowerShell / bash)
 
-.PHONY: help setup up down demo demo-organizer test eval eval-quick train assets run clean
+.PHONY: help setup up down demo demo-organizer test eval eval-quick train assets gen-assets readme run clean
 
 help:
 	@echo "NetCoop AI Automation Commands:"
@@ -15,6 +15,8 @@ help:
 	@echo "  make eval-quick     - Execute quick diagnostic benchmark"
 	@echo "  make train          - Train learned classifier, calibrate, and generate artifacts"
 	@echo "  make assets         - Compile and bundle React dashboard frontend assets"
+	@echo "  make gen-assets     - Regenerate all visual charts, diagrams, and screenshots"
+	@echo "  make readme         - Dynamically compile README.md from benchmark results"
 	@echo "  make run            - Start local FastAPI backend server on port 8000"
 	@echo "  make clean          - Remove build artifacts, pycache, and temporary caches"
 
@@ -50,6 +52,12 @@ train:
 
 assets:
 	cd dashboard && npm run build
+
+gen-assets:
+	python docs/assets/scripts/generate_all_assets.py
+
+readme:
+	python scripts/build_readme.py
 
 run:
 	uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload

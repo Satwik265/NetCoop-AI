@@ -19,22 +19,29 @@ interface Props {
   nodes?: Node[];
   links?: Link[];
   affectedDevices?: string[];
+  blastRadiusDevices?: string[];
 }
 
 export const TopologyView: React.FC<Props> = ({
   nodes = [],
   links = [],
   affectedDevices = [],
+  blastRadiusDevices = [],
 }) => {
-  if (nodes.length === 0) {
+  // When topology is unavailable (e.g. organizer data with no link graph or empty nodes)
+  if (!nodes || nodes.length === 0 || !links || links.length === 0) {
     return (
-      <div className="bg-[#161618] border border-[#2A2A2D] p-8 text-center text-xs font-mono text-[#888884]">
-        No topology graph data available for this incident.
+      <div className="bg-[#FFFFFF] dark:bg-[#161618] border border-[#E5E5E3] dark:border-[#2A2A2D] p-8 text-center font-mono space-y-2">
+        <div className="text-xs font-semibold uppercase tracking-wider text-[#6B6B66] dark:text-[#888884]">
+          Topology Unavailable
+        </div>
+        <div className="text-[11px] text-[#6B6B66] dark:text-[#888884] max-w-md mx-auto">
+          The selected dataset (such as organizer Colab telemetry or isolated endpoints) contains unlinked device records without physical or logical link definitions.
+        </div>
       </div>
     );
   }
 
-  // Calculate coordinates in a deterministic layout
   const width = 640;
   const height = 300;
   const nodeCount = nodes.length;
@@ -66,22 +73,31 @@ export const TopologyView: React.FC<Props> = ({
   });
 
   return (
-    <div className="bg-[#161618] border border-[#2A2A2D] p-5">
-      <div className="flex items-center justify-between border-b border-[#2A2A2D] pb-3 mb-4">
-        <h2 className="text-sm font-semibold tracking-wide uppercase font-mono text-[#EDEDEA]">
-          Network Topology Graph
-        </h2>
-        <div className="flex items-center gap-4 text-[10px] font-mono text-[#888884]">
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 bg-[#475569] inline-block"></span> Nominal
+    <div className="bg-[#FFFFFF] dark:bg-[#161618] border border-[#E5E5E3] dark:border-[#2A2A2D] p-5 space-y-4 font-mono">
+      <div className="flex flex-wrap items-center justify-between border-b border-[#E5E5E3] dark:border-[#2A2A2D] pb-3 gap-3">
+        <div>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-[#111111] dark:text-[#EDEDEA]">
+            Network Topology & Blast Radius Map
+          </h2>
+          <div className="text-[10px] text-[#6B6B66] dark:text-[#888884]">
+            Affected nodes outlined in bold; remediation blast radius highlighted by link weight.
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 text-[10px] text-[#6B6B66] dark:text-[#888884]">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 border border-[#475569] inline-block"></span> Nominal Node
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 bg-[#9A5B5B] inline-block"></span> Affected Node
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 border-2 border-[#9A5B5B] inline-block"></span> Affected Node
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-4 h-1 bg-[#475569] inline-block"></span> Blast Radius Path
           </span>
         </div>
       </div>
 
-      <div className="bg-[#0F0F10] border border-[#2A2A2D] flex items-center justify-center p-2 overflow-x-auto">
+      <div className="bg-[#FAFAF9] dark:bg-[#0F0F10] border border-[#E5E5E3] dark:border-[#2A2A2D] flex items-center justify-center p-3 overflow-x-auto">
         <svg width={width} height={height} className="max-w-full">
           {/* Render Links */}
           {links.map((link, idx) => {
@@ -89,8 +105,15 @@ export const TopologyView: React.FC<Props> = ({
             const dstPos = positions[link.target];
             if (!srcPos || !dstPos) return null;
 
+            const isBlastRadiusLink =
+              (blastRadiusDevices.includes(link.source) && blastRadiusDevices.includes(link.target)) ||
+              (affectedDevices.includes(link.source) && blastRadiusDevices.includes(link.target));
+
             const isAffectedLink =
               affectedDevices.includes(link.source) || affectedDevices.includes(link.target);
+
+            const strokeColor = isAffectedLink ? "#9A5B5B" : isBlastRadiusLink ? "#475569" : "#2A2A2D";
+            const strokeWidth = isBlastRadiusLink ? 3.5 : isAffectedLink ? 2.5 : 1.2;
 
             return (
               <g key={idx}>
@@ -99,9 +122,10 @@ export const TopologyView: React.FC<Props> = ({
                   y1={srcPos.y}
                   x2={dstPos.x}
                   y2={dstPos.y}
-                  stroke={isAffectedLink ? "#9A5B5B" : "#2A2A2D"}
-                  strokeWidth={isAffectedLink ? 2 : 1.5}
-                  strokeDasharray={isAffectedLink ? "4 2" : undefined}
+                  stroke={strokeColor}
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={isAffectedLink && !isBlastRadiusLink ? "4 2" : undefined}
+                  className="transition-all duration-200"
                 />
               </g>
             );
@@ -112,17 +136,19 @@ export const TopologyView: React.FC<Props> = ({
             const pos = positions[node.id];
             if (!pos) return null;
             const isAffected = affectedDevices.includes(node.id);
+            const isBlastRadius = blastRadiusDevices.includes(node.id);
 
             return (
               <g key={node.id} transform={`translate(${pos.x}, ${pos.y})`}>
                 <rect
-                  x="-45"
+                  x="-48"
                   y="-22"
-                  width="90"
+                  width="96"
                   height="44"
+                  className="transition-all duration-200"
                   fill="#161618"
-                  stroke={isAffected ? "#9A5B5B" : "#475569"}
-                  strokeWidth={isAffected ? "2" : "1"}
+                  stroke={isAffected ? "#9A5B5B" : isBlastRadius ? "#EDEDEA" : "#475569"}
+                  strokeWidth={isAffected ? 2.5 : isBlastRadius ? 2.0 : 1.0}
                 />
                 <text
                   x="0"
@@ -131,7 +157,7 @@ export const TopologyView: React.FC<Props> = ({
                   fill="#EDEDEA"
                   fontSize="11"
                   fontFamily="JetBrains Mono"
-                  fontWeight="600"
+                  fontWeight={isAffected ? "700" : "600"}
                 >
                   {node.id}
                 </text>
@@ -139,11 +165,12 @@ export const TopologyView: React.FC<Props> = ({
                   x="0"
                   y="12"
                   textAnchor="middle"
-                  fill="#888884"
+                  fill={isAffected ? "#9A5B5B" : "#888884"}
                   fontSize="9"
                   fontFamily="Inter"
+                  style={{ textTransform: "uppercase" }}
                 >
-                  {node.role}
+                  {isAffected ? "FAULT ROOT" : node.role}
                 </text>
               </g>
             );
@@ -153,4 +180,3 @@ export const TopologyView: React.FC<Props> = ({
     </div>
   );
 };
-

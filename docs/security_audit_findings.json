@@ -1,0 +1,189 @@
+[
+  {
+    "vulnerability_id": "SEC-01",
+    "title": "Missing Backend Authentication on Remediation Approvals",
+    "severity": "CRITICAL",
+    "endpoint": "POST /api/remediation/{action_id}/approve",
+    "finding": "The endpoint accepts approval requests with arbitrary operator identifiers and zero credential verification. Authorization is enforced only on the frontend client layer.",
+    "status_code": 200,
+    "evidence": {
+      "success": true,
+      "action_id": "act-mtu-spine-01",
+      "status": "approved",
+      "operator": "anonymous_attacker",
+      "rationale": "Direct API exploit without authentication",
+      "simulation": {
+        "success": true,
+        "message": "Successfully simulated remediation action act-mtu-spine-01 on spine-01.",
+        "executed_commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "mtu 9000",
+          "commit and-quit"
+        ],
+        "checks": [
+          {
+            "check_name": "simulation_safety_gate",
+            "passed": true,
+            "details": "Action strictly configured for simulation sandbox."
+          },
+          {
+            "check_name": "blast_radius_limit",
+            "passed": true,
+            "details": "Impacts 1/3 devices (33%). Boundary is 60%."
+          },
+          {
+            "check_name": "rollback_readiness",
+            "passed": true,
+            "details": "Rollback script verified for high/medium risk actions."
+          }
+        ],
+        "action": {
+          "action_id": "act-mtu-spine-01",
+          "title": "Remediation on spine-01",
+          "description": "Risk level low",
+          "device": "spine-01",
+          "commands": [
+            "configure terminal",
+            "interface et-0/0/1",
+            "mtu 9000",
+            "commit and-quit"
+          ],
+          "rollback_commands": [
+            "configure terminal",
+            "interface et-0/0/1",
+            "mtu 1500",
+            "commit and-quit"
+          ],
+          "risk_level": "low",
+          "blast_radius_devices": [
+            "spine-01"
+          ],
+          "is_simulated": true,
+          "status": "simulated_success"
+        }
+      }
+    }
+  },
+  {
+    "vulnerability_id": "SEC-02",
+    "title": "Missing Server-Side Role Enforcement (Helpdesk Remediation Execution)",
+    "severity": "HIGH",
+    "endpoint": "POST /api/remediation/{action_id}/approve",
+    "finding": "Helpdesk users are restricted from executing remediation in the UI, but the backend accepts remediation approvals from any caller specifying helpdesk identity.",
+    "status_code": 200,
+    "evidence": {
+      "success": true,
+      "action_id": "act-mtu-spine-01",
+      "status": "approved",
+      "operator": "helpdesk_tier1_user",
+      "rationale": "Helpdesk bypassing UI restrictions",
+      "simulation": {
+        "success": true,
+        "message": "Successfully simulated remediation action act-mtu-spine-01 on spine-01.",
+        "executed_commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "mtu 9000",
+          "commit and-quit"
+        ],
+        "checks": [
+          {
+            "check_name": "simulation_safety_gate",
+            "passed": true,
+            "details": "Action strictly configured for simulation sandbox."
+          },
+          {
+            "check_name": "blast_radius_limit",
+            "passed": true,
+            "details": "Impacts 1/3 devices (33%). Boundary is 60%."
+          },
+          {
+            "check_name": "rollback_readiness",
+            "passed": true,
+            "details": "Rollback script verified for high/medium risk actions."
+          }
+        ],
+        "action": {
+          "action_id": "act-mtu-spine-01",
+          "title": "Remediation on spine-01",
+          "description": "Risk level low",
+          "device": "spine-01",
+          "commands": [
+            "configure terminal",
+            "interface et-0/0/1",
+            "mtu 9000",
+            "commit and-quit"
+          ],
+          "rollback_commands": [
+            "configure terminal",
+            "interface et-0/0/1",
+            "mtu 1500",
+            "commit and-quit"
+          ],
+          "risk_level": "low",
+          "blast_radius_devices": [
+            "spine-01"
+          ],
+          "is_simulated": true,
+          "status": "simulated_success"
+        }
+      }
+    }
+  },
+  {
+    "vulnerability_id": "SEC-03",
+    "title": "Missing Server-Side Role Enforcement (Auditor Mutation of Remediation)",
+    "severity": "HIGH",
+    "endpoint": "POST /api/remediation/{action_id}/modify",
+    "finding": "The Auditor role is strictly read-only in the UI, but the backend allows any caller claiming auditor identity to modify remediation commands.",
+    "status_code": 200,
+    "evidence": {
+      "success": true,
+      "action_id": "act-mtu-spine-01",
+      "status": "modified",
+      "modified_commands": [
+        "interface et-0/0/1",
+        "shutdown"
+      ],
+      "operator": "auditor_compliance_officer",
+      "rationale": "Auditor attempting command mutation"
+    }
+  },
+  {
+    "vulnerability_id": "SEC-INFO-api-devices",
+    "title": "Unauthenticated Information Disclosure (/api/devices)",
+    "severity": "MEDIUM",
+    "endpoint": "GET /api/devices",
+    "finding": "Endpoint exposes Infrastructure device inventory, IP addresses, vendor details to any unauthenticated HTTP client without session verification.",
+    "status_code": 200,
+    "data_sample_length": 7
+  },
+  {
+    "vulnerability_id": "SEC-INFO-api-platform-status",
+    "title": "Unauthenticated Information Disclosure (/api/platform/status)",
+    "severity": "MEDIUM",
+    "endpoint": "GET /api/platform/status",
+    "finding": "Endpoint exposes Internal microservice ports, database file paths, connection counts to any unauthenticated HTTP client without session verification.",
+    "status_code": 200,
+    "data_sample_length": 1010
+  },
+  {
+    "vulnerability_id": "SEC-INFO-api-remediation-logs",
+    "title": "Unauthenticated Information Disclosure (/api/remediation/logs)",
+    "severity": "MEDIUM",
+    "endpoint": "GET /api/remediation/logs",
+    "finding": "Endpoint exposes Historical executed commands, rollback scripts, operator identities to any unauthenticated HTTP client without session verification.",
+    "status_code": 200,
+    "data_sample_length": 38
+  },
+  {
+    "vulnerability_id": "SEC-INFO-api-incidents",
+    "title": "Unauthenticated Information Disclosure (/api/incidents)",
+    "severity": "MEDIUM",
+    "endpoint": "GET /api/incidents",
+    "finding": "Endpoint exposes Complete incident history and network IDs to any unauthenticated HTTP client without session verification.",
+    "status_code": 200,
+    "data_sample_length": 45
+  }
+]

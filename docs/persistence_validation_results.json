@@ -1,0 +1,9 @@
+{
+  "session_id": "test-persist-mtu-18240",
+  "checkpoints_count": 15,
+  "paused_verified": true,
+  "hitl_recorded": true,
+  "sqlite_persisted_verified": true,
+  "resume_from_checkpoint_verified": true,
+  "envelope_logs_count": 44
+}

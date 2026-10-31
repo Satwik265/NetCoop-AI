@@ -4,13 +4,17 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "predev": "python ../scripts/sync_eval_results.py || true",
     "dev": "vite",
+    "prebuild": "python ../scripts/sync_eval_results.py || true",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "lucide-react": "^1.66.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "reactflow": "^11.11.4"
   },
   "devDependencies": {
     "@types/react": "^18.2.66",
@@ -23,4 +27,3 @@
     "vite": "^5.2.0"
   }
 }
-

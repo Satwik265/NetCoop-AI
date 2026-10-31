@@ -8,7 +8,12 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from netcoop.config import settings
 from netcoop.core.envelope import AgentEnvelope
-from netcoop.storage.models import EnvelopeLog, IncidentRecord, RemediationLog, OrchestratorCheckpoint
+from netcoop.storage.models import (
+    EnvelopeLog,
+    IncidentRecord,
+    RemediationLog,
+    OrchestratorCheckpoint,
+)
 
 connect_args = {"timeout": 60.0} if "sqlite" in settings.database_url else {}
 engine = create_engine(settings.database_url, echo=False, connect_args=connect_args)
@@ -61,9 +66,7 @@ def log_envelope(envelope: AgentEnvelope) -> None:
 def get_envelope_logs(correlation_id: str) -> List[EnvelopeLog]:
     """Retrieve complete audit trace of envelopes for an incident."""
     with Session(engine) as session:
-        statement = select(EnvelopeLog).where(
-            EnvelopeLog.correlation_id == correlation_id
-        ).order_by(EnvelopeLog.id)
+        statement = select(EnvelopeLog).where(EnvelopeLog.correlation_id == correlation_id).order_by(EnvelopeLog.id)
         return list(session.exec(statement).all())
 
 
@@ -120,13 +123,13 @@ def save_incident(
 
 
 def get_incident(incident_id: str) -> Optional[IncidentRecord]:
-    """Fetch incident by identifier."""
+    """Retrieve incident record by ID."""
     with Session(engine) as session:
         return session.get(IncidentRecord, incident_id)
 
 
 def list_incidents() -> List[IncidentRecord]:
-    """List recent incidents ordered by creation time."""
+    """List all incidents ordered by creation time descending."""
     with Session(engine) as session:
         statement = select(IncidentRecord).order_by(IncidentRecord.created_at.desc())
         return list(session.exec(statement).all())
@@ -171,7 +174,6 @@ def save_checkpoint(
         )
         session.add(cp)
 
-        # Also update IncidentRecord's state_blob and status if incident exists
         inc = session.get(IncidentRecord, session_id)
         if inc:
             inc.state_blob = state_json
@@ -273,6 +275,7 @@ def save_remediation_action_log(
         existing = session.exec(statement).first()
         if existing:
             existing.incident_id = incident_id
+            existing.device = device
             existing.status = status
             existing.commands_json = json.dumps(commands)
             existing.rollback_commands_json = json.dumps(rollback)
@@ -327,7 +330,7 @@ def log_remediation(
 
 
 def get_remediation_action_log(action_id: str) -> Optional[RemediationLog]:
-    """Lookup a specific remediation action by action_id."""
+    """Look up a specific remediation action by action_id."""
     with Session(engine) as session:
         statement = select(RemediationLog).where(RemediationLog.action_id == action_id)
         return session.exec(statement).first()
@@ -339,13 +342,13 @@ def list_remediation_action_logs(
 ) -> List[RemediationLog]:
     """List remediation actions filtered by incident_id or approval status."""
     with Session(engine) as session:
-        query = select(RemediationLog)
+        statement = select(RemediationLog)
         if incident_id:
-            query = query.where(RemediationLog.incident_id == incident_id)
+            statement = statement.where(RemediationLog.incident_id == incident_id)
         if status:
-            query = query.where(RemediationLog.status == status)
-        query = query.order_by(RemediationLog.id.desc())
-        return list(session.exec(query).all())
+            statement = statement.where(RemediationLog.status == status)
+        statement = statement.order_by(RemediationLog.id.desc())
+        return list(session.exec(statement).all())
 
 
 def record_hitl_decision(
@@ -355,8 +358,8 @@ def record_hitl_decision(
     rationale: Optional[str] = None,
     modified_commands: Optional[List[str]] = None,
 ) -> Optional[RemediationLog]:
-    """Record an operator approval, rejection, or modification decision with event log trace."""
-    decision_ts = datetime.now(timezone.utc).isoformat()
+    """Record an operator approval, rejection, or modification decision."""
+    now_iso = datetime.now(timezone.utc).isoformat()
     with Session(engine) as session:
         statement = select(RemediationLog).where(RemediationLog.action_id == action_id)
         rem_log = session.exec(statement).first()
@@ -366,18 +369,19 @@ def record_hitl_decision(
         rem_log.status = status
         rem_log.approved_by = operator
         rem_log.rationale = rationale
-        rem_log.decision_timestamp = decision_ts
+        rem_log.decision_timestamp = now_iso
+
         if modified_commands is not None:
             rem_log.modified_commands_json = json.dumps(modified_commands)
             rem_log.commands_json = json.dumps(modified_commands)
 
         session.add(rem_log)
 
-        # Log decision into event audit trail (EnvelopeLog)
+        # Record envelope audit entry for human decision
         envelope_event = EnvelopeLog(
             correlation_id=rem_log.incident_id,
             message_id=f"hitl-{action_id}-{int(datetime.now(timezone.utc).timestamp())}",
-            timestamp_utc=decision_ts,
+            timestamp_utc=now_iso,
             sender=operator,
             recipient="remediation_engine",
             message_type="REMEDIATION_DECISION",
@@ -389,12 +393,51 @@ def record_hitl_decision(
                 "rationale": rationale or f"Operator decision: {status}",
                 "modified_commands": modified_commands,
             }),
-            context_json=json.dumps({
-                "decision": status,
-                "operator": operator,
-            }),
+            context_json=json.dumps({"decision": status, "operator": operator}),
         )
         session.add(envelope_event)
         session.commit()
         session.refresh(rem_log)
         return rem_log
+
+
+def get_remediation_logs(incident_id: Optional[str] = None) -> List[RemediationLog]:
+    """Retrieve decision and simulated remediation history logs."""
+    with Session(engine) as session:
+        statement = select(RemediationLog)
+        if incident_id:
+            statement = statement.where(RemediationLog.incident_id == incident_id)
+        statement = statement.order_by(RemediationLog.id.desc())
+        return list(session.exec(statement).all())
+
+
+def save_remediation_log(
+    incident_id: str,
+    action_id: str,
+    device: str,
+    commands: List[str],
+    rollback_commands: List[str],
+    risk_level: str,
+    status: str,
+    approved_by: Optional[str] = None,
+    simulated_at: Optional[str] = None,
+) -> RemediationLog:
+    """Save or update a remediation decision in SQLite audit log."""
+    ts = simulated_at or datetime.now(timezone.utc).isoformat()
+    with Session(engine) as session:
+        log_entry = RemediationLog(
+            incident_id=incident_id,
+            action_id=action_id,
+            device=device,
+            commands_json=json.dumps(commands),
+            rollback_commands_json=json.dumps(rollback_commands),
+            risk_level=risk_level,
+            status=status,
+            approved_by=approved_by,
+            simulated_at=ts,
+            decision_timestamp=ts,
+        )
+        session.add(log_entry)
+        session.commit()
+        session.refresh(log_entry)
+        return log_entry
