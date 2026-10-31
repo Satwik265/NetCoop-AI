@@ -1,0 +1,35 @@
+{
+  "incident_id": "inc-sparse-005",
+  "network_id": "branch-office-9",
+  "timestamp_utc": "2026-10-31T12:00:00.000Z",
+  "description": "User reported intermittent application slowness. Telemetry feed contains sparse metrics only.",
+  "topology": {
+    "nodes": [
+      { "id": "branch-gw", "role": "router", "management_ip": "10.90.0.1", "vendor": "Cisco", "os_version": "IOS-XE-17.3" }
+    ],
+    "links": []
+  },
+  "telemetry": [
+    {
+      "device": "branch-gw",
+      "interface": "GigabitEthernet0/0/0",
+      "metric": "packet_loss_pct",
+      "value": 2.1,
+      "unit": "percent",
+      "timestamp_utc": "2026-10-31T12:00:00.000Z"
+    }
+  ],
+  "routing_state": {
+    "bgp_sessions": [],
+    "stp_state": []
+  },
+  "configurations": [
+    {
+      "device": "branch-gw",
+      "timestamp_utc": "2026-10-31T06:00:00.000Z",
+      "running_config": {},
+      "candidate_diff": ""
+    }
+  ],
+  "logs": []
+}

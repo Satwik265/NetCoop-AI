@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://netcoop.ai/schemas/remediation_plan.json",
+  "title": "SimulatedRemediationPlan",
+  "description": "Structure for simulated network remediation actions and pre-flight checks",
+  "type": "object",
+  "required": ["incident_id", "actions", "pre_flight_checks", "human_approval_required"],
+  "properties": {
+    "incident_id": { "type": "string" },
+    "human_approval_required": { "type": "boolean", "default": true },
+    "pre_flight_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["check_name", "passed", "details"],
+        "properties": {
+          "check_name": { "type": "string" },
+          "passed": { "type": "boolean" },
+          "details": { "type": "string" }
+        }
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["action_id", "device", "commands", "is_simulated"],
+        "properties": {
+          "action_id": { "type": "string" },
+          "title": { "type": "string" },
+          "device": { "type": "string" },
+          "commands": { "type": "array", "items": { "type": "string" } },
+          "rollback_commands": { "type": "array", "items": { "type": "string" } },
+          "is_simulated": { "type": "boolean", "enum": [true] },
+          "status": {
+            "type": "string",
+            "enum": ["pending_approval", "approved", "simulated_executed", "aborted"]
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+services:
+  netcoop:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: netcoop-ai
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DATABASE_URL=sqlite:///./netcoop.db
+      - GEMINI_API_KEY=
+    volumes:
+      - ./data:/app/data
+      - netcoop-db:/app/storage
+    restart: unless-stopped
+
+volumes:
+  netcoop-db:

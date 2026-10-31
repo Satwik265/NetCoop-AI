@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://netcoop.ai/schemas/diagnostic_report.json",
+  "title": "UnifiedDiagnosticReport",
+  "description": "Standardized root cause diagnostic report output by NetCoop AI synthesizer",
+  "type": "object",
+  "required": [
+    "incident_id",
+    "network_id",
+    "timestamp_utc",
+    "status",
+    "probable_cause",
+    "confidence",
+    "affected_devices",
+    "evidence",
+    "uncertainty",
+    "remediation_actions"
+  ],
+  "properties": {
+    "incident_id": { "type": "string" },
+    "network_id": { "type": "string" },
+    "timestamp_utc": { "type": "string", "format": "date-time" },
+    "status": {
+      "type": "string",
+      "enum": ["diagnosed", "insufficient_evidence", "inconclusive", "benign"]
+    },
+    "probable_cause": {
+      "type": ["string", "null"],
+      "description": "Deterministic root cause explanation, or null if insufficient_evidence"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Composite confidence calculated across corroborated agent findings"
+    },
+    "affected_devices": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "affected_interfaces": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source_agent", "category", "finding", "severity"],
+        "properties": {
+          "source_agent": { "type": "string" },
+          "category": { "type": "string" },
+          "finding": { "type": "string" },
+          "entity": { "type": "string" },
+          "metric_name": { "type": "string" },
+          "value": { "type": ["number", "string", "boolean", "null"] },
+          "unit": { "type": "string" },
+          "severity": { "type": "string", "enum": ["info", "warning", "critical"] },
+          "timestamp": { "type": "string" }
+        }
+      }
+    },
+    "uncertainty": {
+      "type": "object",
+      "required": ["score", "reasons", "missing_evidence"],
+      "properties": {
+        "score": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Quantitative measure of residual ambiguity (1.0 - confidence)"
+        },
+        "reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "missing_evidence": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Specific telemetry or diagnostic data needed to reach certainty"
+        },
+        "alternative_hypotheses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "cause": { "type": "string" },
+              "confidence": { "type": "number" }
+            }
+          },
+          "default": []
+        }
+      }
+    },
+    "remediation_actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["action_id", "title", "device", "risk_level", "is_simulated"],
+        "properties": {
+          "action_id": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "device": { "type": "string" },
+          "commands": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "rollback_commands": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "risk_level": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          },
+          "blast_radius_devices": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "is_simulated": {
+            "type": "boolean",
+            "enum": [true]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["recommended", "pending_approval", "simulated_success", "rejected"]
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "string",
+      "description": "Executive summary of the incident and diagnosis"
+    },
+    "processing_time_ms": {
+      "type": "number"
+    }
+  }
+}

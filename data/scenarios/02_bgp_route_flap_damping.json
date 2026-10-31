@@ -1,0 +1,79 @@
+{
+  "incident_id": "inc-bgp-002",
+  "network_id": "wan-edge-chicago",
+  "timestamp_utc": "2026-10-31T12:00:00.000Z",
+  "description": "Enterprise prefixes intermittently unreachable across primary ISP uplink.",
+  "topology": {
+    "nodes": [
+      { "id": "wan-01", "role": "edge_router", "management_ip": "192.168.100.1", "vendor": "Cisco", "os_version": "IOS-XR-7.5" },
+      { "id": "isp-peer-a", "role": "provider_edge", "management_ip": "198.51.100.1", "vendor": "Juniper", "os_version": "Junos-21.4" }
+    ],
+    "links": [
+      { "source": "wan-01", "source_interface": "GigabitEthernet0/0/0/1", "target": "isp-peer-a", "target_interface": "ge-0/0/0", "speed_bps": 1000000000, "media_type": "copper" }
+    ]
+  },
+  "telemetry": [
+    {
+      "device": "wan-01",
+      "interface": "GigabitEthernet0/0/0/1",
+      "metric": "carrier_transitions",
+      "value": 14,
+      "unit": "count",
+      "timestamp_utc": "2026-10-31T12:00:00.000Z"
+    },
+    {
+      "device": "wan-01",
+      "interface": "GigabitEthernet0/0/0/1",
+      "metric": "interface_flaps",
+      "value": 14,
+      "unit": "flaps_per_minute",
+      "timestamp_utc": "2026-10-31T12:00:00.000Z"
+    }
+  ],
+  "routing_state": {
+    "bgp_sessions": [
+      {
+        "device": "wan-01",
+        "peer_ip": "198.51.100.1",
+        "peer_as": 64512,
+        "state": "Active",
+        "flaps_count": 8,
+        "prefixes_received": 0
+      }
+    ],
+    "stp_state": []
+  },
+  "configurations": [
+    {
+      "device": "wan-01",
+      "timestamp_utc": "2026-10-31T10:00:00.000Z",
+      "running_config": {
+        "bgp": { "as": 65002, "dampening": { "half_life": 15, "reuse": 750, "suppress": 2000, "max_suppress": 60 } }
+      },
+      "candidate_diff": ""
+    }
+  ],
+  "logs": [
+    {
+      "device": "wan-01",
+      "timestamp_utc": "2026-10-31T11:52:10.000Z",
+      "severity": 3,
+      "facility": "BFD",
+      "message": "BFD session down for neighbor 198.51.100.1, Echo function failed"
+    },
+    {
+      "device": "wan-01",
+      "timestamp_utc": "2026-10-31T11:52:12.000Z",
+      "severity": 2,
+      "facility": "BGP",
+      "message": "BGP peer 198.51.100.1 changed state from Established to Idle (BFD Down)"
+    },
+    {
+      "device": "wan-01",
+      "timestamp_utc": "2026-10-31T11:55:00.000Z",
+      "severity": 3,
+      "facility": "BGP",
+      "message": "BGP route dampening active: Prefix 203.0.113.0/24 suppressed penalty 2400 exceeds limit 2000"
+    }
+  ]
+}

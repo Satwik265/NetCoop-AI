@@ -1,0 +1,70 @@
+{
+  "incident_id": "inc-optics-003",
+  "network_id": "core-backbone-metro",
+  "timestamp_utc": "2026-10-31T12:00:00.000Z",
+  "description": "Gradual packet loss and TCP retransmissions across inter-datacenter optical backbone link.",
+  "topology": {
+    "nodes": [
+      { "id": "core-a", "role": "core_router", "management_ip": "172.16.0.1", "vendor": "Cisco", "os_version": "IOS-XR-7.6" },
+      { "id": "core-b", "role": "core_router", "management_ip": "172.16.0.2", "vendor": "Cisco", "os_version": "IOS-XR-7.6" }
+    ],
+    "links": [
+      { "source": "core-a", "source_interface": "HundredGigE0/0/0/0", "target": "core-b", "target_interface": "HundredGigE0/0/0/0", "speed_bps": 100000000000, "media_type": "single_mode_fiber" }
+    ]
+  },
+  "telemetry": [
+    {
+      "device": "core-b",
+      "interface": "HundredGigE0/0/0/0",
+      "metric": "rx_power_dbm",
+      "value": -19.4,
+      "unit": "dbm",
+      "timestamp_utc": "2026-10-31T12:00:00.000Z"
+    },
+    {
+      "device": "core-b",
+      "interface": "HundredGigE0/0/0/0",
+      "metric": "fcs_errors",
+      "value": 4328,
+      "unit": "packets",
+      "timestamp_utc": "2026-10-31T12:00:00.000Z"
+    },
+    {
+      "device": "core-b",
+      "interface": "HundredGigE0/0/0/0",
+      "metric": "crc_errors",
+      "value": 4328,
+      "unit": "packets",
+      "timestamp_utc": "2026-10-31T12:00:00.000Z"
+    }
+  ],
+  "routing_state": {
+    "bgp_sessions": [
+      { "device": "core-a", "peer_ip": "172.16.0.2", "peer_as": 65100, "state": "Established", "flaps_count": 0, "prefixes_received": 8500 }
+    ],
+    "stp_state": []
+  },
+  "configurations": [
+    {
+      "device": "core-a",
+      "timestamp_utc": "2026-10-31T08:00:00.000Z",
+      "running_config": { "interfaces": { "HundredGigE0/0/0/0": { "mtu": 9216 } } },
+      "candidate_diff": ""
+    },
+    {
+      "device": "core-b",
+      "timestamp_utc": "2026-10-31T08:00:00.000Z",
+      "running_config": { "interfaces": { "HundredGigE0/0/0/0": { "mtu": 9216 } } },
+      "candidate_diff": ""
+    }
+  ],
+  "logs": [
+    {
+      "device": "core-b",
+      "timestamp_utc": "2026-10-31T11:48:22.000Z",
+      "severity": 4,
+      "facility": "OPTICS",
+      "message": "Optics DOM alarm: HundredGigE0/0/0/0 Rx Power -19.4 dBm exceeds low warning threshold -14.0 dBm"
+    }
+  ]
+}

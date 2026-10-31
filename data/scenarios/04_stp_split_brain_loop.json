@@ -1,0 +1,80 @@
+{
+  "incident_id": "inc-stp-004",
+  "network_id": "access-campus-bldg3",
+  "timestamp_utc": "2026-10-31T12:00:00.000Z",
+  "description": "Switch CPU at 99%, severe broadcast packet storm across Access VLANs.",
+  "topology": {
+    "nodes": [
+      { "id": "access-01", "role": "access_switch", "management_ip": "10.10.1.1", "vendor": "Cisco", "os_version": "Catalyst-9300-17.6" },
+      { "id": "access-02", "role": "access_switch", "management_ip": "10.10.1.2", "vendor": "Cisco", "os_version": "Catalyst-9300-17.6" }
+    ],
+    "links": [
+      { "source": "access-01", "source_interface": "GigabitEthernet1/0/24", "target": "access-02", "target_interface": "GigabitEthernet1/0/24", "speed_bps": 1000000000, "media_type": "copper" },
+      { "source": "access-01", "source_interface": "GigabitEthernet1/0/23", "target": "access-02", "target_interface": "GigabitEthernet1/0/23", "speed_bps": 1000000000, "media_type": "copper" }
+    ]
+  },
+  "telemetry": [
+    {
+      "device": "access-01",
+      "interface": "system",
+      "metric": "cpu_utilization_pct",
+      "value": 98.5,
+      "unit": "percent",
+      "timestamp_utc": "2026-10-31T12:00:00.000Z"
+    },
+    {
+      "device": "access-02",
+      "interface": "GigabitEthernet1/0/24",
+      "metric": "broadcast_pps",
+      "value": 850000,
+      "unit": "packets",
+      "timestamp_utc": "2026-10-31T12:00:00.000Z"
+    },
+    {
+      "device": "access-01",
+      "interface": "GigabitEthernet1/0/24",
+      "metric": "mac_flaps",
+      "value": 340,
+      "unit": "flaps_per_minute",
+      "timestamp_utc": "2026-10-31T12:00:00.000Z"
+    }
+  ],
+  "routing_state": {
+    "bgp_sessions": [],
+    "stp_state": [
+      {
+        "device": "access-01",
+        "root_bridge": "32768.aabb.cc00.0100",
+        "blocked_ports": [],
+        "bpdu_filter_enabled": false
+      },
+      {
+        "device": "access-02",
+        "root_bridge": "32768.aabb.cc00.0200",
+        "blocked_ports": [],
+        "bpdu_filter_enabled": true
+      }
+    ]
+  },
+  "configurations": [
+    {
+      "device": "access-02",
+      "timestamp_utc": "2026-10-31T11:55:00.000Z",
+      "running_config": {
+        "interfaces": {
+          "GigabitEthernet1/0/24": { "spanning-tree": { "bpdufilter": "enable" } }
+        }
+      },
+      "candidate_diff": "+ interface GigabitEthernet1/0/24 spanning-tree bpdufilter enable"
+    }
+  ],
+  "logs": [
+    {
+      "device": "access-01",
+      "timestamp_utc": "2026-10-31T11:56:00.000Z",
+      "severity": 2,
+      "facility": "SW_DA",
+      "message": "Host 0050.56b2.1234 in vlan 10 is flapping between port Gi1/0/23 and port Gi1/0/24"
+    }
+  ]
+}

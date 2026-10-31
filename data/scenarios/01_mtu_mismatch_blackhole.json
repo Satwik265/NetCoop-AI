@@ -1,0 +1,81 @@
+{
+  "incident_id": "inc-mtu-001",
+  "network_id": "dc-fabric-alpha",
+  "timestamp_utc": "2026-10-31T12:00:00.000Z",
+  "description": "Large packet data transfers stall between Leaf-01 and Leaf-02 while ICMP 64B ping succeeds.",
+  "topology": {
+    "nodes": [
+      { "id": "leaf-01", "role": "leaf", "management_ip": "10.0.0.1", "vendor": "Arista", "os_version": "EOS-4.28" },
+      { "id": "spine-01", "role": "spine", "management_ip": "10.0.0.10", "vendor": "Arista", "os_version": "EOS-4.28" },
+      { "id": "leaf-02", "role": "leaf", "management_ip": "10.0.0.2", "vendor": "Arista", "os_version": "EOS-4.28" }
+    ],
+    "links": [
+      { "source": "leaf-01", "source_interface": "et-0/0/1", "target": "spine-01", "target_interface": "et-0/0/1", "speed_bps": 100000000000, "media_type": "fiber" },
+      { "source": "spine-01", "source_interface": "et-0/0/2", "target": "leaf-02", "target_interface": "et-0/0/1", "speed_bps": 100000000000, "media_type": "fiber" }
+    ]
+  },
+  "telemetry": [
+    {
+      "device": "leaf-01",
+      "interface": "et-0/0/1",
+      "metric": "egress_queue_drops",
+      "value": 18240,
+      "unit": "packets",
+      "timestamp_utc": "2026-10-31T12:00:00.000Z"
+    },
+    {
+      "device": "leaf-01",
+      "interface": "et-0/0/1",
+      "metric": "large_packet_drops",
+      "value": 18240,
+      "unit": "packets",
+      "timestamp_utc": "2026-10-31T12:00:00.000Z"
+    },
+    {
+      "device": "spine-01",
+      "interface": "et-0/0/1",
+      "metric": "ingress_packet_loss_pct",
+      "value": 34.2,
+      "unit": "percent",
+      "timestamp_utc": "2026-10-31T12:00:00.000Z"
+    }
+  ],
+  "routing_state": {
+    "bgp_sessions": [
+      { "device": "leaf-01", "peer_ip": "10.0.0.10", "peer_as": 65000, "state": "Established", "flaps_count": 0, "prefixes_received": 120 },
+      { "device": "spine-01", "peer_ip": "10.0.0.1", "peer_as": 65001, "state": "Established", "flaps_count": 0, "prefixes_received": 14 }
+    ],
+    "stp_state": []
+  },
+  "configurations": [
+    {
+      "device": "leaf-01",
+      "timestamp_utc": "2026-10-31T11:45:00.000Z",
+      "running_config": {
+        "interfaces": {
+          "et-0/0/1": { "mtu": 9000, "speed": "100G", "ip": "10.0.1.1/30" }
+        }
+      },
+      "candidate_diff": "+ interface et-0/0/1 mtu 9000"
+    },
+    {
+      "device": "spine-01",
+      "timestamp_utc": "2026-10-31T11:40:00.000Z",
+      "running_config": {
+        "interfaces": {
+          "et-0/0/1": { "mtu": 1500, "speed": "100G", "ip": "10.0.1.2/30" }
+        }
+      },
+      "candidate_diff": ""
+    }
+  ],
+  "logs": [
+    {
+      "device": "leaf-01",
+      "timestamp_utc": "2026-10-31T11:58:30.000Z",
+      "severity": 4,
+      "facility": "IP",
+      "message": "TCP window stalls detected on connection 10.0.1.1:443 -> 10.0.2.1:5201, PMTUD black hole suspected"
+    }
+  ]
+}

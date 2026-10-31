@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://netcoop.ai/schemas/telemetry.json",
+  "title": "NetworkIncidentData",
+  "description": "Standardized format for network telemetry, topology, configurations, and logs input",
+  "type": "object",
+  "required": ["incident_id", "network_id", "topology", "telemetry"],
+  "properties": {
+    "incident_id": { "type": "string" },
+    "network_id": { "type": "string" },
+    "timestamp_utc": { "type": "string", "format": "date-time" },
+    "description": { "type": "string" },
+    "topology": {
+      "type": "object",
+      "required": ["nodes", "links"],
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "role"],
+            "properties": {
+              "id": { "type": "string" },
+              "role": { "type": "string" },
+              "management_ip": { "type": "string" },
+              "vendor": { "type": "string" },
+              "os_version": { "type": "string" }
+            }
+          }
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["source", "source_interface", "target", "target_interface"],
+            "properties": {
+              "source": { "type": "string" },
+              "source_interface": { "type": "string" },
+              "target": { "type": "string" },
+              "target_interface": { "type": "string" },
+              "speed_bps": { "type": "number" },
+              "media_type": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "telemetry": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["device", "interface", "metric", "value", "unit", "timestamp_utc"],
+        "properties": {
+          "device": { "type": "string" },
+          "interface": { "type": "string" },
+          "metric": { "type": "string" },
+          "value": { "type": ["number", "string", "boolean"] },
+          "unit": { "type": "string" },
+          "timestamp_utc": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "routing_state": {
+      "type": "object",
+      "properties": {
+        "bgp_sessions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["device", "peer_ip", "state"],
+            "properties": {
+              "device": { "type": "string" },
+              "peer_ip": { "type": "string" },
+              "peer_as": { "type": "integer" },
+              "state": { "type": "string" },
+              "flaps_count": { "type": "integer", "default": 0 },
+              "prefixes_received": { "type": "integer", "default": 0 }
+            }
+          }
+        },
+        "stp_state": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "device": { "type": "string" },
+              "root_bridge": { "type": "string" },
+              "blocked_ports": { "type": "array", "items": { "type": "string" } },
+              "bpdu_filter_enabled": { "type": "boolean", "default": false }
+            }
+          }
+        }
+      }
+    },
+    "configurations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["device", "timestamp_utc", "running_config"],
+        "properties": {
+          "device": { "type": "string" },
+          "timestamp_utc": { "type": "string", "format": "date-time" },
+          "running_config": { "type": "object" },
+          "candidate_diff": { "type": "string" }
+        }
+      }
+    },
+    "logs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["device", "timestamp_utc", "severity", "message"],
+        "properties": {
+          "device": { "type": "string" },
+          "timestamp_utc": { "type": "string", "format": "date-time" },
+          "severity": { "type": "integer", "minimum": 0, "maximum": 7 },
+          "facility": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    }
+  }
+}
