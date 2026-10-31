@@ -1,0 +1,276 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://netcoop.ai/schemas/campus_topology.schema.json",
+  "title": "CampusDemonstrationTopology",
+  "description": "Schema for source-aware, simulated demonstration campus topology datasets adhering to NetCoop AI contract specifications.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "campus_id",
+    "campus_name",
+    "map_source",
+    "topology_provenance",
+    "simulated_inventory",
+    "layout_coordinate_system",
+    "nodes",
+    "links",
+    "logical_routing_paths"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "campus_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "campus_name": {
+      "type": "string",
+      "minLength": 3
+    },
+    "map_source": {
+      "type": "object",
+      "required": [
+        "primary_reference",
+        "master_plan_url",
+        "route_map_url",
+        "attribution"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "primary_reference": {
+          "type": "string",
+          "format": "uri"
+        },
+        "master_plan_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "route_map_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "attribution": {
+          "type": "string",
+          "minLength": 10
+        }
+      }
+    },
+    "topology_provenance": {
+      "type": "object",
+      "required": [
+        "model_type",
+        "institution",
+        "campus_location",
+        "disclaimer"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "model_type": {
+          "type": "string",
+          "enum": ["simulated_demonstration_topology"]
+        },
+        "institution": {
+          "type": "string"
+        },
+        "campus_location": {
+          "type": "string"
+        },
+        "disclaimer": {
+          "type": "string",
+          "minLength": 20
+        }
+      }
+    },
+    "simulated_inventory": {
+      "type": "boolean",
+      "const": true
+    },
+    "layout_coordinate_system": {
+      "type": "string",
+      "enum": ["normalized_canvas_space"]
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "type",
+          "role",
+          "site_id",
+          "site_name",
+          "layout_position",
+          "simulated",
+          "inventory_status",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^IITBBSR-(CORE|AGG|DIST)-[A-Z0-9]+-[0-9]{2}$"
+          },
+          "display_name": {
+            "type": "string",
+            "minLength": 3
+          },
+          "type": {
+            "type": "string",
+            "enum": ["router"]
+          },
+          "role": {
+            "type": "string",
+            "enum": ["core", "aggregation", "distribution"]
+          },
+          "site_id": {
+            "type": "string",
+            "minLength": 3
+          },
+          "site_name": {
+            "type": "string",
+            "enum": [
+              "Administrative Building",
+              "IIT Bhubaneswar Auditorium",
+              "School of Basic Sciences",
+              "School of Infrastructure",
+              "School of Mechanical Sciences",
+              "Central Workshop",
+              "Rushikulya Hall of Residence",
+              "Academic zone",
+              "Residential zone"
+            ]
+          },
+          "layout_position": {
+            "type": "object",
+            "required": ["x", "y"],
+            "additionalProperties": false,
+            "properties": {
+              "x": {
+                "type": "number",
+                "minimum": 0.0,
+                "maximum": 1.0
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0.0,
+                "maximum": 1.0
+              }
+            }
+          },
+          "simulated": {
+            "type": "boolean",
+            "const": true
+          },
+          "inventory_status": {
+            "type": "string",
+            "enum": ["simulated_demonstration"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["unknown", "nominal", "warning", "critical"]
+          }
+        }
+      }
+    },
+    "links": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "source",
+          "target",
+          "link_type",
+          "simulated",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "type": "string",
+            "pattern": "^IITBBSR-(CORE|AGG|DIST)-[A-Z0-9]+-[0-9]{2}$"
+          },
+          "target": {
+            "type": "string",
+            "pattern": "^IITBBSR-(CORE|AGG|DIST)-[A-Z0-9]+-[0-9]{2}$"
+          },
+          "link_type": {
+            "type": "string",
+            "enum": [
+              "core_aggregation_trunk",
+              "core_distribution_link",
+              "aggregation_distribution_link",
+              "aggregation_interconnect"
+            ]
+          },
+          "simulated": {
+            "type": "boolean",
+            "const": true
+          },
+          "status": {
+            "type": "string",
+            "enum": ["unknown", "nominal", "warning", "critical"]
+          }
+        }
+      }
+    },
+    "logical_routing_paths": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "path_id",
+          "name",
+          "description",
+          "path_type",
+          "simulated",
+          "hops",
+          "disclaimer"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path_id": {
+            "type": "string",
+            "minLength": 3
+          },
+          "name": {
+            "type": "string",
+            "minLength": 3
+          },
+          "description": {
+            "type": "string"
+          },
+          "path_type": {
+            "type": "string",
+            "enum": ["simulated_logical_route"]
+          },
+          "simulated": {
+            "type": "boolean",
+            "const": true
+          },
+          "hops": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "string",
+              "pattern": "^IITBBSR-(CORE|AGG|DIST)-[A-Z0-9]+-[0-9]{2}$"
+            }
+          },
+          "disclaimer": {
+            "type": "string",
+            "minLength": 10
+          }
+        }
+      }
+    }
+  }
+}
+
