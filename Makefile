@@ -1,7 +1,7 @@
 # NetCoop AI Automation Makefile
 # Target platforms: Linux, macOS, and Windows (via PowerShell / bash)
 
-.PHONY: help setup up down demo demo-organizer test eval assets run clean
+.PHONY: help setup up down demo demo-organizer test eval eval-quick train assets run clean
 
 help:
 	@echo "NetCoop AI Automation Commands:"
@@ -11,7 +11,9 @@ help:
 	@echo "  make demo           - Run end-to-end multi-agent demonstration (normal, link, ethernet)"
 	@echo "  make demo-organizer - Ingest organizer Colab JSONL samples and run diagnostic pipeline"
 	@echo "  make test           - Run complete unit and property-based test suite"
-	@echo "  make eval           - Execute 19-scenario ground-truth diagnostic benchmark"
+	@echo "  make eval           - Execute diagnostic benchmark across all sets"
+	@echo "  make eval-quick     - Execute quick diagnostic benchmark"
+	@echo "  make train          - Train learned classifier, calibrate, and generate artifacts"
 	@echo "  make assets         - Compile and bundle React dashboard frontend assets"
 	@echo "  make run            - Start local FastAPI backend server on port 8000"
 	@echo "  make clean          - Remove build artifacts, pycache, and temporary caches"
@@ -39,6 +41,12 @@ test:
 
 eval:
 	python scripts/eval_benchmark.py
+
+eval-quick:
+	python scripts/eval_benchmark.py --quick
+
+train:
+	python scripts/train_models.py
 
 assets:
 	cd dashboard && npm run build

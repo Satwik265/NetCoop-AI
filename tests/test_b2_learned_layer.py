@@ -6,6 +6,8 @@
 - Value-based unit inference decision tree
 - Character n-gram field-name matching generalization (cpu_utilization_pct -> cpu_pct)
 - ClassifierAgent HTTP envelope processing
+- Conformal finite-sample validity without clipping
+- Classification metrics integrity and single-agent baseline F1 correctness
 """
 
 import math
@@ -20,6 +22,7 @@ from gateway.adapters.unit_inference import ValueUnitInferencer
 from gateway.adapters.field_matcher import FieldNameMatcher
 from netcoop.agents.classifier.classifier_agent import ClassifierAgent
 from netcoop.core.envelope import AgentEnvelope, AgentRole, EnvelopePayload, MessageType, NetworkScope, ProtocolHeader
+from eval.run_eval import compute_classification_metrics, determine_predicted_category
 
 
 # -----------------------------------------------------------------------------
@@ -31,22 +34,32 @@ def test_splits_seed_disjointness() -> None:
     DatasetSplitter.verify_no_seed_overlap()
 
     train_s = DatasetSplitter.TRAIN_SPEC.seeds
+    calib_fit_s = DatasetSplitter.CALIBRATOR_FIT_SPEC.seeds
+    conf_calib_s = DatasetSplitter.CONFORMAL_CALIB_SPEC.seeds
     calib_s = DatasetSplitter.CALIBRATION_SPEC.seeds
     val_s = DatasetSplitter.VALIDATION_SPEC.seeds
     test_s = DatasetSplitter.TEST_SPEC.seeds
 
     assert len(train_s) >= 200
-    assert len(calib_s) >= 50
+    assert len(calib_fit_s) >= 25
+    assert len(conf_calib_s) >= 25
+    assert len(calib_s) == len(calib_fit_s) + len(conf_calib_s)
     assert len(val_s) >= 50
     assert len(test_s) >= 50
 
-    # Strict pairwise disjointness
-    assert len(train_s.intersection(calib_s)) == 0
-    assert len(train_s.intersection(val_s)) == 0
-    assert len(train_s.intersection(test_s)) == 0
-    assert len(calib_s.intersection(val_s)) == 0
-    assert len(calib_s.intersection(test_s)) == 0
-    assert len(val_s.intersection(test_s)) == 0
+    # Strict pairwise disjointness across operational partitions
+    partitions = [
+        ("train", train_s),
+        ("calibrator_fit", calib_fit_s),
+        ("conformal_calib", conf_calib_s),
+        ("val", val_s),
+        ("test", test_s),
+    ]
+    for i in range(len(partitions)):
+        for j in range(i + 1, len(partitions)):
+            name_a, set_a = partitions[i]
+            name_b, set_b = partitions[j]
+            assert len(set_a & set_b) == 0, f"Overlap between {name_a} and {name_b}"
 
 
 # -----------------------------------------------------------------------------
@@ -97,7 +110,7 @@ def test_feature_extraction_window_with_slope() -> None:
 
 
 # -----------------------------------------------------------------------------
-# 3. Calibration & ECE
+# 3. Calibration, Cutoffs & ECE
 # -----------------------------------------------------------------------------
 
 def test_calibration_isotonic_and_ece() -> None:
@@ -118,6 +131,43 @@ def test_calibration_isotonic_and_ece() -> None:
     ece, bins = ProbabilityCalibrator.compute_ece(calibrated[:, 0], y_true[:, 0], n_bins=5)
     assert 0.0 <= ece <= 1.0
     assert len(bins) == 5
+
+
+def test_validation_cutoffs_metadata_and_recomputation() -> None:
+    """Verify cutoff derivation computes estimation status, respects monotonicity, and avoids fake precisions."""
+    calibrator = ProbabilityCalibrator()
+    np.random.seed(42)
+
+    # 100 samples with 3 classes
+    val_probs = np.random.uniform(0.1, 0.9, size=(100, 3))
+    val_probs /= np.sum(val_probs, axis=1, keepdims=True)
+    val_labels = np.zeros((100, 3), dtype=int)
+    # Make class 0 match argmax for 80% of samples
+    pred = np.argmax(val_probs, axis=1)
+    for i in range(100):
+        if np.random.rand() < 0.8:
+            val_labels[i, pred[i]] = 1
+        else:
+            val_labels[i, (pred[i] + 1) % 3] = 1
+
+    cutoffs = calibrator.derive_cutoffs_from_validation(val_probs, val_labels, min_support=5)
+    meta = calibrator.threshold_metadata
+
+    assert "high" in cutoffs and "medium" in cutoffs and "low" in cutoffs
+    # Monotonicity: high > medium > low
+    assert cutoffs["high"] > cutoffs["medium"] > cutoffs["low"]
+
+    for cat in ["high", "medium", "low"]:
+        assert cat in meta
+        assert "target_precision" in meta[cat]
+        assert "actual_empirical_precision" in meta[cat]
+        assert "accepted_sample_count" in meta[cat]
+        assert "correct_prediction_count" in meta[cat]
+        assert meta[cat]["estimation_status"] in ("estimated", "not_estimable")
+        if meta[cat]["estimation_status"] == "estimated":
+            # Must be true empirical fraction, never placeholder target_p
+            expected_p = round(meta[cat]["correct_prediction_count"] / meta[cat]["accepted_sample_count"], 3)
+            assert meta[cat]["actual_empirical_precision"] == expected_p
 
 
 # -----------------------------------------------------------------------------
@@ -147,6 +197,51 @@ def test_conformal_prediction_set_and_abstention() -> None:
     probs_sparse = {"device_cpu_overload": 0.20, "link_congestion": 0.15}
     status_sparse, p_set_sparse, _ = engine.predict_set(probs_sparse, top_prob_threshold=0.35)
     assert status_sparse == "insufficient_evidence"
+
+
+def test_conformal_exact_finite_sample_order_statistic_no_clipping() -> None:
+    """Verify exact finite-sample quantile without arbitrary clipping."""
+    engine = ConformalAbstentionEngine(alpha=0.10)
+    # 20 samples, 2 classes
+    calib_probs = np.array([[0.95, 0.05] for _ in range(18)] + [[0.60, 0.40], [0.10, 0.90]])
+    calib_labels = np.zeros((20, 2), dtype=int)
+    calib_labels[:, 0] = 1  # class 0 is true
+
+    # Scores: 18 samples have 1 - 0.95 = 0.05; 1 has 1 - 0.60 = 0.40; 1 has 1 - 0.10 = 0.90
+    q_hat = engine.fit_calibration(calib_probs, calib_labels)
+    # n = 20, alpha = 0.10 -> k = ceil(21 * 0.90) = ceil(18.9) = 19
+    # Sorted scores: [0.05]*18 + [0.40, 0.90]. The 19th score is exactly 0.40.
+    assert q_hat == 0.40
+    assert engine.is_calibrated is True
+
+
+def test_conformal_uncalibrated_safe_abstention() -> None:
+    """Uncalibrated or missing conformal engine safely abstains with zero confidence."""
+    engine = ConformalAbstentionEngine(alpha=0.10)
+    # Not fitted, q_hat is None
+    status, p_set, conf = engine.predict_set({"link_congestion": 0.99})
+    assert status == "insufficient_evidence"
+    assert p_set == []
+    assert conf == 0.0
+
+
+def test_conformal_normal_operation_vs_insufficient_evidence() -> None:
+    """Explicitly distinguish positive evidence of normal operation from insufficient evidence."""
+    engine = ConformalAbstentionEngine(alpha=0.10)
+    engine.q_hat = 0.10  # min_p = 1 - 0.10 = 0.90
+
+    # Positive evidence of normal operation
+    probs_normal = {"normal_operation": 0.95, "link_congestion": 0.01}
+    st, ps, conf = engine.predict_set(probs_normal)
+    assert st == "benign"
+    assert ps == ["normal_operation"]
+    assert conf == 0.95
+
+    # Insufficient evidence (diffuse probabilities, no fault or normal exceeds min_p)
+    probs_diffuse = {"normal_operation": 0.25, "link_congestion": 0.20, "dns_failure": 0.15}
+    st_d, ps_d, conf_d = engine.predict_set(probs_diffuse)
+    assert st_d == "insufficient_evidence"
+    assert ps_d == []
 
 
 # -----------------------------------------------------------------------------
@@ -239,3 +334,55 @@ def test_classifier_agent_envelope_processing() -> None:
     assert "conformal_prediction_set" in dq
     assert "calibrated_probabilities" in dq
     assert "conformal_status" in dq
+
+
+# -----------------------------------------------------------------------------
+# 8. Evaluation Metrics Integrity & Label Leakage Prevention
+# -----------------------------------------------------------------------------
+
+def test_classification_metrics_no_sample_drop_on_abstention() -> None:
+    """compute_classification_metrics must penalize out-of-class predictions and never drop support."""
+    classes = ["class_a", "class_b", "class_c"]
+    y_true = ["class_a", "class_b", "class_c", "class_a"]
+    # All predictions are invalid / abstained
+    y_pred = ["insufficient_evidence", "unknown", "insufficient_evidence", "invalid_class"]
+
+    per_class, cm, macro_f1, weighted_f1 = compute_classification_metrics(y_true, y_pred, classes)
+    assert macro_f1 == 0.0
+    assert weighted_f1 == 0.0
+    assert per_class["class_a"]["support"] == 2
+    assert per_class["class_b"]["support"] == 1
+    assert per_class["class_c"]["support"] == 1
+    assert per_class["class_a"]["recall"] == 0.0
+
+
+def test_single_agent_baseline_ablation_f1_integrity() -> None:
+    """Single-agent baseline getting 1 out of 4 classes correct must have F1 ~ 0.25, not 1.0."""
+    scenarios = ["link_congestion", "weak_wifi_signal", "dns_failure", "device_cpu_overload"]
+    y_true = list(scenarios)
+    # Only link_congestion is diagnosed correctly; others are unassigned / abstained
+    y_pred = ["link_congestion", "insufficient_evidence", "insufficient_evidence", "insufficient_evidence"]
+
+    per_class, _, macro_f1, weighted_f1 = compute_classification_metrics(y_true, y_pred, scenarios)
+    assert per_class["link_congestion"]["precision"] == 1.0
+    assert per_class["link_congestion"]["recall"] == 1.0
+    assert per_class["weak_wifi_signal"]["recall"] == 0.0
+    assert per_class["dns_failure"]["recall"] == 0.0
+    assert per_class["device_cpu_overload"]["recall"] == 0.0
+    assert macro_f1 == 0.25
+    assert weighted_f1 == 0.25
+
+
+def test_determine_predicted_category_no_ground_truth_leakage() -> None:
+    """Prediction mapping must rely solely on report outputs, never ground truth scenario."""
+    # When report abstained with insufficient evidence, prediction is insufficient_evidence
+    pred_abstained = determine_predicted_category("insufficient_evidence", None)
+    assert pred_abstained == "insufficient_evidence"
+
+    # When report confirmed benign, prediction is normal_operation
+    pred_benign = determine_predicted_category("benign", None)
+    assert pred_benign == "normal_operation"
+
+    # When report diagnosed a specific cause, prediction maps directly to canonical fault class
+    pred_diag = determine_predicted_category("diagnosed", "Link utilization saturation causing buffer queue drops")
+    assert pred_diag == "link_congestion"

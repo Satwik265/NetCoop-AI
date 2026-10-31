@@ -16,11 +16,12 @@ class ProbabilityCalibrator:
             "medium": 0.65,
             "low": 0.45,
         }
-        self.empirical_precisions: Dict[str, float] = {
+        self.empirical_precisions: Dict[str, Optional[float]] = {
             "high": 0.95,
             "medium": 0.85,
             "low": 0.70,
         }
+        self.threshold_metadata: Dict[str, Dict[str, Any]] = {}
 
     def fit(self, y_prob: np.ndarray, y_true: np.ndarray, class_names: List[str]) -> "ProbabilityCalibrator":
         """Fit isotonic regression models per class on calibration split."""
@@ -81,45 +82,89 @@ class ProbabilityCalibrator:
         val_probs: np.ndarray,
         val_labels: np.ndarray,
         target_precisions: Optional[Dict[str, float]] = None,
+        min_support: int = 5,
     ) -> Dict[str, float]:
-        """Compute minimum confidence thresholds meeting empirical validation precision requirements."""
+        """Compute monotonically decreasing confidence thresholds meeting empirical validation precision targets."""
         targets = target_precisions or {
             "high": 0.95,
             "medium": 0.85,
             "low": 0.70,
         }
 
-        # Flatten or evaluate max predicted probabilities against correctness
+        # Evaluate max predicted probabilities against correctness
         pred_classes = np.argmax(val_probs, axis=1)
         max_probs = np.max(val_probs, axis=1)
         correctness = (val_labels[np.arange(len(val_labels)), pred_classes] == 1).astype(int)
 
         cutoffs: Dict[str, float] = {}
-        precisions: Dict[str, float] = {}
 
-        candidate_thresholds = np.linspace(0.4, 0.98, 59)
-        for cat, target_p in targets.items():
-            best_thresh = 0.85
-            best_p = 1.0
+        # Candidate threshold ranges to search for empirical precision guarantee:
+        tier_ranges = {
+            "high": np.linspace(0.80, 0.95, 31),
+            "medium": np.linspace(0.60, 0.78, 37),
+            "low": np.linspace(0.40, 0.58, 37),
+        }
+
+        for cat in ["high", "medium", "low"]:
+            target_p = targets[cat]
+            candidates = tier_ranges[cat]
+            best_thresh = float(candidates[0])
             found = False
 
-            for th in candidate_thresholds:
+            for th in candidates:
                 mask = (max_probs >= th)
-                if np.sum(mask) >= 5:  # require sufficient support
+                if np.sum(mask) >= min_support:
                     prec = float(np.mean(correctness[mask]))
                     if prec >= target_p:
                         best_thresh = round(float(th), 3)
-                        best_p = round(prec, 3)
                         found = True
                         break
 
             if not found:
-                best_thresh = 0.90 if cat == "high" else (0.75 if cat == "medium" else 0.50)
-                best_p = target_p
+                # Default baseline cutoff
+                default_th = 0.85 if cat == "high" else (0.65 if cat == "medium" else 0.45)
+                best_thresh = default_th
 
             cutoffs[cat] = best_thresh
-            precisions[cat] = best_p
+
+        # Enforce strict monotonicity: high > medium > low
+        if cutoffs["medium"] >= cutoffs["high"]:
+            cutoffs["medium"] = round(cutoffs["high"] - 0.15, 3)
+
+        if cutoffs["low"] >= cutoffs["medium"]:
+            cutoffs["low"] = round(cutoffs["medium"] - 0.15, 3)
+
+        # Recompute empirical precision, counts, and estimation status for the FINAL thresholds
+        precisions: Dict[str, Optional[float]] = {}
+        metadata: Dict[str, Dict[str, Any]] = {}
+
+        for cat in ["high", "medium", "low"]:
+            th = cutoffs[cat]
+            mask = (max_probs >= th)
+            accepted_count = int(np.sum(mask))
+            correct_count = int(np.sum(correctness[mask]))
+
+            if accepted_count >= min_support:
+                actual_emp_p = round(float(correct_count / accepted_count), 3)
+                status = "estimated"
+            elif accepted_count > 0:
+                actual_emp_p = round(float(correct_count / accepted_count), 3)
+                status = "not_estimable"
+            else:
+                actual_emp_p = None
+                status = "not_estimable"
+
+            precisions[cat] = actual_emp_p
+            metadata[cat] = {
+                "target_precision": targets[cat],
+                "actual_empirical_precision": actual_emp_p,
+                "accepted_sample_count": accepted_count,
+                "correct_prediction_count": correct_count,
+                "selected_threshold": th,
+                "estimation_status": status,
+            }
 
         self.confidence_thresholds = cutoffs
         self.empirical_precisions = precisions
+        self.threshold_metadata = metadata
         return cutoffs

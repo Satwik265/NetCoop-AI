@@ -17,7 +17,7 @@ from agents.telemetry_agent import TelemetryAgent
 from agents.topology_agent import TopologyAgent, ConnectivityAgent
 from agents.wifi_services_agent import WifiServicesAgent
 try:
-    from netcoop.agents.classifier import ClassifierAgent
+    from netcoop.agents.classifier.classifier_agent import ClassifierAgent
 except ImportError:
     ClassifierAgent = None
 
@@ -132,4 +132,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

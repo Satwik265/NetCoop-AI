@@ -33,14 +33,16 @@ All `make` targets defined in `Makefile` have exact plain `python` / PowerShell 
 | Makefile Target | Action | Plain Python / PowerShell Equivalent |
 | :--- | :--- | :--- |
 | `make setup` | Setup dependencies and dashboard | `pip install -e .`<br/>`cd dashboard; npm install; cd ..` |
-| `make up` | Start all agent microservices (daemon) | `python scripts/run_agents.py` |
+| `make up` | Start all agent microservices (daemon) | `python scripts/run_agents.py --daemon` |
 | `make down` | Cleanly terminate all running agent processes | `python scripts/run_agents.py --stop` |
 | `make demo` | Run 3-scenario end-to-end demo with trace and reports | `python scripts/demo.py` |
 | `make demo-organizer` | Ingest organizer's Colab JSONL telemetry through gateway | `python scripts/demo_organizer.py` |
 | `make test` | Run complete unit and property tests | `pytest tests/ -v` |
-| `make eval` | Run 19-scenario accuracy evaluation benchmark | `python scripts/eval_benchmark.py` |
+| `make eval` | Run accuracy evaluation benchmark across all sets | `python scripts/eval_benchmark.py` |
+| `make eval-quick` | Run fast evaluation benchmark on quick subset | `python scripts/eval_benchmark.py --quick` |
+| `make train` | Train learned classifier and generate artifacts | `python scripts/train_models.py` |
 | `make assets` | Build frontend production bundle | `cd dashboard; npm run build; cd ..` |
-| `make run` | Start FastAPI backend server on port 8000 | `uvicorn netcoop.main:app --host 127.0.0.1 --port 8000 --reload` |
+| `make run` | Start FastAPI backend server on port 8000 | `uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload` |
 | `make clean` | Terminate agents and remove temp caches | `python scripts/run_agents.py --stop`<br/>`Get-ChildItem -Recurse -Include __pycache__,.pytest_cache | Remove-Item -Recurse -Force` |
 
 ---
@@ -69,12 +71,13 @@ The system employs a strict shared-nothing architecture. Specialist agents run a
 |    Agent     |  |    Agent     |          |    Agent     |  |    Agent     |
 +--------------+  +--------------+          +--------------+  +--------------+
                                       |
-                                      | :8005
-                                      v
-                               +--------------+
-                               | Synthesizer  |
-                               |    Agent     |
-                               +--------------+
+                 +--------------------+--------------------+
+                 | :8005                                   | :8007
+                 v                                         v
+          +--------------+                          +--------------+
+          | Synthesizer  |                          |  Classifier  |
+          |    Agent     |                          |    Agent     |
+          +--------------+                          +--------------+
 ```
 
 ### 2.1 Microservice Directory
@@ -98,6 +101,7 @@ The system employs a strict shared-nothing architecture. Specialist agents run a
 - **Process Supervision**: `scripts/run_agents.py` supervises processes, tracks PIDs in `.agents.pid`, polls health endpoints concurrently, and handles graceful teardown via `terminate_pid`.
 - **Docker Compose Topology**: `docker-compose.yml` declares all 8 microservices plus orchestrator with healthchecks, non-root loopback overrides, and `service_healthy` dependency conditions.
 
+
 ---
 
 ## 3. Authoritative Code Structure and Logical Path Mapping
@@ -107,11 +111,11 @@ Code resides in both top-level modules and the `netcoop/` package. The authorita
 | Subsystem | Authoritative Path | Logical Path | Description |
 | :--- | :--- | :--- | :--- |
 | **Specialist Agents** | `netcoop/agents/` | `/agents` | Telemetry, Topology, Config, Log, Synthesizer |
-| **Classifier Models** | `netcoop/agents/classifier/` | `/agents/classifier` | Classifier components |
+| **Classifier Agent** | `netcoop/agents/classifier/` | `/agents/classifier` | Port 8007 microservice, feature extraction, conformal sets |
 | **Core Protocol** | `netcoop/core/` | `/core` | Envelopes, normalizer, scoring, report builder |
-| **Models** | `netcoop/models/` | `/models` | Domain models |
+| **Domain Models** | `netcoop/models/` | `/models` | Pydantic / dataclass schemas |
 | **Orchestrator** | `netcoop/orchestrator/` | `/orchestrator` | LangGraph state machine, mediator, conflict resolver |
-| **Remediation** | `netcoop/remediation/` | `/sandbox` | Safety gates, action catalog, rollback plans |
+| **Remediation** | `netcoop/remediation/` | `/sandbox` | Safety gates, action simulation, rollback plans |
 | **Storage** | `netcoop/storage/` | `/storage` | SQLite event log and incident persistence |
 | **LLM Bridge** | `netcoop/llm/` | `/llm` | Offline-safe Gemini integration |
 | **MCP Server** | `netcoop/mcp/` & `mcp_server/` | `/mcp_server` | FastMCP stdio server |
@@ -319,7 +323,7 @@ Do not rebuild existing functionality! The following advanced subsystems are alr
    - Blocks unsafe actions on core backbone routers.
    - Generates automated rollback commands.
 2. **Model Context Protocol (MCP)** (`netcoop/mcp/server.py`):
-   - Full JSON-RPC stdio server exposing 4 network diagnosis tools.
+   - Full JSON-RPC stdio server exposing network diagnosis tools.
 3. **Optional Gemini Bridge** (`netcoop/llm/gemini_bridge.py`):
    - Executive summary generation with automatic fallback when offline or without API key.
 4. **SQLite Event Replay** (`netcoop/storage/db.py`):
