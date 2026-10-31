@@ -502,6 +502,7 @@ class SimulationRequest(BaseModel):
 
 
 @app.post("/api/remediate/simulate")
+@app.post("/api/remediation/simulate")
 def simulate_remediation_endpoint(req: SimulationRequest) -> Dict[str, Any]:
     """In-memory remediation simulation with before/after metric deltas."""
     dev = req.device or "spine-01"

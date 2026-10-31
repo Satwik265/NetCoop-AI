@@ -640,7 +640,8 @@ def resume_diagnosis(session_id: str) -> UnifiedDiagnosticReport:
         state.update(res_rep)
 
     elif node == "report":
-        pass
+        res_rep = node_report(state)
+        state.update(res_rep)
 
     report_dict = state.get("report_dict")
     if not report_dict:

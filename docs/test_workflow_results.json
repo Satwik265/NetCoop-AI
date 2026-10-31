@@ -1,0 +1,202 @@
+{
+  "stage_1_2": {
+    "scenario": "01_mtu_mismatch_blackhole.json",
+    "network_id": "dc-fabric-alpha",
+    "telemetry_count": 3
+  },
+  "stage_3_4": {
+    "status_code": 200,
+    "latency_ms": 15899.818199919537,
+    "incident_id": "inc-mtu-001",
+    "status": "diagnosed",
+    "confidence": 0.95,
+    "affected_devices": [
+      "spine-01",
+      "leaf-01"
+    ]
+  },
+  "stage_5": {
+    "envelope_count": 472,
+    "sample_senders": [
+      "orchestrator",
+      "telemetry_agent",
+      "orchestrator",
+      "topology_agent",
+      "orchestrator"
+    ]
+  },
+  "stage_6_7": {
+    "anomalies_count": 6,
+    "probable_cause": "Path MTU Mismatch causing packet blackholing on jumbo frames",
+    "causal_chain": [
+      "Empirical threshold breach detected on monitored telemetry metric",
+      "Buffer or queue resources exceeded operational capacity",
+      "Downstream packet delivery and transport delay impacted"
+    ]
+  },
+  "stage_8_9": {
+    "actions_count": 1,
+    "actions": [
+      {
+        "action_id": "act-mtu-spine-01",
+        "title": "Harmonize MTU to 9000 bytes on spine-01 et-0/0/1",
+        "description": "Align MTU along transit path to prevent Path MTU blackholing on jumbo frames.",
+        "device": "spine-01",
+        "commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "mtu 9000",
+          "commit and-quit"
+        ],
+        "rollback_commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "mtu 1500",
+          "commit and-quit"
+        ],
+        "risk_level": "low",
+        "blast_radius_devices": [
+          "spine-01"
+        ],
+        "is_simulated": true,
+        "status": "pending"
+      }
+    ]
+  },
+  "stage_10": {
+    "status": "success",
+    "disclaimer": "Simulated, no production changes",
+    "is_simulated": true,
+    "action_type": "Harmonize interface MTU to 9000 bytes on spine-01 et-0/0/1",
+    "target_device": "spine-01",
+    "target_interface": "et-0/0/1",
+    "safety_passed": true,
+    "safety_checks": [
+      {
+        "check_name": "simulation_safety_gate",
+        "passed": true,
+        "details": "Action strictly configured for simulation sandbox."
+      },
+      {
+        "check_name": "blast_radius_limit",
+        "passed": true,
+        "details": "Impacts 1 device (spine-01). Boundary is 60%."
+      },
+      {
+        "check_name": "rollback_readiness",
+        "passed": true,
+        "details": "Rollback script verified for high/medium risk actions."
+      }
+    ],
+    "executed_commands": [
+      "configure terminal",
+      "interface et-0/0/1",
+      "mtu 9000",
+      "commit and-quit"
+    ],
+    "rollback_commands": [
+      "configure terminal",
+      "interface et-0/0/1",
+      "mtu 1500",
+      "commit and-quit"
+    ],
+    "before_metrics": {
+      "packet_loss_pct": 28.5,
+      "max_link_utilization_pct": 65.0,
+      "avg_link_utilization_pct": 52.0,
+      "max_queue_drops": 120.0,
+      "avg_queue_drops": 60.0,
+      "latency_ms": 145.0
+    },
+    "after_metrics": {
+      "packet_loss_pct": 0.0,
+      "max_link_utilization_pct": 68.2,
+      "avg_link_utilization_pct": 54.1,
+      "max_queue_drops": 0.0,
+      "avg_queue_drops": 0.0,
+      "latency_ms": 12.4
+    },
+    "delta": {
+      "packet_loss_pct": -28.5,
+      "max_link_utilization_pct": 3.2,
+      "avg_link_utilization_pct": 2.1,
+      "max_queue_drops": -120.0,
+      "avg_queue_drops": -60.0,
+      "latency_ms": -132.6
+    }
+  },
+  "stage_11_12": {
+    "success": true,
+    "action_id": "act-mtu-spine-01",
+    "status": "approved",
+    "operator": "operator_senior_engineer",
+    "rationale": "Verified MTU mismatch signature across spine-01 interface; non-disruptive 9000-byte jumbo alignment approved.",
+    "simulation": {
+      "success": true,
+      "message": "Successfully simulated remediation action act-mtu-spine-01 on spine-01.",
+      "executed_commands": [
+        "configure terminal",
+        "interface et-0/0/1",
+        "mtu 9000",
+        "commit and-quit"
+      ],
+      "checks": [
+        {
+          "check_name": "simulation_safety_gate",
+          "passed": true,
+          "details": "Action strictly configured for simulation sandbox."
+        },
+        {
+          "check_name": "blast_radius_limit",
+          "passed": true,
+          "details": "Impacts 1/3 devices (33%). Boundary is 60%."
+        },
+        {
+          "check_name": "rollback_readiness",
+          "passed": true,
+          "details": "Rollback script verified for high/medium risk actions."
+        }
+      ],
+      "action": {
+        "action_id": "act-mtu-spine-01",
+        "title": "Remediation on spine-01",
+        "description": "Risk level low",
+        "device": "spine-01",
+        "commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "mtu 9000",
+          "commit and-quit"
+        ],
+        "rollback_commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "mtu 1500",
+          "commit and-quit"
+        ],
+        "risk_level": "low",
+        "blast_radius_devices": [
+          "spine-01"
+        ],
+        "is_simulated": true,
+        "status": "simulated_success"
+      }
+    }
+  },
+  "stage_13": {
+    "persisted_logs_count": 3,
+    "status": "simulated_executed",
+    "approved_by": "operator_senior_engineer",
+    "rationale": null
+  },
+  "stage_14": {
+    "incident_id": "inc-mtu-001",
+    "status": "diagnosed",
+    "probable_cause": "Path MTU Mismatch causing packet blackholing on jumbo frames",
+    "confidence": 0.95
+  },
+  "stage_15": {
+    "total_audit_logs": 36,
+    "incident_audit_logs": 3
+  }
+}
