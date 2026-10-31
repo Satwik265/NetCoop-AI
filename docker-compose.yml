@@ -1,21 +1,96 @@
+version: "3.9"
+
 services:
-  netcoop:
+  orchestrator-api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: netcoop-ai
+    container_name: netcoop-orchestrator
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "8000:8000"
     environment:
       - HOST=0.0.0.0
       - PORT=8000
       - DATABASE_URL=sqlite:///./netcoop.db
-      - GEMINI_API_KEY=
+      - AGENTS_MODE=http
+      - TELEMETRY_AGENT_PORT=8001
+      - TOPOLOGY_AGENT_PORT=8002
+      - CONFIG_AGENT_PORT=8003
+      - LOG_AGENT_PORT=8004
+      - SYNTHESIZER_AGENT_PORT=8005
+      - GATEWAY_PORT=8006
     volumes:
       - ./data:/app/data
       - netcoop-db:/app/storage
+    depends_on:
+      - telemetry-agent
+      - topology-agent
+      - config-agent
+      - log-agent
+      - synthesizer-agent
+      - gateway
+    restart: unless-stopped
+
+  telemetry-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: netcoop-telemetry-agent
+    command: ["python", "-m", "agents.server", "--role", "telemetry_agent", "--host", "0.0.0.0", "--port", "8001"]
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+
+  topology-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: netcoop-topology-agent
+    command: ["python", "-m", "agents.server", "--role", "topology_agent", "--host", "0.0.0.0", "--port", "8002"]
+    ports:
+      - "8002:8002"
+    restart: unless-stopped
+
+  config-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: netcoop-config-agent
+    command: ["python", "-m", "agents.server", "--role", "config_agent", "--host", "0.0.0.0", "--port", "8003"]
+    ports:
+      - "8003:8003"
+    restart: unless-stopped
+
+  log-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: netcoop-log-agent
+    command: ["python", "-m", "agents.server", "--role", "log_agent", "--host", "0.0.0.0", "--port", "8004"]
+    ports:
+      - "8004:8004"
+    restart: unless-stopped
+
+  synthesizer-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: netcoop-synthesizer-agent
+    command: ["python", "-m", "agents.server", "--role", "synthesizer_agent", "--host", "0.0.0.0", "--port", "8005"]
+    ports:
+      - "8005:8005"
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: netcoop-gateway
+    command: ["uvicorn", "gateway.api:app", "--host", "0.0.0.0", "--port", "8006"]
+    ports:
+      - "8006:8006"
     restart: unless-stopped
 
 volumes:
   netcoop-db:
-
