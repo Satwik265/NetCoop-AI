@@ -59,6 +59,18 @@ def create_agent_app(role: AgentRole) -> FastAPI:
         allow_headers=["*"],
     )
 
+    @app.middleware("http")
+    async def verify_service_auth(request: Request, call_next):
+        if settings.internal_service_token and request.url.path not in ("/health", "/docs", "/openapi.json"):
+            token = request.headers.get(settings.service_auth_header)
+            if token != settings.internal_service_token:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Unauthorized: invalid service authentication token"},
+                )
+        return await call_next(request)
+
     @app.get("/health")
     def health() -> Dict[str, str]:
         """Health check endpoint for process lifecycle monitoring."""
@@ -84,10 +96,15 @@ def create_agent_app(role: AgentRole) -> FastAPI:
             response = agent.handle_envelope(envelope)
             return response
         except Exception as e:
-            return AgentEnvelope.create_error_response(
+            from fastapi.responses import JSONResponse
+            error_envelope = AgentEnvelope.create_error_response(
                 original=envelope,
-                error_code="PROCESSING_ERROR",
+                error_code="INTERNAL_ERROR",
                 message=f"Agent internal error: {str(e)}",
+            )
+            return JSONResponse(
+                status_code=500,
+                content=error_envelope.model_dump(mode="json"),
             )
 
     @app.post("/envelope", response_model=AgentEnvelope)

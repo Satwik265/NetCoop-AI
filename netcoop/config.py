@@ -77,6 +77,12 @@ class Settings(BaseSettings):
     agent_timeout_seconds: float = 3.0
     agent_max_retries: int = 2
     circuit_breaker_failure_threshold: int = 2
+    circuit_breaker_recovery_timeout_s: float = 30.0
+    max_concurrent_agent_calls: int = 6
+
+    # Service-to-service authentication contract (coordinated with Anjali)
+    internal_service_token: Optional[str] = None
+    service_auth_header: str = "X-NetCoop-Service-Token"
 
     # Remediation safety
     remediation_simulated_only: bool = True

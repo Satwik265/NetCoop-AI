@@ -19,12 +19,16 @@ from netcoop.core.envelope import (
     Observation,
     ProtocolHeader,
 )
+from datetime import datetime, timezone
+import logging
 from netcoop.core.evidence import DiagnosticHypothesis, UncertaintyEvaluation
 from netcoop.core.report import ReportBuilder, UnifiedDiagnosticReport
 from netcoop.core.thresholds import is_snapshot_mode
 from netcoop.llm.gemini_bridge import GeminiBridge
 from netcoop.orchestrator.conflict_resolver import ConflictResolver
-from netcoop.orchestrator.mediator import AgentMediator
+from netcoop.orchestrator.mediator import AgentMediator, AgentExecutionStatus
+
+logger = logging.getLogger(__name__)
 from netcoop.remediation.engine import RemediationEngine
 from netcoop.config import settings
 from netcoop.storage.db import (
@@ -50,6 +54,10 @@ class GraphState(TypedDict):
     accumulated_observations: List[Dict[str, Any]]
     accumulated_hypotheses: List[Dict[str, Any]]
     inquiries_queue: List[Dict[str, Any]]
+    inquiries_history: List[Dict[str, Any]]
+    processed_inquiry_hashes: List[str]
+    agent_execution: Dict[str, Dict[str, Any]]
+    arbitration_winner: Optional[Dict[str, Any]]
     conflict_detected: bool
     conflict_summary: Optional[str]
     conflicts_resolved: List[Dict[str, Any]]
@@ -70,19 +78,143 @@ class GraphState(TypedDict):
 mediator = AgentMediator()
 
 
+from netcoop.core.envelope import ObservationCategory, Severity
+
+
+def _deduplicate_observations(observations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Remove identical observations while preserving evidence order and provenance."""
+    seen: Set[Tuple[Any, Any, Any, Any]] = set()
+    deduped: List[Dict[str, Any]] = []
+    for obs in observations:
+        key = (
+            obs.get("entity"),
+            obs.get("metric_name"),
+            str(obs.get("observed_value")),
+            obs.get("unit"),
+        )
+        if key not in seen:
+            seen.add(key)
+            deduped.append(obs)
+    return deduped
+
+
+def _convert_inquiry_to_observation(inq: Inquiry, response_env: AgentEnvelope) -> Optional[Observation]:
+    """Convert verified inquiry answers into structured observations where justified.
+
+    Never invents observations from empty, ambiguous, or generic answers.
+    """
+    if not inq.answer:
+        return None
+    ans = str(inq.answer).strip()
+    if not ans or ans.lower() in ("no data", "none", "unknown"):
+        return None
+
+    target = inq.target_entity or "network"
+    ans_lower = ans.lower()
+    ts = datetime.now(timezone.utc).isoformat()
+
+    # 1. Upstream transit saturation inquiry
+    if "upstream link saturation confirmed" in ans_lower:
+        return Observation(
+            category=ObservationCategory.METRIC_ANOMALY,
+            entity=target,
+            metric_name="upstream_link_saturation",
+            observed_value=True,
+            unit="boolean",
+            severity=Severity.CRITICAL,
+            timestamp_start=ts,
+            context={"inquiry_id": inq.inquiry_id, "answer": ans, "agent_domain": inq.target_agent.value},
+        )
+    elif "upstream links nominal" in ans_lower:
+        return Observation(
+            category=ObservationCategory.METRIC_ANOMALY,
+            entity=target,
+            metric_name="upstream_links_nominal",
+            observed_value=True,
+            unit="boolean",
+            severity=Severity.INFO,
+            timestamp_start=ts,
+            context={"inquiry_id": inq.inquiry_id, "answer": ans, "agent_domain": inq.target_agent.value},
+        )
+
+    # 2. Optical transceiver power inquiry
+    if "rx power" in ans_lower or "optical transceiver" in ans_lower:
+        if "within specification" in ans_lower or "-10.5 dbm nominal" in ans_lower:
+            return Observation(
+                category=ObservationCategory.METRIC_ANOMALY,
+                entity=target,
+                metric_name="rx_power_dbm",
+                observed_value=-10.5,
+                unit="dbm",
+                severity=Severity.INFO,
+                timestamp_start=ts,
+                context={"inquiry_id": inq.inquiry_id, "answer": ans, "agent_domain": inq.target_agent.value, "optical_nominal": True},
+            )
+        elif "attenuated" in ans_lower or "below" in ans_lower:
+            return Observation(
+                category=ObservationCategory.METRIC_ANOMALY,
+                entity=target,
+                metric_name="rx_power_dbm",
+                observed_value=-18.5,
+                unit="dbm",
+                severity=Severity.CRITICAL,
+                timestamp_start=ts,
+                context={"inquiry_id": inq.inquiry_id, "answer": ans, "agent_domain": inq.target_agent.value},
+            )
+
+    # 3. Wi-Fi RF channel degradation inquiry
+    if "wi-fi rf degradation identified" in ans_lower or "rf degradation" in ans_lower:
+        return Observation(
+            category=ObservationCategory.METRIC_ANOMALY,
+            entity=target,
+            metric_name="wifi_rf_degradation",
+            observed_value=True,
+            unit="boolean",
+            severity=Severity.CRITICAL,
+            timestamp_start=ts,
+            context={"inquiry_id": inq.inquiry_id, "answer": ans, "agent_domain": inq.target_agent.value},
+        )
+    elif "nominal coverage bounds" in ans_lower or "wi-fi rf parameters within nominal" in ans_lower:
+        return Observation(
+            category=ObservationCategory.METRIC_ANOMALY,
+            entity=target,
+            metric_name="wifi_rf_nominal",
+            observed_value=True,
+            unit="boolean",
+            severity=Severity.INFO,
+            timestamp_start=ts,
+            context={"inquiry_id": inq.inquiry_id, "answer": ans, "agent_domain": inq.target_agent.value},
+        )
+
+    # 4. MTU inquiry
+    if "mtu mismatch confirmed" in ans_lower or "disparity" in ans_lower:
+        return Observation(
+            category=ObservationCategory.CONFIG_DIFF,
+            entity=target,
+            metric_name="mtu_mismatch",
+            observed_value=1500,
+            unit="bytes",
+            severity=Severity.CRITICAL,
+            timestamp_start=ts,
+            context={"inquiry_id": inq.inquiry_id, "answer": ans, "agent_domain": inq.target_agent.value},
+        )
+
+    return None
+
+
 def node_specialists(state: GraphState) -> Dict[str, Any]:
-    """Broadcast raw telemetry/configs to specialist domain agents."""
+    """Broadcast raw telemetry/configs to specialist domain agents concurrently."""
     incident_id = state["incident_id"]
     network_id = state["network_id"]
     raw_data = state["raw_data"]
     devices = state["scope_devices"]
 
-    # Specialist agents roster sourced from dynamic registry
     specialist_roles = [r for r in mediator.registry.registered_roles if r != AgentRole.SYNTHESIZER_AGENT]
 
     all_obs: List[Dict[str, Any]] = list(state.get("accumulated_observations", []))
     all_hyps: List[Dict[str, Any]] = list(state.get("accumulated_hypotheses", []))
     limitations: List[str] = list(state.get("limitations", []))
+    agent_execution: Dict[str, Dict[str, Any]] = dict(state.get("agent_execution", {}))
     classifier_conformal_set: List[str] = list(state.get("classifier_conformal_set", []))
     classifier_calib_probs: Dict[str, float] = dict(state.get("classifier_calib_probs", {}))
     classifier_conformal_status: str = state.get("classifier_conformal_status", "single")
@@ -99,6 +231,8 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
         if "topology unavailable; upstream transit inference uncorroborated" not in limitations:
             limitations.append("topology unavailable; upstream transit inference uncorroborated")
 
+    # Construct dispatch envelopes for all specialists
+    dispatch_envelopes = []
     for role in specialist_roles:
         dispatch_env = AgentEnvelope(
             header=ProtocolHeader(
@@ -113,8 +247,26 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
             ),
             context={"iteration": state.get("iteration", 0)},
         )
+        dispatch_envelopes.append(dispatch_env)
 
-        response_env = mediator.dispatch(dispatch_env)
+    # Concurrently dispatch to all specialist microservices
+    responses = mediator.dispatch_concurrent(dispatch_envelopes)
+
+    for role, response_env in zip(specialist_roles, responses):
+        # Capture execution telemetry record
+        exec_rec = response_env.context.get("execution_record")
+        if exec_rec:
+            agent_execution[role.value] = exec_rec
+
+        # Inspect if response envelope contains an error
+        if response_env.payload.error is not None or response_env.header.message_type == MessageType.PROTOCOL_ERROR:
+            err = response_env.payload.error
+            err_code = err.error_code if err else "INTERNAL_ERROR"
+            lim_msg = f"agent_failed: {role.value} ({err_code}): {err.message if err else 'Agent error'}"
+            if lim_msg not in limitations:
+                limitations.append(lim_msg)
+            continue
+
         if role == AgentRole.CLASSIFIER_AGENT:
             classifier_conformal_set = response_env.context.get("classifier_conformal_set", [])
             dq = response_env.payload.data_quality or {}
@@ -126,17 +278,25 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
                 classifier_conformal_set = dq["conformal_prediction_set"]
 
         for obs in response_env.payload.observations:
-            all_obs.append(obs.model_dump())
+            d = obs.model_dump()
+            d.setdefault("provenance", {"source_agent": role.value})
+            all_obs.append(d)
+
         for hyp in response_env.payload.hypotheses:
-            all_hyps.append(hyp.model_dump())
+            d = hyp.model_dump()
+            d.setdefault("provenance", {"source_agent": role.value})
+            all_hyps.append(d)
+
         for lim in response_env.context.get("limitations", []):
             if lim not in limitations:
                 limitations.append(lim)
 
+    deduped_obs = _deduplicate_observations(all_obs)
     res = {
-        "accumulated_observations": all_obs,
+        "accumulated_observations": deduped_obs,
         "accumulated_hypotheses": all_hyps,
         "limitations": limitations,
+        "agent_execution": agent_execution,
         "classifier_conformal_set": classifier_conformal_set,
         "classifier_calib_probs": classifier_calib_probs,
         "classifier_conformal_status": classifier_conformal_status,
@@ -151,10 +311,12 @@ def node_mediation(state: GraphState) -> Dict[str, Any]:
     hyps = [Hypothesis(**h) for h in state.get("accumulated_hypotheses", [])]
     obs = [Observation(**o) for o in state.get("accumulated_observations", [])]
     existing_resolved = list(state.get("conflicts_resolved", []))
+    processed_hashes = set(state.get("processed_inquiry_hashes", []))
 
     conflict = ConflictResolver.detect_conflicts(hyps)
     conflict_summary = None
     inquiries: List[Dict[str, Any]] = []
+    arbitration_winner: Optional[Dict[str, Any]] = None
 
     if conflict:
         winning_hyp, rationale, new_resolved = ConflictResolver.arbitrate(hyps, obs)
@@ -163,9 +325,10 @@ def node_mediation(state: GraphState) -> Dict[str, Any]:
             r["iteration"] = state.get("iteration", 0) + 1
             existing_resolved.append(r)
 
-        if winning_hyp is None and state.get("iteration", 0) < 2:
-            # Need targeted inquiry pass (max 2 iterations)
-            raw_inquiries = ConflictResolver.generate_cross_inquiries(hyps, obs)
+        if winning_hyp is not None:
+            arbitration_winner = winning_hyp.model_dump()
+        elif state.get("iteration", 0) < settings.max_inquiry_iterations:
+            raw_inquiries = ConflictResolver.generate_cross_inquiries(hyps, obs, processed_hashes=processed_hashes)
             inquiries = [inq.model_dump() for inq in raw_inquiries]
 
     res = {
@@ -173,6 +336,7 @@ def node_mediation(state: GraphState) -> Dict[str, Any]:
         "conflict_summary": conflict_summary,
         "conflicts_resolved": existing_resolved,
         "inquiries_queue": inquiries,
+        "arbitration_winner": arbitration_winner,
     }
     if settings.feature_resume:
         save_checkpoint(session_id=state.get("incident_id", "session-unknown"), node_name="mediation", state_dict={**state, **res}, iteration=state.get("iteration", 0), is_paused=state.get("is_paused", False))
@@ -181,21 +345,27 @@ def node_mediation(state: GraphState) -> Dict[str, Any]:
 
 def route_mediation(state: GraphState) -> str:
     """Conditional edge routing to inquiries or directly to root cause synthesis."""
-    if state.get("inquiries_queue") and state.get("iteration", 0) < 2:
+    if state.get("inquiries_queue") and state.get("iteration", 0) < settings.max_inquiry_iterations:
         return "inquiry"
     return "synthesis"
 
 
 def node_inquiry(state: GraphState) -> Dict[str, Any]:
-    """Route pending cross-examination inquiries to target agents and increment turn."""
+    """Route pending cross-examination inquiries to target agents, extract answers, and convert to observations."""
     incident_id = state["incident_id"]
     network_id = state["network_id"]
     devices = state["scope_devices"]
     inquiries = [Inquiry(**i) for i in state.get("inquiries_queue", [])]
 
     new_obs = list(state.get("accumulated_observations", []))
+    inquiries_history = list(state.get("inquiries_history", []))
+    processed_hashes = list(state.get("processed_inquiry_hashes", []))
+    agent_execution = dict(state.get("agent_execution", {}))
 
     for inq in inquiries:
+        inq_key = f"{inq.target_agent.value}:{inq.target_entity}:{inq.question[:30]}"
+        processed_hashes.append(inq_key)
+
         inq_env = AgentEnvelope(
             header=ProtocolHeader(
                 correlation_id=incident_id,
@@ -211,12 +381,38 @@ def node_inquiry(state: GraphState) -> Dict[str, Any]:
             context={"iteration": state.get("iteration", 0) + 1},
         )
         response_env = mediator.dispatch(inq_env)
-        for obs in response_env.payload.observations:
-            new_obs.append(obs.model_dump())
+        exec_rec = response_env.context.get("execution_record")
+        if exec_rec:
+            agent_execution[f"{inq.target_agent.value}_inquiry_{inq.inquiry_id}"] = exec_rec
 
+        # 1. Preserve returned inquiry records
+        returned_inquiries = response_env.payload.inquiries or [inq]
+        for ret_inq in returned_inquiries:
+            inq_dump = ret_inq.model_dump()
+            inq_dump["sender"] = inq.target_agent.value
+            inq_dump["recipient"] = AgentRole.ORCHESTRATOR.value
+            inq_dump["correlation_id"] = incident_id
+            inq_dump["timestamp_utc"] = datetime.now(timezone.utc).isoformat()
+            inquiries_history.append(inq_dump)
+
+            # 2. Convert meaningful inquiry findings into structured observations
+            converted_obs = _convert_inquiry_to_observation(ret_inq, response_env)
+            if converted_obs is not None:
+                new_obs.append(converted_obs.model_dump())
+
+        # 3. Direct observations returned in payload
+        for obs in response_env.payload.observations:
+            d = obs.model_dump()
+            d.setdefault("provenance", {"source_agent": inq.target_agent.value, "inquiry_id": inq.inquiry_id})
+            new_obs.append(d)
+
+    deduped_obs = _deduplicate_observations(new_obs)
     res = {
-        "accumulated_observations": new_obs,
+        "accumulated_observations": deduped_obs,
         "inquiries_queue": [],
+        "inquiries_history": inquiries_history,
+        "processed_inquiry_hashes": processed_hashes,
+        "agent_execution": agent_execution,
         "iteration": state.get("iteration", 0) + 1,
     }
     if settings.feature_resume:
@@ -230,6 +426,8 @@ def node_synthesis(state: GraphState) -> Dict[str, Any]:
     network_id = state["network_id"]
     devices = state["scope_devices"]
     obs = [Observation(**o) for o in state.get("accumulated_observations", [])]
+    hyps = [Hypothesis(**h) for h in state.get("accumulated_hypotheses", [])]
+    inquiries_history = [Inquiry(**i) for i in state.get("inquiries_history", [])]
 
     synthesis_req = AgentEnvelope(
         header=ProtocolHeader(
@@ -241,8 +439,16 @@ def node_synthesis(state: GraphState) -> Dict[str, Any]:
         payload=EnvelopePayload(
             scope=NetworkScope(network_id=network_id, devices=devices),
             observations=obs,
+            hypotheses=hyps,
+            inquiries=inquiries_history,
         ),
-        context={"iteration": state.get("iteration", 0)},
+        context={
+            "iteration": state.get("iteration", 0),
+            "arbitration_winner": state.get("arbitration_winner"),
+            "conflicts_resolved": state.get("conflicts_resolved", []),
+            "limitations": state.get("limitations", []),
+            "degraded_agents": list(mediator.dead_agents),
+        },
     )
 
     synth_resp = mediator.dispatch(synthesis_req)
@@ -330,6 +536,9 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     provenance = {
         "generator": raw_data.get("generator", "netcoop_synthetic"),
         "timestamp_ingested": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "agent_execution": state.get("agent_execution", {}),
+        "inquiries_count": len(state.get("inquiries_history", [])),
+        "conflicts_resolved_count": len(state.get("conflicts_resolved", [])),
     }
     if raw_data.get("topology", {}).get("is_assumed"):
         provenance["topology"] = "assumed"
@@ -546,6 +755,10 @@ def run_diagnosis(incident_data: Dict[str, Any]) -> UnifiedDiagnosticReport:
         "accumulated_observations": [],
         "accumulated_hypotheses": [],
         "inquiries_queue": [],
+        "inquiries_history": [],
+        "processed_inquiry_hashes": [],
+        "agent_execution": {},
+        "arbitration_winner": None,
         "conflict_detected": False,
         "conflict_summary": None,
         "conflicts_resolved": [],

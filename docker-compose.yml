@@ -31,6 +31,7 @@ services:
       - GATEWAY_PORT=8006
       - CLASSIFIER_AGENT_PORT=8007
       - WIFI_SERVICES_AGENT_PORT=8008
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN:-}
     volumes:
       - ./data:/app/data
       - netcoop-db:/app/storage
@@ -144,7 +145,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: netcoop-gateway
-    command: ["uvicorn", "gateway.api:app", "--host", "0.0.0.0", "--port", "8006"]
+    command: ["python", "-m", "gateway.api", "--host", "0.0.0.0", "--port", "8006"]
     ports:
       - "8006:8006"
     healthcheck:
