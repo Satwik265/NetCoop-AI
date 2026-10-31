@@ -74,7 +74,10 @@ class ScenarioClassifier:
         return None
 
 
-# Lazy import / export of ClassifierAgent
-from netcoop.agents.classifier.agent import ClassifierAgent
+# Learned, calibrated ClassifierAgent with fallback
+try:
+    from netcoop.agents.classifier.classifier_agent import ClassifierAgent
+except Exception:
+    from netcoop.agents.classifier.agent import ClassifierAgent
 
 __all__ = ["ScenarioClassifier", "ClassifierAgent"]

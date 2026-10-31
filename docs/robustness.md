@@ -126,5 +126,6 @@ tests/test_chaos.py::test_end_to_end_organizer_missing_metrics_object PASSED
 tests/test_chaos.py::test_end_to_end_unsupported_schema_version PASSED
 tests/test_chaos.py::test_hybrid_confidence_breakdown_and_weights PASSED
 tests/test_chaos.py::test_hybrid_conformal_abstention_guarantee PASSED
+tests/test_chaos.py::test_hybrid_classifier_disagreement_conflict_flow PASSED
 ```
-Full repository regression test: **115 passed** in 30.34s.
+Full repository regression test: **116 passed** in 37.63s.

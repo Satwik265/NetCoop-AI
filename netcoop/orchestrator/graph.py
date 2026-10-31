@@ -335,9 +335,24 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     confidence_category = None
 
     # Conformal abstention standard: |S| == 0 or status == 'abstain'
+    statistical_cause_keys = {
+        "LINK_CONGESTION",
+        "UPSTREAM_CONGESTION",
+        "UPSTREAM_FAILURE_CASCADE",
+        "WEAK_WIFI_SIGNAL",
+        "ETHERNET_INTERFACE_FAULT",
+        "DEVICE_CPU_OVERLOAD",
+        "DNS_FAILURE",
+        "DHCP_FAILURE",
+        "DEVICE_HARDWARE_FAILURE",
+        "NO_FAULT",
+    }
+    is_statistical_domain = hypothesis and (hypothesis.cause_key in statistical_cause_keys)
+
     classifier_abstained = (
         classifier_conformal_status == "abstain"
-        or (classifier_calib_probs and len(conformal_prediction_set) == 0)
+        or (is_statistical_domain and classifier_calib_probs and len(conformal_prediction_set) == 0)
+        or (not hypothesis and len(conformal_prediction_set) == 0 and classifier_calib_probs)
     )
 
     if classifier_abstained:
@@ -356,6 +371,7 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         cause_map = {
             "LINK_CONGESTION": "link_congestion",
             "UPSTREAM_CONGESTION": "upstream_failure_cascade",
+            "UPSTREAM_FAILURE_CASCADE": "upstream_failure_cascade",
             "WEAK_WIFI_SIGNAL": "weak_wifi_signal",
             "ETHERNET_INTERFACE_FAULT": "ethernet_interface_fault",
             "DEVICE_CPU_OVERLOAD": "device_cpu_overload",
@@ -364,10 +380,20 @@ def node_report(state: GraphState) -> Dict[str, Any]:
             "DEVICE_HARDWARE_FAILURE": "device_cpu_overload",
             "NO_FAULT": "normal_operation",
         }
-        cname = cause_map.get(hypothesis.cause_key, "link_congestion")
-        model_score = round(float(classifier_calib_probs.get(cname, rules_score)), 3)
-        blended_score = round(w_rules * rules_score + w_model * model_score, 3)
-        calibrated_confidence = blended_score
+        cname = cause_map.get(hypothesis.cause_key)
+        if cname and classifier_calib_probs:
+            model_score = round(float(classifier_calib_probs.get(cname, rules_score)), 3)
+            blended_score = round(w_rules * rules_score + w_model * model_score, 3)
+            calibrated_confidence = blended_score
+            if not conformal_prediction_set:
+                conformal_prediction_set = [cname]
+        else:
+            model_score = rules_score
+            blended_score = rules_score
+            calibrated_confidence = rules_score
+            if not conformal_prediction_set:
+                conformal_prediction_set = [hypothesis.cause_key.lower()]
+
         hypothesis.final_confidence = calibrated_confidence
 
         confidence_breakdown = {
@@ -376,8 +402,6 @@ def node_report(state: GraphState) -> Dict[str, Any]:
             "blended_score": blended_score,
             "calibrated_confidence": calibrated_confidence,
         }
-        if not conformal_prediction_set:
-            conformal_prediction_set = [cname]
 
         if calibrated_confidence >= 0.85:
             confidence_category = "high"

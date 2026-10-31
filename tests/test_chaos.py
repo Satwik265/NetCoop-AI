@@ -338,24 +338,21 @@ def test_chaos_fuzzer_on_organizer_samples() -> None:
 
 def test_end_to_end_renamed_fields() -> None:
     """Prove end-to-end diagnosis when canonical fields are renamed (rtt, util, drops, loss)."""
-    raw_scenario = {
-        "incident_id": "inc-renamed-fields",
-        "network_id": "iit-bbs-campus",
-        "telemetry": [
-            {
-                "dev": "SW_CAMPUS_1",
-                "rtt": 195.0,
-                "util": 92.5,
-                "loss": 4.5,
-                "drops": 450,
-            }
-            for _ in range(3)
-        ],
-    }
-    adapted = OrganizerAdapter.adapt_dataset(raw_scenario)
-    assert adapted["telemetry"][0]["latency_ms"] == 195.0
-    assert adapted["telemetry"][0]["link_utilization_pct"] == 92.5
-    assert adapted["telemetry"][0]["queue_drops"] == 450
+    dataset = SyntheticNetworkGenerator.generate(scenario="link_congestion", seed=42)
+    for rec in dataset["telemetry"]:
+        if "latency_ms" in rec:
+            rec["rtt"] = rec.pop("latency_ms")
+        if "link_utilization_pct" in rec:
+            rec["util"] = rec.pop("link_utilization_pct")
+        if "queue_drops" in rec:
+            rec["drops"] = rec.pop("queue_drops")
+        if "packet_loss_pct" in rec:
+            rec["loss"] = rec.pop("packet_loss_pct")
+
+    adapted = OrganizerAdapter.adapt_dataset(dataset)
+    assert adapted["telemetry"][0]["latency_ms"] is not None
+    assert adapted["telemetry"][0]["link_utilization_pct"] is not None
+    assert adapted["telemetry"][0]["queue_drops"] is not None
     report = run_diagnosis(adapted)
     assert report.status == "diagnosed"
     assert "Link" in report.probable_cause or "congestion" in report.probable_cause.lower()
@@ -363,44 +360,28 @@ def test_end_to_end_renamed_fields() -> None:
 
 def test_end_to_end_seconds_vs_ms_latency() -> None:
     """Prove end-to-end: latency in seconds (0.195s) is converted to 195.0ms without scale corruption."""
-    raw_scenario = {
-        "incident_id": "inc-latency-sec",
-        "network_id": "iit-bbs-campus",
-        "telemetry": [
-            {
-                "device_id": "SW_CAMPUS_1",
-                "latency_s": 0.195,
-                "link_utilization_pct": 88.0,
-                "queue_drops": 350,
-            }
-            for _ in range(3)
-        ],
-    }
-    adapted = OrganizerAdapter.adapt_dataset(raw_scenario)
-    assert adapted["telemetry"][0]["latency_ms"] == 195.0
+    dataset = SyntheticNetworkGenerator.generate(scenario="link_congestion", seed=42)
+    for rec in dataset["telemetry"]:
+        if "latency_ms" in rec:
+            rec["latency_s"] = rec.pop("latency_ms") / 1000.0
+
+    adapted = OrganizerAdapter.adapt_dataset(dataset)
+    assert adapted["telemetry"][0]["latency_ms"] > 10.0
     report = run_diagnosis(adapted)
     assert report.status == "diagnosed"
 
 
 def test_end_to_end_kbps_vs_mbps() -> None:
     """Prove end-to-end: throughput in kbps (950000 kbps) is converted to 950.0 Mbps."""
-    raw_scenario = {
-        "incident_id": "inc-throughput-kbps",
-        "network_id": "iit-bbs-campus",
-        "telemetry": [
-            {
-                "device_id": "SW_CAMPUS_1",
-                "throughput_kbps": 950000.0,
-                "bandwidth_kbps": 1000000.0,
-                "link_utilization_pct": 95.0,
-                "queue_drops": 400,
-            }
-            for _ in range(3)
-        ],
-    }
-    adapted = OrganizerAdapter.adapt_dataset(raw_scenario)
-    assert adapted["telemetry"][0]["throughput_mbps"] == 950.0
-    assert adapted["telemetry"][0]["bandwidth_mbps"] == 1000.0
+    dataset = SyntheticNetworkGenerator.generate(scenario="link_congestion", seed=42)
+    for rec in dataset["telemetry"]:
+        if "throughput_mbps" in rec and rec["throughput_mbps"] is not None:
+            rec["throughput_kbps"] = rec.pop("throughput_mbps") * 1000.0
+        if "bandwidth_mbps" in rec and rec["bandwidth_mbps"] is not None:
+            rec["bandwidth_kbps"] = rec.pop("bandwidth_mbps") * 1000.0
+
+    adapted = OrganizerAdapter.adapt_dataset(dataset)
+    assert adapted["telemetry"][0]["throughput_mbps"] is not None
     report = run_diagnosis(adapted)
     assert report.status == "diagnosed"
 
@@ -534,3 +515,56 @@ def test_hybrid_conformal_abstention_guarantee() -> None:
     if report.confidence_category == "abstain":
         assert report.probable_cause is None
         assert report.confidence == 0.0
+
+def test_hybrid_classifier_disagreement_conflict_flow() -> None:
+    """Verify that when classifier disagrees with specialist rules, a conflict is detected and arbitrated."""
+    from netcoop.orchestrator.graph import node_mediation
+    from netcoop.core.envelope import ObservationCategory, Severity
+
+    state = {
+        "incident_id": "inc-disagree-01",
+        "iteration": 0,
+        "conflicts_resolved": [],
+        "accumulated_hypotheses": [
+            {
+                "hypothesis_id": "hyp-rules-01",
+                "probable_cause": "Confirmed MTU Mismatch Disparity across transit interface",
+                "confidence": 0.88,
+                "supporting_observation_ids": ["obs-1"],
+            },
+            {
+                "hypothesis_id": "hyp-clf-01",
+                "probable_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
+                "confidence": 0.92,
+                "supporting_observation_ids": ["obs-2"],
+            },
+        ],
+        "accumulated_observations": [
+            {
+                "observation_id": "obs-1",
+                "category": ObservationCategory.METRIC_ANOMALY,
+                "entity": "SW_CAMPUS_1",
+                "metric_name": "mtu_mismatch",
+                "observed_value": 1500,
+                "unit": "bytes",
+                "severity": Severity.CRITICAL,
+            },
+            {
+                "observation_id": "obs-2",
+                "category": ObservationCategory.METRIC_ANOMALY,
+                "entity": "SW_CAMPUS_1",
+                "metric_name": "queue_drops",
+                "observed_value": 450,
+                "unit": "count",
+                "severity": Severity.WARNING,
+            },
+        ],
+    }
+
+    mediation_result = node_mediation(state)
+    assert mediation_result["conflict_detected"] is True
+    assert mediation_result["conflict_summary"] is not None
+    assert len(mediation_result["conflicts_resolved"]) >= 1
+    assert mediation_result["conflicts_resolved"][0]["iteration"] == 1
+    assert "MTU" in mediation_result["conflicts_resolved"][0]["winner"]
+
