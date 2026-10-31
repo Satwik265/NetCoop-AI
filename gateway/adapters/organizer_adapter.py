@@ -124,6 +124,25 @@ class OrganizerAdapter:
         "offline": "offline",
     }
 
+    _field_matcher: Any = None
+    _unit_inferencer: Any = None
+
+    @classmethod
+    def get_field_matcher(cls) -> Any:
+        """Lazy load FieldNameMatcher singleton."""
+        if cls._field_matcher is None:
+            from gateway.adapters.field_matcher import FieldNameMatcher
+            cls._field_matcher = FieldNameMatcher()
+        return cls._field_matcher
+
+    @classmethod
+    def get_unit_inferencer(cls) -> Any:
+        """Lazy load ValueUnitInferencer singleton."""
+        if cls._unit_inferencer is None:
+            from gateway.adapters.unit_inference import ValueUnitInferencer
+            cls._unit_inferencer = ValueUnitInferencer()
+        return cls._unit_inferencer
+
     @classmethod
     def clean_numeric_value(
         cls,
@@ -278,7 +297,7 @@ class OrganizerAdapter:
         else:
             merged_raw = dict(raw)
 
-        # 2. Map aliases through alias table
+        # 2. Map aliases through alias table and fuzzy FieldNameMatcher
         for k, v in merged_raw.items():
             k_clean = str(k).lower().strip()
             if k_clean in cls.FIELD_ALIASES:
@@ -286,8 +305,18 @@ class OrganizerAdapter:
                 if norm_key != k_clean and "alias_mapping" not in transformations:
                     transformations.append("alias_mapping")
                 mapped[norm_key] = v
+            elif k_clean in cls.CANONICAL_FIELDS:
+                mapped[k_clean] = v
             else:
-                mapped[k] = v
+                matched, score, is_conf = cls.get_field_matcher().match_field(k_clean)
+                if matched and is_conf:
+                    if "fuzzy_field_matching" not in transformations:
+                        transformations.append("fuzzy_field_matching")
+                    mapped[matched] = v
+                else:
+                    if k_clean not in ("metrics", "configurations", "logs", "topology", "status"):
+                        quarantined.append(k_clean)
+                    mapped[k] = v
 
         # 3. Extract or infer device_id
         raw_dev = mapped.get("device_id")
@@ -385,6 +414,13 @@ class OrganizerAdapter:
                 lat = round(lat * 1000.0, 2)
                 if "unit_conversion" not in transformations:
                     transformations.append("unit_conversion")
+            elif lat is not None and "latency_s" not in mapped and not str(merged_raw.get("latency", "")).endswith("ms"):
+                # Use ValueUnitInferencer decision tree
+                u_infer, _ = cls.get_unit_inferencer().infer_latency_unit([lat])
+                if u_infer == "seconds" and lat < 1.5:
+                    lat = round(lat * 1000.0, 2)
+                    if "unit_inference" not in transformations:
+                        transformations.append("unit_inference")
         elif not is_organizer_format:
             lat = 5.0
 
@@ -402,6 +438,13 @@ class OrganizerAdapter:
             tput = cls.clean_numeric_value(
                 mapped.get("throughput_mbps"), "throughput_mbps", errors, quarantined, allow_negative=False
             )
+            if tput is not None and "throughput_kbps" not in mapped and not str(merged_raw.get("throughput", "")).endswith("mbps"):
+                # Use ValueUnitInferencer decision tree
+                u_infer, _ = cls.get_unit_inferencer().infer_throughput_unit([tput])
+                if u_infer == "kbps" and tput > 5000.0:
+                    tput = round(tput / 1000.0, 2)
+                    if "unit_inference" not in transformations:
+                        transformations.append("unit_inference")
         elif not is_organizer_format:
             tput = 100.0
 

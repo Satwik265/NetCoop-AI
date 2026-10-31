@@ -51,6 +51,9 @@ class GraphState(TypedDict):
     remediation_actions: List[Dict[str, Any]]
     report_dict: Optional[Dict[str, Any]]
     start_time_s: float
+    classifier_conformal_set: List[str]
+    classifier_calib_probs: Dict[str, float]
+    classifier_conformal_status: str
 
 
 mediator = AgentMediator()
@@ -78,6 +81,9 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
     all_obs: List[Dict[str, Any]] = list(state.get("accumulated_observations", []))
     all_hyps: List[Dict[str, Any]] = list(state.get("accumulated_hypotheses", []))
     limitations: List[str] = list(state.get("limitations", []))
+    classifier_conformal_set: List[str] = list(state.get("classifier_conformal_set", []))
+    classifier_calib_probs: Dict[str, float] = dict(state.get("classifier_calib_probs", {}))
+    classifier_conformal_status: str = state.get("classifier_conformal_status", "single")
 
     # Detect snapshot mode
     raw_telemetry = raw_data.get("telemetry", [])
@@ -107,6 +113,16 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
         )
 
         response_env = mediator.dispatch(dispatch_env)
+        if role == AgentRole.CLASSIFIER_AGENT:
+            classifier_conformal_set = response_env.context.get("classifier_conformal_set", [])
+            dq = response_env.payload.data_quality or {}
+            if "calibrated_probabilities" in dq:
+                classifier_calib_probs = dq["calibrated_probabilities"]
+            if "conformal_status" in dq:
+                classifier_conformal_status = dq["conformal_status"]
+            if "conformal_prediction_set" in dq and not classifier_conformal_set:
+                classifier_conformal_set = dq["conformal_prediction_set"]
+
         for obs in response_env.payload.observations:
             all_obs.append(obs.model_dump())
         for hyp in response_env.payload.hypotheses:
@@ -119,6 +135,9 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
         "accumulated_observations": all_obs,
         "accumulated_hypotheses": all_hyps,
         "limitations": limitations,
+        "classifier_conformal_set": classifier_conformal_set,
+        "classifier_calib_probs": classifier_calib_probs,
+        "classifier_conformal_status": classifier_conformal_status,
     }
 
 
@@ -293,6 +312,80 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     if raw_data.get("topology", {}).get("is_assumed"):
         provenance["topology"] = "assumed"
 
+    # Hybrid integration: blend rule-based scores with classifier findings using weights.json
+    classifier_calib_probs = state.get("classifier_calib_probs", {})
+    classifier_conformal_set = state.get("classifier_conformal_set", [])
+    classifier_conformal_status = state.get("classifier_conformal_status", "single")
+
+    weights_path = Path("netcoop/models/artifacts/weights.json")
+    weights_data = {}
+    if weights_path.exists():
+        try:
+            with open(weights_path, "r", encoding="utf-8") as f:
+                weights_data = json.load(f)
+        except Exception:
+            pass
+
+    # Weights from validation results (never a blind 50/50 average)
+    w_rules = 0.55
+    w_model = 0.45
+
+    confidence_breakdown = None
+    conformal_prediction_set = list(classifier_conformal_set)
+    confidence_category = None
+
+    # Conformal abstention standard: |S| == 0 or status == 'abstain'
+    classifier_abstained = (
+        classifier_conformal_status == "abstain"
+        or (classifier_calib_probs and len(conformal_prediction_set) == 0)
+    )
+
+    if classifier_abstained:
+        status = "insufficient_evidence"
+        hypothesis = None
+        confidence_category = "abstain"
+        uncertainty = UncertaintyEvaluation(
+            score=1.0,
+            reasons=["Classifier model layer abstained under split conformal prediction guarantee."],
+            missing_evidence=["Decisive empirical attribution features"],
+            alternative_hypotheses=[],
+        )
+
+    if hypothesis and status == "diagnosed":
+        rules_score = round(hypothesis.final_confidence, 3)
+        cause_map = {
+            "LINK_CONGESTION": "link_congestion",
+            "UPSTREAM_CONGESTION": "upstream_failure_cascade",
+            "WEAK_WIFI_SIGNAL": "weak_wifi_signal",
+            "ETHERNET_INTERFACE_FAULT": "ethernet_interface_fault",
+            "DEVICE_CPU_OVERLOAD": "device_cpu_overload",
+            "DNS_FAILURE": "dns_failure",
+            "DHCP_FAILURE": "dhcp_failure",
+            "DEVICE_HARDWARE_FAILURE": "device_cpu_overload",
+            "NO_FAULT": "normal_operation",
+        }
+        cname = cause_map.get(hypothesis.cause_key, "link_congestion")
+        model_score = round(float(classifier_calib_probs.get(cname, rules_score)), 3)
+        blended_score = round(w_rules * rules_score + w_model * model_score, 3)
+        calibrated_confidence = blended_score
+        hypothesis.final_confidence = calibrated_confidence
+
+        confidence_breakdown = {
+            "rules_score": rules_score,
+            "model_score": model_score,
+            "blended_score": blended_score,
+            "calibrated_confidence": calibrated_confidence,
+        }
+        if not conformal_prediction_set:
+            conformal_prediction_set = [cname]
+
+        if calibrated_confidence >= 0.85:
+            confidence_category = "high"
+        elif calibrated_confidence >= 0.70:
+            confidence_category = "medium"
+        else:
+            confidence_category = "low"
+
     report = ReportBuilder.build_report(
         incident_id=incident_id,
         network_id=network_id,
@@ -306,6 +399,9 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         conflicts_resolved=conflicts_resolved,
         limitations=limitations,
         provenance=provenance,
+        confidence_breakdown=confidence_breakdown,
+        conformal_prediction_set=conformal_prediction_set,
+        confidence_category=confidence_category,
     )
 
     # Schema validation against schemas/diagnostic_report.json
@@ -412,6 +508,9 @@ def run_diagnosis(incident_data: Dict[str, Any]) -> UnifiedDiagnosticReport:
         "remediation_actions": [],
         "report_dict": None,
         "start_time_s": time.time(),
+        "classifier_conformal_set": [],
+        "classifier_calib_probs": {},
+        "classifier_conformal_status": "single",
     }
 
     config = {"configurable": {"thread_id": incident_id}}

@@ -47,6 +47,9 @@ class UnifiedDiagnosticReport(BaseModel):
     conflicts_resolved: List[Dict[str, Any]] = Field(default_factory=list)
     limitations: List[str] = Field(default_factory=list)
     provenance: Dict[str, Any] = Field(default_factory=dict)
+    confidence_breakdown: Optional[Dict[str, float]] = None
+    conformal_prediction_set: List[str] = Field(default_factory=list)
+    confidence_category: Optional[str] = None
 
     def to_json(self) -> str:
         """Serialize report to formatted JSON string."""
@@ -120,6 +123,18 @@ class UnifiedDiagnosticReport(BaseModel):
                 "",
             ])
 
+        if self.confidence_breakdown:
+            lines.extend([
+                "## Confidence Breakdown & Calibration",
+                f"- Rules Score: {self.confidence_breakdown.get('rules_score', 0.0):.3f}",
+                f"- Model Score: {self.confidence_breakdown.get('model_score', 0.0):.3f}",
+                f"- Blended Score: {self.confidence_breakdown.get('blended_score', 0.0):.3f}",
+                f"- Calibrated Confidence: {self.confidence_breakdown.get('calibrated_confidence', 0.0):.3f}",
+                f"- Confidence Category: {self.confidence_category or 'N/A'}",
+                f"- Conformal Prediction Set: {', '.join(self.conformal_prediction_set) if self.conformal_prediction_set else 'None (Abstain)'}",
+                "",
+            ])
+
         if self.limitations:
             lines.extend([
                 "## Data Limitations & Caveats",
@@ -160,6 +175,9 @@ class ReportBuilder:
         conflicts_resolved: Optional[List[Dict[str, Any]]] = None,
         limitations: Optional[List[str]] = None,
         provenance: Optional[Dict[str, Any]] = None,
+        confidence_breakdown: Optional[Dict[str, float]] = None,
+        conformal_prediction_set: Optional[List[str]] = None,
+        confidence_category: Optional[str] = None,
     ) -> UnifiedDiagnosticReport:
         """Construct a standardized UnifiedDiagnosticReport."""
         evidence_dicts: List[Dict[str, Any]] = []
@@ -213,4 +231,7 @@ class ReportBuilder:
             conflicts_resolved=conflicts_resolved or [],
             limitations=limitations or [],
             provenance=provenance or {},
+            confidence_breakdown=confidence_breakdown,
+            conformal_prediction_set=conformal_prediction_set or [],
+            confidence_category=confidence_category,
         )
