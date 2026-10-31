@@ -40,6 +40,8 @@ htmlcov/
 *.db
 netcoop.db
 logs/
+*.pid
+.agents.pid
 
 # Node & Frontend / Dashboard
 node_modules/
