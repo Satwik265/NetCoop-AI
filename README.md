@@ -93,9 +93,9 @@ The core diagnostic pipeline executes 100% offline with zero required API keys.
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 
-# 2. Upgrade pip and install package in editable mode
+# 2. Upgrade pip and install package with development/test dependencies
 python -m pip install --upgrade pip
-pip install -e .
+pip install -e ".[dev]"
 ```
 
 ### 4.2 Run Test Suites & Evaluation
