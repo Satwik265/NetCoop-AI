@@ -23,11 +23,12 @@ Status indicators:
 | `/dashboard` | React + Vite + TypeScript + Tailwind minimalist monochrome dashboard | `npm run build` | complete |
 | `/data` | Seeded telemetry generator, chaos knobs, ground-truth scenario library & manifest | `tests/test_generator.py`<br/>`scripts/eval_benchmark.py` | complete |
 | `/models` | Learned classifier, seed splits, feature extractor, isotonic calibration, conformal engine, artifacts | `tests/test_b2_learned_layer.py`<br/>`scripts/train_models.py` | complete |
+| `/eval` | Unified multi-dataset evaluation engine across in-distribution, held-out, and organizer datasets | `eval/run_eval.py`<br/>`scripts/eval_benchmark.py` | complete |
 | `/scripts` | Supervisor runner (`run_agents.py`), end-to-end demo (`demo.py`), benchmark (`eval_benchmark.py`), training (`train_models.py`) | E2E execution tests | complete |
 | `/tests` | Comprehensive unit, scenario, robustness (Hypothesis), HTTP, B1, and B2 learned layer tests | `pytest tests/` (86 passed) | complete |
-| `/docs` | Complete technical documentation (`contract.md`, `handoff.md`, `organizer_format.md`, `eval_results_format.md`, `confidence.md`, `progress.md`) | Verified against standards | complete |
+| `/docs` | Complete technical documentation (`contract.md`, `handoff.md`, `organizer_format.md`, `eval_results_format.md`, `confidence.md`, `eval_report.md`, `progress.md`) | Verified against standards | complete |
 | `/schemas` | Formal JSON Schemas (`envelope.json`, `telemetry.json`, `diagnostic_report.json`, `remediation_plan.json`) | `test_protocol_envelope.py` | complete |
-| `Makefile` | Automated tasks (`setup`, `up`, `down`, `demo`, `test`, `eval`, `train`, `assets`, `run`, `clean`) with Windows PowerShell equivalents | CLI & make invocation | complete |
+| `Makefile` | Automated tasks (`setup`, `up`, `down`, `demo`, `test`, `eval`, `eval-quick`, `train`, `assets`, `run`, `clean`) with Windows PowerShell equivalents | CLI & make invocation | complete |
 | `docker-compose.yml` | Containerized microservice deployment with dedicated container per agent | Docker Compose verification | complete |
 | `.env.example` | Template environment configuration with zero secrets | Manual verification | complete |
 | `pyproject.toml` | Packaging, scripts, and build configuration | `pip install -e .` | complete |
@@ -83,20 +84,33 @@ Status indicators:
 
 ---
 
-## 5. Hackathon Evaluation Criteria Mapping
+## 5. Multi-Dataset Diagnostic Evaluation (B3)
+
+| Component | Implementation File(s) | Verification Test(s) | Status |
+| :--- | :--- | :--- | :--- |
+| Unified Evaluation Engine (In-Dist, Held-Out, Organizer, Stress, Ablations) | `eval/run_eval.py`<br/>`scripts/eval_benchmark.py` | `python scripts/eval_benchmark.py --quick`<br/>`python scripts/eval_benchmark.py` | complete |
+| Organizer Telemetry Generator (300 windows/fault type in windowed & single snapshot) | `data/organizer/organizer_generator.py` | Unit validation & 900-sample benchmark | complete |
+| Organizer Label Map & Rationale Specification | `eval/organizer_labels.yaml` | Validation against adapter | complete |
+| Standardized JSON Metric Results | `eval/results/benchmark_latest.json`<br/>`eval/results/mock.json` | Validation against `docs/eval_results_format.md` | complete |
+| Exhaustive Evaluation Report (Honest drop reporting & conformal caveats) | `docs/eval_report.md` | Document review | complete |
+| Make Targets & Plain Python Commands (`eval`, `eval-quick`) | `Makefile`<br/>`docs/handoff.md` | Command execution | complete |
+
+---
+
+## 6. Hackathon Evaluation Criteria Mapping
 
 | Evaluation Area | Weight | Implementation Modules | Test Modules | Status |
 | :--- | :---: | :--- | :--- | :--- |
 | **Interoperability & Protocol Design** | 30% | `schemas/*.json`<br/>`core/envelope.py`<br/>`gateway/api.py`<br/>`gateway/adapters/organizer_adapter.py`<br/>`gateway/adapters/unit_inference.py`<br/>`gateway/adapters/field_matcher.py`<br/>`docs/protocol.md`<br/>`docs/contract.md` | `tests/test_protocol_envelope.py`<br/>`tests/test_gateway_api.py`<br/>`tests/test_agent_http.py`<br/>`tests/test_b1_gateway_robustness.py`<br/>`tests/test_b2_learned_layer.py` | complete |
-| **Diagnostic Accuracy & Evidence Quality** | 25% | `core/evidence.py`<br/>`core/correlation.py`<br/>`core/scoring.py`<br/>`core/report.py`<br/>`netcoop/models/`<br/>`netcoop/agents/classifier/` | `tests/test_scenarios.py`<br/>`tests/test_insufficient_evidence.py`<br/>`tests/test_b2_learned_layer.py`<br/>`scripts/eval_benchmark.py` (21/21 PASS) | complete |
+| **Diagnostic Accuracy & Evidence Quality** | 25% | `core/evidence.py`<br/>`core/correlation.py`<br/>`core/scoring.py`<br/>`core/report.py`<br/>`netcoop/models/`<br/>`netcoop/agents/classifier/`<br/>`eval/run_eval.py` | `tests/test_scenarios.py`<br/>`tests/test_insufficient_evidence.py`<br/>`tests/test_b2_learned_layer.py`<br/>`scripts/eval_benchmark.py` (21/21 PASS, 1300 samples evaluated) | complete |
 | **Orchestration & Conflict Resolution** | 15% | `orchestrator/graph.py`<br/>`orchestrator/mediator.py`<br/>`orchestrator/conflict_resolver.py`<br/>`core/bus.py` | `tests/test_conflict_resolution.py`<br/>`tests/test_scenarios.py` | complete |
 | **Robustness to Missing / Incompatible Data** | 15% | `core/normalizer.py`<br/>`gateway/adapters/organizer_adapter.py`<br/>`gateway/adapters/unit_inference.py`<br/>`gateway/adapters/field_matcher.py`<br/>`netcoop/models/conformal.py` | `tests/test_robustness_hypothesis.py`<br/>`tests/test_organizer_adapter.py`<br/>`tests/test_b1_gateway_robustness.py`<br/>`tests/test_b2_learned_layer.py` | complete |
-| **Innovation, Usability, Extensibility** | 10% | `mcp_server/server.py`<br/>`remediation/engine.py`<br/>`dashboard/` (React Dashboard)<br/>`cli/main.py` (`diagnose`, `replay`)<br/>`netcoop/models/conformal.py`<br/>`Makefile` (`up`, `down`, `demo`, `train`) | `tests/test_mcp_server.py`<br/>`tests/test_remediation_safety.py`<br/>`tests/test_b2_learned_layer.py` | complete |
-| **Code Quality, Docs, and Demo** | 5% | `docs/progress.md`<br/>`docs/contract.md`<br/>`docs/handoff.md`<br/>`docs/organizer_format.md`<br/>`docs/eval_results_format.md`<br/>`docs/confidence.md`<br/>`netcoop/models/MODEL_CARD.md`<br/>`README.md`<br/>`Makefile` | Full test suite execution (86 passed) | complete |
+| **Innovation, Usability, Extensibility** | 10% | `mcp_server/server.py`<br/>`remediation/engine.py`<br/>`dashboard/` (React Dashboard)<br/>`cli/main.py` (`diagnose`, `replay`)<br/>`netcoop/models/conformal.py`<br/>`Makefile` (`up`, `down`, `demo`, `train`, `eval`, `eval-quick`) | `tests/test_mcp_server.py`<br/>`tests/test_remediation_safety.py`<br/>`tests/test_b2_learned_layer.py` | complete |
+| **Code Quality, Docs, and Demo** | 5% | `docs/progress.md`<br/>`docs/contract.md`<br/>`docs/handoff.md`<br/>`docs/organizer_format.md`<br/>`docs/eval_results_format.md`<br/>`docs/confidence.md`<br/>`docs/eval_report.md`<br/>`netcoop/models/MODEL_CARD.md`<br/>`README.md`<br/>`Makefile` | Full test suite execution (86 passed) | complete |
 
 ---
 
-## 6. Hard Constraints Checklist
+## 7. Hard Constraints Checklist
 
 - [x] Zero emojis across all code, comments, logs, CLI output, UI, docs, commit messages.
 - [x] Core pipeline functions fully offline with zero LLM calls.

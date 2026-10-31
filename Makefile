@@ -37,6 +37,9 @@ test:
 eval:
 	python scripts/eval_benchmark.py
 
+eval-quick:
+	python scripts/eval_benchmark.py --quick
+
 train:
 	python scripts/train_models.py
 

@@ -21,6 +21,7 @@ All `make` targets defined in `Makefile` have exact plain `python` / PowerShell 
 | `make demo` | Run end-to-end multi-agent demonstration | `python scripts/demo.py` |
 | `make test` | Run complete unit and property tests | `python -m pytest tests/ -v` |
 | `make eval` | Run ground-truth benchmark suite | `python scripts/eval_benchmark.py` |
+| `make eval-quick` | Run fast evaluation benchmark on quick subset | `python scripts/eval_benchmark.py --quick` |
 | `make train` | Train learned classifier and generate artifacts | `python scripts/train_models.py` |
 | `make assets` | Build frontend production bundle | `cd dashboard; npm run build; cd ..` |
 | `make run` | Start FastAPI backend server on port 8000 | `python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload` |
