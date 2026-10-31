@@ -9,17 +9,43 @@
     "upstream_failure_cascade",
     "normal_operation"
   ],
-  "conformal_q_hat": 0.15,
-  "min_probability_threshold": 0.85,
+  "conformal_q_hat": 0.0,
+  "min_probability_threshold": 1.0,
   "confidence_cutoffs": {
     "high": 0.8,
     "medium": 0.6,
     "low": 0.4
   },
   "empirical_precisions": {
-    "high": 0.97,
-    "medium": 0.97,
-    "low": 0.97
+    "high": 0.981,
+    "medium": 0.979,
+    "low": 0.972
+  },
+  "threshold_metadata": {
+    "high": {
+      "target_precision": 0.95,
+      "actual_empirical_precision": 0.981,
+      "accepted_sample_count": 530,
+      "correct_prediction_count": 520,
+      "selected_threshold": 0.8,
+      "estimation_status": "estimated"
+    },
+    "medium": {
+      "target_precision": 0.85,
+      "actual_empirical_precision": 0.979,
+      "accepted_sample_count": 536,
+      "correct_prediction_count": 525,
+      "selected_threshold": 0.6,
+      "estimation_status": "estimated"
+    },
+    "low": {
+      "target_precision": 0.7,
+      "actual_empirical_precision": 0.972,
+      "accepted_sample_count": 541,
+      "correct_prediction_count": 526,
+      "selected_threshold": 0.4,
+      "estimation_status": "estimated"
+    }
   },
   "domain_weights": {
     "telemetry_agent": 0.4,
@@ -36,39 +62,34 @@
     },
     "weak_wifi_signal": {
       "wifi_rssi_dbm": 0.4,
-      "wifi_retransmission_pct": 0.35,
-      "packet_loss_pct": 0.15,
-      "latency_ms": 0.1
+      "wifi_retrans_pct": 0.35,
+      "packet_loss_pct": 0.25
     },
     "ethernet_interface_fault": {
       "interface_errors": 0.45,
-      "link_flaps": 0.35,
+      "interface_flaps": 0.35,
       "packet_loss_pct": 0.2
     },
     "dns_failure": {
-      "dns_failure_pct": 0.5,
-      "dns_resolution_ms": 0.35,
-      "latency_ms": 0.15
+      "dns_failure_rate_pct": 0.5,
+      "dns_latency_ms": 0.3,
+      "packet_loss_pct": 0.2
     },
     "dhcp_failure": {
-      "dhcp_failure_pct": 0.55,
-      "packet_loss_pct": 0.25,
-      "device_status": 0.2
+      "dhcp_failure_rate_pct": 0.55,
+      "dhcp_latency_ms": 0.3,
+      "packet_loss_pct": 0.15
     },
     "device_cpu_overload": {
-      "cpu_pct": 0.45,
-      "memory_pct": 0.25,
-      "queue_drops": 0.2,
-      "latency_ms": 0.1
+      "cpu_utilization_pct": 0.5,
+      "queue_drops": 0.3,
+      "latency_ms": 0.2
     },
     "upstream_failure_cascade": {
-      "upstream_utilization": 0.4,
-      "packet_loss_pct": 0.3,
+      "packet_loss_pct": 0.35,
+      "link_utilization_pct": 0.3,
       "queue_drops": 0.2,
-      "link_utilization_pct": 0.1
-    },
-    "normal_operation": {
-      "baseline_compliance": 1.0
+      "latency_ms": 0.15
     }
   }
 }
