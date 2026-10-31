@@ -1,3 +1,4 @@
+import { apiFetch } from '../auth/AuthContext';
 import React, { useState, useEffect } from "react";
 
 export interface McpToolProperty {
@@ -193,7 +194,7 @@ export const McpGallery: React.FC = () => {
           return;
         }
       } else if (toolName === "simulate_remediation") {
-        const res = await fetch("/api/remediate/simulate", {
+        const res = await apiFetch("/api/remediate/simulate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action_type: "rebalance traffic" }),

@@ -24,6 +24,7 @@ from netcoop.storage.db import (
     save_checkpoint,
 )
 from api.main import app
+from core.auth import get_auth_headers, ROLE_NETWORK_ENGINEER
 
 SCENARIOS_DIR = Path(__file__).parent.parent / "data" / "scenarios"
 
@@ -293,7 +294,8 @@ def test_fastapi_endpoints_pause_resume_and_hitl():
     data = load_scenario("01_mtu_mismatch_blackhole.json")
     test_id = "inc-api-test-01"
     data["incident_id"] = test_id
-    diag_res = client.post("/api/diagnose", json=data)
+    eng_headers = get_auth_headers(role=ROLE_NETWORK_ENGINEER, username="engineer")
+    diag_res = client.post("/api/diagnose", json=data, headers=eng_headers)
     assert diag_res.status_code == 200
     diag_data = diag_res.json()
     assert len(diag_data["remediation_actions"]) > 0
@@ -330,7 +332,7 @@ def test_fastapi_endpoints_pause_resume_and_hitl():
         "operator": "noc_operator",
         "rationale": "Updated to standard jumbo MTU",
     }
-    mod_res = client.post(f"/api/remediation/{action_id}/modify", json=modify_payload)
+    mod_res = client.post(f"/api/remediation/{action_id}/modify", json=modify_payload, headers=eng_headers)
     assert mod_res.status_code == 200
     assert mod_res.json()["status"] == "modified"
 
@@ -339,7 +341,7 @@ def test_fastapi_endpoints_pause_resume_and_hitl():
         "operator": "noc_supervisor",
         "rationale": "Approved for simulation",
     }
-    appr_res = client.post(f"/api/remediation/{action_id}/approve", json=approve_payload)
+    appr_res = client.post(f"/api/remediation/{action_id}/approve", json=approve_payload, headers=eng_headers)
     assert appr_res.status_code == 200
     assert appr_res.json()["status"] == "approved"
     assert appr_res.json()["simulation"]["success"] is True

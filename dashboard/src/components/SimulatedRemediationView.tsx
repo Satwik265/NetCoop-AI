@@ -1,3 +1,4 @@
+import { apiFetch } from '../auth/AuthContext';
 import React, { useState, useEffect } from "react";
 
 export interface SimulationResult {
@@ -29,7 +30,7 @@ export const SimulatedRemediationView: React.FC = () => {
   const runSimulation = async (actionType: string, device: string) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/remediate/simulate", {
+      const res = await apiFetch("/api/remediate/simulate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

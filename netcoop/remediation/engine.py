@@ -114,6 +114,9 @@ class RemediationEngine:
         action_id: str,
         operator: str = "human_operator",
         rationale: Optional[str] = None,
+        actor_user_id: Optional[str] = None,
+        actor_username: Optional[str] = None,
+        actor_role: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Approve a pending remediation action and execute as a simulated action only."""
         from netcoop.storage.db import get_remediation_action_log, record_hitl_decision
@@ -128,6 +131,9 @@ class RemediationEngine:
             status="approved",
             operator=operator,
             rationale=rationale or "Approved by operator",
+            actor_user_id=actor_user_id,
+            actor_username=actor_username,
+            actor_role=actor_role,
         )
 
         # Flow into simulated remediation engine
@@ -166,6 +172,9 @@ class RemediationEngine:
         action_id: str,
         operator: str = "human_operator",
         rationale: Optional[str] = None,
+        actor_user_id: Optional[str] = None,
+        actor_username: Optional[str] = None,
+        actor_role: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Reject a pending remediation action and record the decision in event log."""
         from netcoop.storage.db import get_remediation_action_log, record_hitl_decision
@@ -179,6 +188,9 @@ class RemediationEngine:
             status="rejected",
             operator=operator,
             rationale=rationale or "Rejected by operator",
+            actor_user_id=actor_user_id,
+            actor_username=actor_username,
+            actor_role=actor_role,
         )
         return {
             "success": True,
@@ -195,6 +207,9 @@ class RemediationEngine:
         new_commands: List[str],
         operator: str = "human_operator",
         rationale: Optional[str] = None,
+        actor_user_id: Optional[str] = None,
+        actor_username: Optional[str] = None,
+        actor_role: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Modify parameters/commands of a pending remediation action and log the change."""
         from netcoop.storage.db import get_remediation_action_log, record_hitl_decision
@@ -209,6 +224,9 @@ class RemediationEngine:
             operator=operator,
             rationale=rationale or "Modified by operator",
             modified_commands=new_commands,
+            actor_user_id=actor_user_id,
+            actor_username=actor_username,
+            actor_role=actor_role,
         )
         return {
             "success": True,

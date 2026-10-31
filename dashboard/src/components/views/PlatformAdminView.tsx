@@ -1,3 +1,4 @@
+import { apiFetch } from '../../auth/AuthContext';
 import React, { useState, useEffect } from "react";
 
 export interface MicroserviceItem {
@@ -33,7 +34,7 @@ export const PlatformAdminView: React.FC = () => {
   const fetchPlatformStatus = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/platform/status");
+      const res = await apiFetch("/api/platform/status");
       if (res.ok) {
         const data: PlatformStatusResponse = await res.json();
         setPlatformData(data);

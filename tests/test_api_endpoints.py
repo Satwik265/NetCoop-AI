@@ -38,7 +38,9 @@ def test_api_ingest():
 
 def test_websocket_events_stream():
     """Verify WebSocket connection and initial handshake event."""
-    with client.websocket_connect("/ws/events") as websocket:
+    from core.auth import create_access_token, ROLE_NETWORK_ENGINEER
+    token = create_access_token({"sub": "engineer", "role": ROLE_NETWORK_ENGINEER})
+    with client.websocket_connect(f"/ws/events?token={token}") as websocket:
         init_event = websocket.receive_json()
         assert init_event["event_type"] == "connected"
         assert "NetCoop WebSocket" in init_event["message"]
