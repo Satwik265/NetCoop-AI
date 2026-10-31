@@ -134,10 +134,13 @@ def test_hitl_approval_and_audit_persistence():
 
 def test_websocket_stream_lifecycle():
     """Verify WebSocket /ws/events connection handshake, ping/pong, and broadcast."""
-    from netcoop.core.auth import create_access_token, ROLE_NETWORK_ENGINEER
-    token = create_access_token({"sub": "engineer", "role": ROLE_NETWORK_ENGINEER})
+    from netcoop.core.auth import get_auth_headers, ROLE_NETWORK_ENGINEER
     client = TestClient(app)
-    with client.websocket_connect(f"/ws/events?token={token}") as ws:
+    headers = get_auth_headers(role=ROLE_NETWORK_ENGINEER, username="engineer")
+    ticket_res = client.post("/api/auth/ws-ticket", headers=headers)
+    assert ticket_res.status_code == 200
+    ticket = ticket_res.json()["ticket"]
+    with client.websocket_connect(f"/ws/events?ticket={ticket}") as ws:
         # Handshake
         handshake = ws.receive_json()
         assert handshake.get("event_type") == "connected"

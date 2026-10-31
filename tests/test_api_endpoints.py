@@ -1,3 +1,4 @@
+from core.auth import get_auth_headers, ROLE_NETWORK_ENGINEER
 """Tests for FastAPI backend REST and WebSocket endpoints."""
 
 from fastapi.testclient import TestClient
@@ -64,21 +65,24 @@ def test_api_ingest_forwarding(monkeypatch):
 
 def test_api_diagnose_gateway_unavailable_with_organizer_format():
     """Verify /api/diagnose fails with HTTP 503 if organizer dataset cannot be normalized because Gateway is offline."""
+    headers = get_auth_headers(role=ROLE_NETWORK_ENGINEER, username="engineer")
     organizer_payload = {
         "device_id": "sw1",
         "metrics": {"loss": 1.0},
         "status": "Warning",
     }
-    res = client.post("/api/diagnose", json=organizer_payload)
+    res = client.post("/api/diagnose", json=organizer_payload, headers=headers)
     assert res.status_code == 503
     assert "Gateway service on port 8006 unavailable over HTTP" in res.json()["detail"]
 
 
 def test_websocket_events_stream():
     """Verify WebSocket connection and initial handshake event."""
-    from core.auth import create_access_token, ROLE_NETWORK_ENGINEER
-    token = create_access_token({"sub": "engineer", "role": ROLE_NETWORK_ENGINEER})
-    with client.websocket_connect(f"/ws/events?token={token}") as websocket:
+    headers = get_auth_headers(role=ROLE_NETWORK_ENGINEER, username="engineer")
+    ticket_res = client.post("/api/auth/ws-ticket", headers=headers)
+    assert ticket_res.status_code == 200
+    ticket = ticket_res.json()["ticket"]
+    with client.websocket_connect(f"/ws/events?ticket={ticket}") as websocket:
         init_event = websocket.receive_json()
         assert init_event["event_type"] == "connected"
         assert "NetCoop WebSocket" in init_event["message"]

@@ -53,9 +53,10 @@ interface EvalBenchmarkData {
 export const ProofTab: React.FC = () => {
   const [data, setData] = useState<EvalBenchmarkData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [dataSource, setDataSource] = useState<"live" | "offline_mock" | null>(null);
+  const [fetchedAt, setFetchedAt] = useState<string | null>(null);
 
   useEffect(() => {
-    // Try fetching from API endpoint first, fallback to static /results/mock.json
     fetch("/api/eval/results")
       .then((res) => {
         if (!res.ok) throw new Error("API not available");
@@ -63,6 +64,8 @@ export const ProofTab: React.FC = () => {
       })
       .then((benchData) => {
         setData(benchData);
+        setDataSource("live");
+        setFetchedAt(new Date().toISOString());
         setLoading(false);
       })
       .catch(() => {
@@ -70,6 +73,8 @@ export const ProofTab: React.FC = () => {
           .then((res) => res.json())
           .then((mockData) => {
             setData(mockData);
+            setDataSource("offline_mock");
+            setFetchedAt(new Date().toISOString());
             setLoading(false);
           })
           .catch(() => {
@@ -96,6 +101,34 @@ export const ProofTab: React.FC = () => {
 
   return (
     <div className="space-y-8 font-mono">
+      {/* Benchmark Data Provenance Banner */}
+      {dataSource === "offline_mock" && (
+        <div className="bg-[#9A5B5B]/10 border border-[#9A5B5B]/30 p-3 text-[11px] text-[#EDEDEA] flex flex-wrap items-center justify-between font-mono gap-2">
+          <div className="flex items-center gap-2">
+            <span className="bg-[#9A5B5B] text-white px-2 py-0.5 text-[9px] uppercase tracking-wider font-bold">
+              [OFFLINE BENCHMARK - SIMULATED]
+            </span>
+            <span>Displaying cached static benchmark results from /results/mock.json. Live evaluator API is unreachable.</span>
+          </div>
+          {fetchedAt && (
+            <span className="text-[#888884] text-[10px]">Loaded: {new Date(fetchedAt).toLocaleTimeString()}</span>
+          )}
+        </div>
+      )}
+      {dataSource === "live" && (
+        <div className="bg-[#5E7A6A]/10 border border-[#5E7A6A]/30 p-3 text-[11px] text-[#EDEDEA] flex flex-wrap items-center justify-between font-mono gap-2">
+          <div className="flex items-center gap-2">
+            <span className="bg-[#5E7A6A] text-white px-2 py-0.5 text-[9px] uppercase tracking-wider font-bold">
+              [LIVE EVALUATOR API]
+            </span>
+            <span>Real-time benchmark evaluation retrieved from /api/eval/results.</span>
+          </div>
+          {fetchedAt && (
+            <span className="text-[#888884] text-[10px]">Loaded: {new Date(fetchedAt).toLocaleTimeString()}</span>
+          )}
+        </div>
+      )}
+
       {/* 1. Dataset Splits Comparison (3 Columns) */}
       <div className="space-y-2">
         <div className="text-xs font-semibold uppercase tracking-wider text-[#111111] dark:text-[#EDEDEA]">

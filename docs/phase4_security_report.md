@@ -262,13 +262,13 @@ Executed via `npm run build` in `dashboard`:
 
 vite v5.4.21 building for production...
 transforming...
-✓ 227 modules transformed.
+[PASS] 227 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/index.html                   0.87 kB │ gzip:   0.50 kB
 dist/assets/index-DfM9YTW2.css   37.71 kB │ gzip:   7.30 kB
 dist/assets/index-xRpcMFnD.js   522.74 kB │ gzip: 140.67 kB
-✓ built in 1.92s
+[PASS] built in 1.92s
 ```
 
 ### 9.4 Repository Hygiene Audit

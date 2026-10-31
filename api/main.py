@@ -324,6 +324,7 @@ async def websocket_events_endpoint(websocket: WebSocket) -> None:
     try:
         await websocket.send_json({
             "event_type": "connected",
+            "message": "NetCoop WebSocket event stream active.",
             "user": user.username,
             "role": user.role,
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -1801,6 +1802,14 @@ def simulate_remediation_endpoint(
         "after_metrics": after,
         "metrics_delta": delta,
     }
+
+class HitlDecisionRequest(BaseModel):
+    action_id: str
+    decision: str
+    rationale: str
+    operator: Optional[str] = None
+    modified_commands: Optional[List[str]] = None
+
 
 @app.post("/api/incidents/{incident_id}/hitl-decision")
 

@@ -5,6 +5,9 @@ interface Node {
   role: string;
   management_ip?: string;
   vendor?: string;
+  display_name?: string;
+  simulated?: boolean;
+  layout_position?: { x: number; y: number };
 }
 
 interface Link {
@@ -48,7 +51,16 @@ export const TopologyView: React.FC<Props> = ({
 
   const positions: Record<string, { x: number; y: number }> = {};
   nodes.forEach((node, idx) => {
-    if (nodeCount === 1) {
+    if (
+      node.layout_position &&
+      typeof node.layout_position.x === "number" &&
+      typeof node.layout_position.y === "number"
+    ) {
+      positions[node.id] = {
+        x: Math.round(node.layout_position.x * width),
+        y: Math.round(node.layout_position.y * height),
+      };
+    } else if (nodeCount === 1) {
       positions[node.id] = { x: width / 2, y: height / 2 };
     } else if (nodeCount === 2) {
       positions[node.id] = {
@@ -93,6 +105,9 @@ export const TopologyView: React.FC<Props> = ({
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-4 h-1 bg-[#475569] inline-block"></span> Blast Radius Path
+          </span>
+          <span className="flex items-center gap-1 text-[9px] text-[#888884]">
+            [SIM] = Simulated Node
           </span>
         </div>
       </div>
@@ -170,7 +185,7 @@ export const TopologyView: React.FC<Props> = ({
                   fontFamily="Inter"
                   style={{ textTransform: "uppercase" }}
                 >
-                  {isAffected ? "FAULT ROOT" : node.role}
+                  {isAffected ? "FAULT ROOT" : node.simulated ? `[SIM] ${node.role}` : node.role}
                 </text>
               </g>
             );

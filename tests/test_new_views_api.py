@@ -61,7 +61,8 @@ def test_hitl_decision_and_logs():
 
 
 def test_resume_incident_endpoint():
-    res = client.post("/api/incidents/inc-paused-session-07/resume")
+    headers = get_auth_headers(role=ROLE_NETWORK_ENGINEER, username="engineer")
+    res = client.post("/api/incidents/inc-paused-session-07/resume", headers=headers)
     assert res.status_code == 200
     data = res.json()
     assert data["success"] is True

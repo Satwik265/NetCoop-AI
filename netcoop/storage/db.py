@@ -5,7 +5,7 @@ import json
 from datetime import datetime, timezone
 import time
 from typing import Any, Dict, List, Optional
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlmodel import Session, SQLModel, create_engine, select, update
 
 from netcoop.config import settings
 from netcoop.core.envelope import AgentEnvelope
@@ -695,26 +695,45 @@ def create_db_ws_ticket(user: UserRecord, expiry_seconds: int = 60) -> str:
 
 
 def consume_db_ws_ticket(raw_ticket: str) -> tuple[bool, str, Optional[UserRecord]]:
-    """Atomically validate and consume a single-use WebSocket ticket."""
+    """Atomically validate and consume a single-use WebSocket ticket via conditional update."""
     import hashlib
     ticket_hash = hashlib.sha256(raw_ticket.encode("utf-8")).hexdigest()
     now = time.time()
+    consumed_at_str = datetime.now(timezone.utc).isoformat()
 
     with Session(engine) as session:
-        statement = select(WsTicketRecord).where(WsTicketRecord.ticket_hash == ticket_hash)
-        rec = session.exec(statement).first()
-        if not rec:
-            return False, "Invalid or non-existent WebSocket ticket.", None
-        if rec.consumed:
-            return False, "WebSocket ticket has already been consumed (replay rejected).", None
-        if now > rec.expires_at:
-            return False, "WebSocket ticket has expired.", None
-
-        # Atomically mark as consumed
-        rec.consumed = True
-        rec.consumed_at = datetime.now(timezone.utc).isoformat()
-        session.add(rec)
+        # Atomic conditional update query
+        stmt = (
+            update(WsTicketRecord)
+            .where(
+                WsTicketRecord.ticket_hash == ticket_hash,
+                WsTicketRecord.consumed == False,
+                WsTicketRecord.expires_at >= now,
+            )
+            .values(consumed=True, consumed_at=consumed_at_str)
+        )
+        res = session.exec(stmt)
         session.commit()
+
+        if res.rowcount == 0:
+            # Query status to provide precise rejection reason
+            check = session.exec(
+                select(WsTicketRecord).where(WsTicketRecord.ticket_hash == ticket_hash)
+            ).first()
+            if not check:
+                return False, "Invalid or non-existent WebSocket ticket.", None
+            if check.consumed:
+                return False, "WebSocket ticket has already been consumed (replay rejected).", None
+            if now > check.expires_at:
+                return False, "WebSocket ticket has expired.", None
+            return False, "Ticket consumption failed.", None
+
+        # Successful atomic consumption: retrieve user
+        rec = session.exec(
+            select(WsTicketRecord).where(WsTicketRecord.ticket_hash == ticket_hash)
+        ).first()
+        if not rec:
+            return False, "Ticket record error.", None
 
         user = get_user_by_username(rec.username)
         if not user or not user.is_active:

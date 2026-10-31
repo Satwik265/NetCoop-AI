@@ -302,19 +302,19 @@ def test_fastapi_endpoints_pause_resume_and_hitl():
     action_id = diag_data["remediation_actions"][0]["action_id"]
 
     # 2. Checkpoints list endpoint
-    cp_res = client.get(f"/api/orchestrator/checkpoints/{test_id}")
+    cp_res = client.get(f"/api/orchestrator/checkpoints/{test_id}", headers=eng_headers)
     assert cp_res.status_code == 200
     cps = cp_res.json()
     assert len(cps) >= 4
 
     # 3. Pause endpoint
     pause_payload = {"session_id": test_id, "rationale": "Testing API pause endpoint"}
-    pause_res = client.post("/api/orchestrator/pause", json=pause_payload)
+    pause_res = client.post("/api/orchestrator/pause", json=pause_payload, headers=eng_headers)
     assert pause_res.status_code == 200
     assert pause_res.json()["status"] == "paused"
 
     # 4. Resume endpoint
-    resume_res = client.post(f"/api/orchestrator/resume/{test_id}")
+    resume_res = client.post(f"/api/orchestrator/resume/{test_id}", headers=eng_headers)
     assert resume_res.status_code == 200
     resumed_data = resume_res.json()
     assert resumed_data["incident_id"] == test_id
@@ -352,5 +352,5 @@ def test_fastapi_endpoints_pause_resume_and_hitl():
     assert len(actions_res.json()) >= 1
 
     # 9. Test 404 on nonexistent resume session
-    err_res = client.post("/api/orchestrator/resume/inc-nonexistent-session")
+    err_res = client.post("/api/orchestrator/resume/inc-nonexistent-session", headers=eng_headers)
     assert err_res.status_code == 404

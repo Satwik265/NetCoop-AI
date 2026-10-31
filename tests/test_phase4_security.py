@@ -1,3 +1,4 @@
+import concurrent.futures
 """Phase 4, 4.1, & 4.2 Comprehensive Security Test Suite.
 
 Verifies:
@@ -723,3 +724,65 @@ def test_real_remediation_execution_blocked_with_403(client: TestClient):
     res = client.post("/api/remediation/act-any/execute", headers=headers)
     assert res.status_code == 403
     assert "Real production remediation execution is strictly disabled" in res.json().get("detail", "")
+
+# -----------------------------------------------------------------------------
+# Part 5.A REST Authorization Matrix Tests
+# -----------------------------------------------------------------------------
+def test_part5a_rest_authorization_matrix(client: TestClient):
+    """Verify complete route authorization matrix for incidents, envelopes, and orchestrator."""
+    hd_headers = get_auth_headers(role=ROLE_HELPDESK, username="helpdesk")
+    noc_headers = get_auth_headers(role=ROLE_NOC_OPERATOR, username="noc")
+
+    # 1. /api/incidents
+    assert client.get("/api/incidents").status_code == 401
+    assert client.get("/api/incidents", headers=hd_headers).status_code == 200
+
+    # 2. /api/incidents/{incident_id}
+    assert client.get("/api/incidents/inc-part5a").status_code == 401
+    save_incident(incident_id="inc-part5a", network_id="net-1", status="open")
+    assert client.get("/api/incidents/inc-part5a", headers=hd_headers).status_code == 200
+
+    # 3. /api/incidents/{incident_id}/envelopes
+    assert client.get("/api/incidents/inc-part5a/envelopes").status_code == 401
+    assert client.get("/api/incidents/inc-part5a/envelopes", headers=hd_headers).status_code == 200
+
+    # 4. /api/envelopes/{correlation_id}
+    assert client.get("/api/envelopes/corr-part5a").status_code == 401
+    assert client.get("/api/envelopes/corr-part5a", headers=hd_headers).status_code == 200
+
+    # 5. /api/orchestrator/pause
+    assert client.post("/api/orchestrator/pause", json={"session_id": "sess-part5a"}).status_code == 401
+    assert client.post("/api/orchestrator/pause", json={"session_id": "sess-part5a"}, headers=hd_headers).status_code == 403
+    assert client.post("/api/orchestrator/pause", json={"session_id": "sess-part5a"}, headers=noc_headers).status_code == 200
+
+    # 6. /api/orchestrator/checkpoints/{session_id}
+    assert client.get("/api/orchestrator/checkpoints/sess-part5a").status_code == 401
+    assert client.get("/api/orchestrator/checkpoints/sess-part5a", headers=hd_headers).status_code == 403
+    assert client.get("/api/orchestrator/checkpoints/sess-part5a", headers=noc_headers).status_code == 200
+
+
+# -----------------------------------------------------------------------------
+# Part 5.B Concurrent WebSocket Ticket Consumption Test
+# -----------------------------------------------------------------------------
+def test_websocket_concurrent_consumption(client: TestClient):
+    """Verify persistent atomic ticket consumption under concurrent execution."""
+    user = get_user_by_username("engineer")
+    assert user is not None
+    ticket = create_ws_ticket(user, expiry_seconds=60)
+
+    # Attempt concurrent consumption from multiple threads
+    results = []
+    def try_consume():
+        return consume_ws_ticket(ticket)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        futures = [executor.submit(try_consume) for _ in range(5)]
+        for f in concurrent.futures.as_completed(futures):
+            results.append(f.result())
+
+    success_count = sum(1 for ok, _, u in results if ok and u is not None)
+    failure_count = sum(1 for ok, reason, _ in results if not ok and "already been consumed" in reason)
+
+    assert success_count == 1, f"Expected exactly 1 successful consumption, got {success_count}"
+    assert failure_count == 4, f"Expected 4 replay rejection failures, got {failure_count}"
+

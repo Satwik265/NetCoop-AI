@@ -75,7 +75,7 @@ export const App: React.FC = () => {
 
   // Chaos & Data Quality state
   const [isChaosActive, setIsChaosActive] = useState<boolean>(false);
-  const [qualityScore, setQualityScore] = useState<number>(0.98);
+  const [qualityScore, setQualityScore] = useState<number>(1.0);
   const [detectedFormat, setDetectedFormat] = useState<string>("canonical");
   const [validationErrors, setValidationErrors] = useState<TypedValidationErrorItem[]>([]);
   const [transformationsCount, setTransformationsCount] = useState<number>(11);
@@ -367,7 +367,7 @@ export const App: React.FC = () => {
         ]);
         setTransformationsCount(18);
       } else {
-        setQualityScore(0.98);
+        setQualityScore(1.0);
         setValidationErrors([]);
         setTransformationsCount(isOrg ? 11 : 4);
       }
