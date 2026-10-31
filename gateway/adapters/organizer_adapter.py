@@ -44,6 +44,8 @@ class OrganizerAdapter:
         "state": "device_status",
         "status": "device_status",
         # Performance metrics
+        "cpu_utilization_pct": "cpu_pct",
+        "cpu_util": "cpu_pct",
         "rtt": "latency_ms",
         "delay": "latency_ms",
         "delay_ms": "latency_ms",
@@ -315,7 +317,7 @@ class OrganizerAdapter:
                 dev_type = "host"
 
         # 5. Map device status
-        raw_status = mapped.get("device_status")
+        raw_status = mapped.get("device_status") or mapped.get("status")
         if raw_status is None:
             device_status = "online"
             errors.append(

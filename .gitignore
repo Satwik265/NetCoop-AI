@@ -40,6 +40,8 @@ htmlcov/
 *.db
 netcoop.db
 logs/
+*.log
+.*.log
 *.pid
 .agents.pid
 

@@ -1,19 +1,20 @@
 # NetCoop AI Automation Makefile
 # Target platforms: Linux, macOS, and Windows (via PowerShell / bash)
 
-.PHONY: help setup up down demo test eval assets run clean
+.PHONY: help setup up down demo demo-organizer test eval assets run clean
 
 help:
 	@echo "NetCoop AI Automation Commands:"
-	@echo "  make setup   - Install Python dependencies and dashboard packages"
-	@echo "  make up      - Start all specialist agent microservices on assigned ports"
-	@echo "  make down    - Terminate all running agent microservices cleanly"
-	@echo "  make demo    - Run end-to-end multi-agent demonstration (normal, link, ethernet)"
-	@echo "  make test    - Run complete unit and property-based test suite"
-	@echo "  make eval    - Execute 19-scenario ground-truth diagnostic benchmark"
-	@echo "  make assets  - Compile and bundle React dashboard frontend assets"
-	@echo "  make run     - Start local FastAPI backend server on port 8000"
-	@echo "  make clean   - Remove build artifacts, pycache, and temporary caches"
+	@echo "  make setup          - Install Python dependencies and dashboard packages"
+	@echo "  make up             - Start all specialist agent microservices on assigned ports"
+	@echo "  make down           - Terminate all running agent microservices cleanly"
+	@echo "  make demo           - Run end-to-end multi-agent demonstration (normal, link, ethernet)"
+	@echo "  make demo-organizer - Ingest organizer Colab JSONL samples and run diagnostic pipeline"
+	@echo "  make test           - Run complete unit and property-based test suite"
+	@echo "  make eval           - Execute 19-scenario ground-truth diagnostic benchmark"
+	@echo "  make assets         - Compile and bundle React dashboard frontend assets"
+	@echo "  make run            - Start local FastAPI backend server on port 8000"
+	@echo "  make clean          - Remove build artifacts, pycache, and temporary caches"
 
 setup:
 	python -m pip install --upgrade pip
@@ -29,6 +30,9 @@ down:
 
 demo:
 	python scripts/demo.py
+
+demo-organizer:
+	python scripts/demo_organizer.py
 
 test:
 	pytest tests/ -v
