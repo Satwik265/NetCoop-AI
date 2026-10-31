@@ -41,7 +41,6 @@ def capture_screenshots() -> None:
             print(f"Captured: {dark_path}")
 
             # 2. Light Mode Dashboard Overview
-            # Click Theme Toggle
             theme_btn = page.query_selector('button[title*="Toggle Light"]')
             if theme_btn:
                 theme_btn.click()
@@ -71,6 +70,33 @@ def capture_screenshots() -> None:
                 page.screenshot(path=str(topo_path), full_page=False)
                 print(f"Captured: {topo_path}")
 
+            # 5. HITL Approvals Queue Tab (FEATURE_HITL)
+            hitl_tab = page.query_selector('button:has-text("HITL Approvals")')
+            if hitl_tab:
+                hitl_tab.click()
+                time.sleep(0.8)
+                hitl_path = OUTPUT_DIR / "hitl_queue.png"
+                page.screenshot(path=str(hitl_path), full_page=False)
+                print(f"Captured: {hitl_path}")
+
+            # 6. Simulated Remediation View Tab (FEATURE_REMEDIATION_SIM)
+            sim_tab = page.query_selector('button:has-text("Simulated Remediation")')
+            if sim_tab:
+                sim_tab.click()
+                time.sleep(0.8)
+                sim_path = OUTPUT_DIR / "simulated_remediation.png"
+                page.screenshot(path=str(sim_path), full_page=False)
+                print(f"Captured: {sim_path}")
+
+            # 7. Sessions & Resume Control Tab (FEATURE_RESUME)
+            session_tab = page.query_selector('button:has-text("Sessions & Resume")')
+            if session_tab:
+                session_tab.click()
+                time.sleep(0.8)
+                session_path = OUTPUT_DIR / "sessions_resume.png"
+                page.screenshot(path=str(session_path), full_page=False)
+                print(f"Captured: {session_path}")
+
             browser.close()
     finally:
         server_proc.terminate()
@@ -79,4 +105,3 @@ def capture_screenshots() -> None:
 
 if __name__ == "__main__":
     capture_screenshots()
-

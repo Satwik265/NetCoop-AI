@@ -12,6 +12,9 @@ import { ScenarioPicker } from "./components/ScenarioPicker";
 import { TopologyView } from "./components/TopologyView";
 import { InteroperabilityInspector } from "./components/InteroperabilityInspector";
 import { ProofTab } from "./components/ProofTab";
+import { HitlApprovalQueue } from "./components/HitlApprovalQueue";
+import { SimulatedRemediationView } from "./components/SimulatedRemediationView";
+import { SessionListResume } from "./components/SessionListResume";
 import { EnvelopeSlideOver } from "./components/EnvelopeSlideOver";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { TypedValidationErrorItem } from "./components/DataQualityBanner";
@@ -26,8 +29,19 @@ export const App: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [activeEnvelope, setActiveEnvelope] = useState<EnvelopeLogItem | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<"workspace" | "topology" | "interop" | "proof">("workspace");
+  const [activeTab, setActiveTab] = useState<string>("workspace");
   const [wsConnected, setWsConnected] = useState<boolean>(false);
+
+  // Feature flags state matching backend flags
+  const [features, setFeatures] = useState<{
+    FEATURE_HITL: boolean;
+    FEATURE_REMEDIATION_SIM: boolean;
+    FEATURE_RESUME: boolean;
+  }>({
+    FEATURE_HITL: true,
+    FEATURE_REMEDIATION_SIM: true,
+    FEATURE_RESUME: true,
+  });
 
   // Topology state
   const [currentTopology, setCurrentTopology] = useState<{ nodes: any[]; links: any[] }>({
@@ -52,6 +66,23 @@ export const App: React.FC = () => {
     } else {
       document.documentElement.classList.remove("dark");
     }
+  }, []);
+
+  // Fetch feature flags on load
+  useEffect(() => {
+    fetch("/api/features")
+      .then((res) => {
+        if (!res.ok) throw new Error("Features endpoint unavailable");
+        return res.json();
+      })
+      .then((data) => {
+        if (data && typeof data.FEATURE_HITL === "boolean") {
+          setFeatures(data);
+        }
+      })
+      .catch(() => {
+        // Default to active
+      });
   }, []);
 
   // Fetch scenarios from API on load
@@ -171,26 +202,21 @@ export const App: React.FC = () => {
     setLoading(true);
 
     try {
-      // 1. Fetch scenario or organizer sample payload
       const scenRes = await fetch(`/api/scenarios/${selectedScenario}`);
       let scenData = await scenRes.json();
 
-      // Check if organizer data or standard
       const isOrg = selectedScenario.includes("organizer") || selectedScenario.endsWith(".jsonl");
       setDetectedFormat(isChaosActive ? "chaos_injected" : isOrg ? "organizer" : "canonical");
 
-      // Ingest topology if present
       if (scenData.topology) {
         setCurrentTopology(scenData.topology);
       } else {
-        // Organizer data has no topology links
         setCurrentTopology({ nodes: [], links: [] });
       }
 
-      // If chaos is active, corrupt the payload live
       if (isChaosActive) {
-        scenData = JSON.parse(JSON.stringify(scenData)); // deep clone
-        scenData.schema_version = "9.9.9"; // Invalid schema
+        scenData = JSON.parse(JSON.stringify(scenData));
+        scenData.schema_version = "9.9.9";
 
         if (scenData.telemetry && Array.isArray(scenData.telemetry)) {
           scenData.telemetry = scenData.telemetry.map((rec: any, idx: number) => {
@@ -240,7 +266,6 @@ export const App: React.FC = () => {
         setTransformationsCount(isOrg ? 11 : 4);
       }
 
-      // 2. Trigger multi-agent consensus diagnosis
       const diagRes = await fetch("/api/diagnose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -254,7 +279,6 @@ export const App: React.FC = () => {
       const reportData: UnifiedDiagnosticReport = await diagRes.json();
       setReport(reportData);
 
-      // 3. Retrieve recorded envelopes from SQLite event store
       const envRes = await fetch(`/api/incidents/${reportData.incident_id}/envelopes`);
       if (envRes.ok) {
         const envData: EnvelopeLogItem[] = await envRes.json();
@@ -265,7 +289,6 @@ export const App: React.FC = () => {
       }
     } catch (err) {
       console.error("Diagnosis error:", err);
-      // Construct fallback offline report
       const mockReport: UnifiedDiagnosticReport = {
         incident_id: `inc-${Date.now().toString(36)}`,
         network_id: "iit-bbs-campus-fabric",
@@ -309,16 +332,16 @@ export const App: React.FC = () => {
         },
         remediation_actions: [
           {
-            action_id: "rem-rate-limit-01",
-            title: "Simulated Traffic Rate Limiting",
-            description: "Apply simulated ingress policer to suppress buffer overflow",
+            action_id: "act-rebalance-spine-01",
+            title: "Rebalance Traffic across ECMP Next-Hops",
+            description: "Apply simulated traffic policy to redistribute load away from saturated interfaces.",
             device: "spine-01",
-            commands: ["configure terminal", "interface et-0/0/1", "rate-limit 10000000000", "commit"],
-            rollback_commands: ["configure terminal", "interface et-0/0/1", "no rate-limit", "commit"],
+            commands: ["configure terminal", "interface et-0/0/1", "load-interval 30", "traffic-policy REBALANCE_ECMP", "commit and-quit"],
+            rollback_commands: ["configure terminal", "interface et-0/0/1", "no traffic-policy REBALANCE_ECMP", "commit and-quit"],
             risk_level: "low",
             blast_radius_devices: ["spine-01", "leaf-02"],
             is_simulated: true,
-            status: "recommended",
+            status: "pending_approval",
           },
         ],
         summary: `Multi-agent consensus diagnosed incident affecting spine-01 with verified corroboration across telemetry and log agents.`,
@@ -333,6 +356,25 @@ export const App: React.FC = () => {
   const currentEnvelope = envelopes[currentIndex] || null;
   const blastRadiusList = report?.remediation_actions?.flatMap((a) => a.blast_radius_devices) || [];
 
+  const tabs: Array<{ id: string; label: string }> = [
+    { id: "workspace", label: "Consensus Workspace" },
+    { id: "topology", label: "Topology & Blast Radius" },
+    { id: "interop", label: "Interoperability Inspector" },
+    { id: "proof", label: "Proof & Evaluation" },
+  ];
+
+  if (features.FEATURE_HITL) {
+    tabs.push({ id: "hitl", label: "HITL Approvals" });
+  }
+  if (features.FEATURE_REMEDIATION_SIM) {
+    tabs.push({ id: "simulated_remediation", label: "Simulated Remediation" });
+  }
+  if (features.FEATURE_RESUME) {
+    tabs.push({ id: "sessions", label: "Sessions & Resume" });
+  }
+
+  const resolvedTab = tabs.some((t) => t.id === activeTab) ? activeTab : "workspace";
+
   return (
     <div className="min-h-screen bg-[#FAFAF9] dark:bg-[#0F0F10] text-[#111111] dark:text-[#EDEDEA] flex flex-col font-sans transition-colors duration-200">
       {/* Top Application Bar */}
@@ -344,13 +386,53 @@ export const App: React.FC = () => {
               NetCoop AI
             </h1>
             <div className="text-[10px] text-[#6B6B66] dark:text-[#888884]">
-              Multi-Agent Network Diagnosis & Simulated Remediation
+              Multi-Agent Network Diagnosis &amp; Simulated Remediation
             </div>
           </div>
         </div>
 
-        {/* Status Indicators & Theme Control */}
-        <div className="flex items-center gap-3">
+        {/* Status Indicators, Feature Flags Toggles & Theme Control */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Feature Flags Pill Bar */}
+          <div className="hidden sm:flex items-center gap-1.5 border border-[#E5E5E3] dark:border-[#2A2A2D] px-2.5 py-1 text-[10px]">
+            <span className="text-[#6B6B66] dark:text-[#888884] uppercase">Flags:</span>
+            <button
+              onClick={() => setFeatures((p) => ({ ...p, FEATURE_HITL: !p.FEATURE_HITL }))}
+              title="Toggle FEATURE_HITL"
+              className={`px-1.5 py-0.5 border ${
+                features.FEATURE_HITL
+                  ? "border-[#5E7A6A] text-[#5E7A6A]"
+                  : "border-[#6B6B66] text-[#6B6B66] opacity-50"
+              }`}
+            >
+              HITL
+            </button>
+            <button
+              onClick={() =>
+                setFeatures((p) => ({ ...p, FEATURE_REMEDIATION_SIM: !p.FEATURE_REMEDIATION_SIM }))
+              }
+              title="Toggle FEATURE_REMEDIATION_SIM"
+              className={`px-1.5 py-0.5 border ${
+                features.FEATURE_REMEDIATION_SIM
+                  ? "border-[#5E7A6A] text-[#5E7A6A]"
+                  : "border-[#6B6B66] text-[#6B6B66] opacity-50"
+              }`}
+            >
+              SIM
+            </button>
+            <button
+              onClick={() => setFeatures((p) => ({ ...p, FEATURE_RESUME: !p.FEATURE_RESUME }))}
+              title="Toggle FEATURE_RESUME"
+              className={`px-1.5 py-0.5 border ${
+                features.FEATURE_RESUME
+                  ? "border-[#5E7A6A] text-[#5E7A6A]"
+                  : "border-[#6B6B66] text-[#6B6B66] opacity-50"
+              }`}
+            >
+              RESUME
+            </button>
+          </div>
+
           <div className="flex items-center gap-2 text-[10px] border border-[#E5E5E3] dark:border-[#2A2A2D] px-2.5 py-1">
             <span
               className={`w-2 h-2 rounded-full ${
@@ -383,19 +465,14 @@ export const App: React.FC = () => {
           onToggleChaos={() => setIsChaosActive((prev) => !prev)}
         />
 
-        {/* View Selection Tabs */}
+        {/* View Selection Tabs (dynamically filtered by feature flags) */}
         <nav className="flex gap-4 border-b border-[#E5E5E3] dark:border-[#2A2A2D] font-mono text-xs uppercase tracking-wider overflow-x-auto">
-          {[
-            { id: "workspace", label: "Consensus Workspace" },
-            { id: "topology", label: "Topology & Blast Radius" },
-            { id: "interop", label: "Interoperability Inspector" },
-            { id: "proof", label: "Proof & Evaluation" },
-          ].map((tab) => (
+          {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id)}
               className={`py-2.5 font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === tab.id
+                resolvedTab === tab.id
                   ? "border-[#475569] text-[#111111] dark:text-[#EDEDEA]"
                   : "border-transparent text-[#6B6B66] dark:text-[#888884] hover:text-[#111111] dark:hover:text-[#EDEDEA]"
               }`}
@@ -406,7 +483,7 @@ export const App: React.FC = () => {
         </nav>
 
         {/* Tab 1: Consensus Workspace */}
-        {activeTab === "workspace" && (
+        {resolvedTab === "workspace" && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Left Column: Live Agent Graph */}
@@ -444,7 +521,7 @@ export const App: React.FC = () => {
         )}
 
         {/* Tab 2: Topology Map & Blast Radius */}
-        {activeTab === "topology" && (
+        {resolvedTab === "topology" && (
           <div className="space-y-4">
             <TopologyView
               nodes={currentTopology.nodes}
@@ -456,13 +533,46 @@ export const App: React.FC = () => {
         )}
 
         {/* Tab 3: Interoperability Inspector */}
-        {activeTab === "interop" && (
+        {resolvedTab === "interop" && (
           <InteroperabilityInspector />
         )}
 
         {/* Tab 4: Proof & Benchmark Evaluation */}
-        {activeTab === "proof" && (
+        {resolvedTab === "proof" && (
           <ProofTab />
+        )}
+
+        {/* Tab 5: Human-in-the-Loop (HITL) Approvals (FEATURE_HITL) */}
+        {resolvedTab === "hitl" && features.FEATURE_HITL && (
+          <HitlApprovalQueue
+            incidentId={report?.incident_id || "inc-link-congestion-42"}
+            actions={report?.remediation_actions || []}
+            onActionExecuted={(actionId) => {
+              if (report && report.remediation_actions) {
+                setReport({
+                  ...report,
+                  remediation_actions: report.remediation_actions.map((a) =>
+                    a.action_id === actionId ? { ...a, status: "simulated_executed" } : a
+                  ),
+                });
+              }
+            }}
+          />
+        )}
+
+        {/* Tab 6: Simulated Remediation View (FEATURE_REMEDIATION_SIM) */}
+        {resolvedTab === "simulated_remediation" && features.FEATURE_REMEDIATION_SIM && (
+          <SimulatedRemediationView />
+        )}
+
+        {/* Tab 7: Sessions & Resume Control (FEATURE_RESUME) */}
+        {resolvedTab === "sessions" && features.FEATURE_RESUME && (
+          <SessionListResume
+            onSelectSession={(_incId) => {
+              setSelectedScenario("link_congestion.json");
+              handleRunDiagnosis();
+            }}
+          />
         )}
       </main>
 

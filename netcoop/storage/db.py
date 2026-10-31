@@ -1,6 +1,7 @@
 """Database connection and audit logging repository using SQLModel / SQLite."""
 
 import json
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from sqlmodel import Session, SQLModel, create_engine, select
 
@@ -93,3 +94,43 @@ def list_incidents() -> List[IncidentRecord]:
         statement = select(IncidentRecord).order_by(IncidentRecord.created_at.desc())
         return list(session.exec(statement).all())
 
+
+def get_remediation_logs(incident_id: Optional[str] = None) -> List[RemediationLog]:
+    """Retrieve decision and simulated remediation history logs."""
+    with Session(engine) as session:
+        statement = select(RemediationLog)
+        if incident_id:
+            statement = statement.where(RemediationLog.incident_id == incident_id)
+        statement = statement.order_by(RemediationLog.id.desc())
+        return list(session.exec(statement).all())
+
+
+def save_remediation_log(
+    incident_id: str,
+    action_id: str,
+    device: str,
+    commands: List[str],
+    rollback_commands: List[str],
+    risk_level: str,
+    status: str,
+    approved_by: Optional[str] = None,
+    simulated_at: Optional[str] = None,
+) -> RemediationLog:
+    """Save or update a remediation decision in SQLite audit log."""
+    ts = simulated_at or datetime.now(timezone.utc).isoformat()
+    with Session(engine) as session:
+        log_entry = RemediationLog(
+            incident_id=incident_id,
+            action_id=action_id,
+            device=device,
+            commands_json=json.dumps(commands),
+            rollback_commands_json=json.dumps(rollback_commands),
+            risk_level=risk_level,
+            status=status,
+            approved_by=approved_by,
+            simulated_at=ts,
+        )
+        session.add(log_entry)
+        session.commit()
+        session.refresh(log_entry)
+        return log_entry

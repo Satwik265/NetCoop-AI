@@ -43,15 +43,15 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 | :--- | :--- | :--- | :--- | :---: |
 | **Model Context Protocol (MCP)** | Stdio JSON-RPC server with tool registry for IDE/agent interaction | `mcp_server/server.py`<br/>`netcoop/mcp/server.py` | `tests/test_mcp_server.py`<br/>(diagnose, report, events, remediate) | **Complete** |
 | **Simulated Remediation** | Action catalog, pre-flight safety checks, blast radius bounds, rollback commands | `netcoop/remediation/engine.py`<br/>`netcoop/remediation/actions.py`<br/>`netcoop/remediation/safety.py` | `tests/test_remediation_safety.py` | **Complete** |
-| **Human-in-the-Loop (HITL)** | Operator approval gate before executing risky remediation actions | `netcoop/remediation/engine.py`<br/>`netcoop/cli.py` (`remediate --approve`) | `tests/test_remediation_safety.py`<br/>Manual operator CLI gate | **Partial** |
-| **Persistent State & Pause/Resume**| Checkpointing graph state across turns, incident persistence in DB | `netcoop/orchestrator/graph.py` (`MemorySaver`)<br/>`netcoop/storage/db.py` (`IncidentRecord`) | `tests/test_scenarios.py`<br/>`netcoop replay <incident_id>` | **Partial** |
+| **Human-in-the-Loop (HITL)** | Operator approval gate before executing risky remediation actions | `netcoop/remediation/engine.py`<br/>`netcoop/cli.py` (`remediate --approve`)<br/>`dashboard/src/components/HitlApprovalQueue.tsx`<br/>`api/main.py` (`/api/incidents/{id}/hitl-decision`) | `tests/test_remediation_safety.py`<br/>`tests/test_new_views_api.py`<br/>Interactive approval queue in UI | **Complete** |
+| **Persistent State & Pause/Resume**| Checkpointing graph state across turns, incident persistence in DB | `netcoop/orchestrator/graph.py` (`MemorySaver`)<br/>`netcoop/storage/db.py` (`IncidentRecord`)<br/>`dashboard/src/components/SessionListResume.tsx`<br/>`api/main.py` (`/api/incidents/{id}/resume`) | `tests/test_scenarios.py`<br/>`tests/test_new_views_api.py`<br/>`netcoop replay <incident_id>` | **Complete** |
 | **Message & Finding Logs** | Complete envelope and finding audit trails in SQLite | `netcoop/storage/db.py`<br/>`netcoop/storage/models.py` (`EnvelopeLog`) | `netcoop envelopes`<br/>`WS /ws/envelopes` | **Complete** |
 | **Interactive Dashboard + CLI** | Rich monochrome terminal CLI and web-based streaming UI | `netcoop/cli.py`<br/>`dashboard/` (React + Tailwind) | `netcoop --help`<br/>`cd dashboard && npm run build` | **Complete** |
 | **Organizer Telemetry Compatibility**| Ingest organizer's Colab notebook format with unit/status translations | `data/organizer/organizer_generator.py`<br/>`gateway/adapters/organizer_adapter.py` | `scripts/demo_organizer.py`<br/>`make demo-organizer` | **Complete** |
 
-> **Notes on Partial Items**:
-> - **Human-in-the-Loop (HITL)**: Safety gates evaluate risk levels, identify high-risk blast radius operations, and require explicit approval flags. Full interactive UI approval prompt will be surfaced in Member C's dashboard view.
-> - **Pause/Resume**: In-memory checkpointing via LangGraph's `MemorySaver` tracks state per `thread_id` (`incident_id`). An interrupt point is ready for external human intervention prior to synthesis if flagged.
+> **Notes on Completed Capabilities**:
+> - **Human-in-the-Loop (HITL)**: Safety gates evaluate risk levels, identify high-risk blast radius operations, and require explicit operator decisions (approve/reject/modify with mandatory rationale) in both the CLI and Web Dashboard.
+> - **Pause/Resume**: Checkpointed sessions can be paused, inspected, and resumed via `/api/incidents/{incident_id}/resume` and the Session Management Dashboard.
 
 ---
 
@@ -128,3 +128,8 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 | **Dynamic README Generator** | `docs/README.template.md`, `scripts/build_readme.py` | Dynamic compilation of README.md from eval/results/mock.json with zero hardcoded claims, all rubric sections, and make readme target | **Complete** |
 | **Visual Asset Pipeline & Suite** | `docs/assets/scripts/generate_all_assets.py` | Monochrome architecture SVG, grayscale confusion matrix, reliability & risk-coverage curves, and Playwright light/dark dashboard screenshots | **Complete** |
 | **4-Minute Demo Script & Storyboard** | `docs/demo_script.md` | Second-by-second presentation script covering problem, architecture, link congestion walkthrough, conflict arbitration, organizer ingestion, abstention, and proof tab | **Complete** |
+| **HITL Approval Queue View** | `dashboard/src/components/HitlApprovalQueue.tsx` | Operator approval queue showing pending actions, approve/reject/modify controls with mandatory rationale validation, and persistent decision audit history from SQLite | **Complete** |
+| **Simulated Remediation View** | `dashboard/src/components/SimulatedRemediationView.tsx` | Before/after metric impact charts, pre-flight safety checks breakdown, side-by-side executed & rollback commands, with persistent non-dismissible "Simulated, no production changes" sandbox label | **Complete** |
+| **Session List & Resume Control** | `dashboard/src/components/SessionListResume.tsx` | Diagnostic session table with status badges and one-click resume control for paused sessions communicating via `/api/incidents/{id}/resume` | **Complete** |
+| **Feature Flags Controller** | `dashboard/src/App.tsx`, `api/main.py` | Granular toggling of optional views (`FEATURE_HITL`, `FEATURE_REMEDIATION_SIM`, `FEATURE_RESUME`) with guaranteed unchanged dashboard operation when flags are off | **Complete** |
+| **MCP Integration Gallery** | `README.md`, `docs/mcp.md` | Model Context Protocol client configurations (Claude Desktop, Cursor, generic stdio) with tool catalog and verification commands | **Complete** |

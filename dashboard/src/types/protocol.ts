@@ -27,7 +27,7 @@ export interface RemediationAction {
   risk_level: "low" | "medium" | "high";
   blast_radius_devices: string[];
   is_simulated: boolean;
-  status: "recommended" | "pending_approval" | "simulated_success" | "rejected";
+  status: "recommended" | "pending_approval" | "simulated_success" | "simulated_executed" | "rejected" | string;
 }
 
 export interface UnifiedDiagnosticReport {
@@ -65,4 +65,3 @@ export interface ScenarioMeta {
   network_id: string;
   description: string;
 }
-

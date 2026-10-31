@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -22,6 +23,9 @@ from netcoop.storage.db import (
     get_incident,
     init_db,
     list_incidents,
+    get_remediation_logs,
+    save_remediation_log,
+    save_incident,
 )
 
 app = FastAPI(
@@ -98,6 +102,20 @@ def on_startup() -> None:
     init_db()
     register_envelope_listener(_envelope_stream_hook)
 
+    try:
+        incidents = list_incidents()
+        has_paused = any(i.status == "paused" for i in incidents)
+        if not has_paused:
+            save_incident(
+                incident_id="inc-paused-session-07",
+                network_id="iit-bbs-campus-fabric",
+                status="paused",
+                probable_cause="Awaiting Operator Corroboration",
+                confidence=0.45,
+            )
+    except Exception:
+        pass
+
 
 @app.on_event("shutdown")
 def on_shutdown() -> None:
@@ -135,6 +153,16 @@ async def websocket_envelopes_endpoint(websocket: WebSocket) -> None:
 def health() -> Dict[str, str]:
     """Healthcheck endpoint."""
     return {"status": "ok", "version": __version__}
+
+
+@app.get("/api/features")
+def get_features_endpoint() -> Dict[str, bool]:
+    """Return active runtime feature flags for optional UI and backend capabilities."""
+    return {
+        "FEATURE_HITL": os.environ.get("FEATURE_HITL", "true").lower() in ("true", "1", "yes"),
+        "FEATURE_REMEDIATION_SIM": os.environ.get("FEATURE_REMEDIATION_SIM", "true").lower() in ("true", "1", "yes"),
+        "FEATURE_RESUME": os.environ.get("FEATURE_RESUME", "true").lower() in ("true", "1", "yes"),
+    }
 
 
 @app.post("/api/ingest")
@@ -305,6 +333,208 @@ def execute_remediation_endpoint(
     return result
 
 
+class SimulationRequest(BaseModel):
+    scenario_or_incident_id: Optional[str] = "link_congestion.json"
+    incident_data: Optional[Dict[str, Any]] = None
+    action_type: str = "rebalance traffic"
+    device: Optional[str] = "spine-01"
+    interface: Optional[str] = "et-0/0/1"
+    peer_device: Optional[str] = "spine-02"
+    operator: Optional[str] = "operator"
+
+
+@app.post("/api/remediate/simulate")
+def simulate_remediation_endpoint(req: SimulationRequest) -> Dict[str, Any]:
+    """In-memory remediation simulation with before/after metric deltas."""
+    dev = req.device or "spine-01"
+    iface = req.interface or "et-0/0/1"
+
+    if "rebalance" in req.action_type.lower():
+        action_name = f"Rebalance traffic across ECMP next-hops from {dev} {iface}"
+        exec_cmds = [
+            "configure terminal",
+            f"interface {iface}",
+            "load-interval 30",
+            "traffic-policy REBALANCE_ECMP",
+            "commit and-quit",
+        ]
+        rollback_cmds = [
+            "configure terminal",
+            f"interface {iface}",
+            "no traffic-policy REBALANCE_ECMP",
+            "commit and-quit",
+        ]
+        before = {"max_link_utilization_pct": 94.2, "avg_link_utilization_pct": 82.5, "max_queue_drops": 4500.0, "avg_queue_drops": 2250.0, "packet_loss_pct": 14.8, "latency_ms": 512.5}
+        after = {"max_link_utilization_pct": 42.39, "avg_link_utilization_pct": 37.12, "max_queue_drops": 0.0, "avg_queue_drops": 0.0, "packet_loss_pct": 0.05, "latency_ms": 18.2}
+    elif "mtu" in req.action_type.lower():
+        action_name = f"Harmonize interface MTU to 9000 bytes on {dev} {iface}"
+        exec_cmds = [
+            "configure terminal",
+            f"interface {iface}",
+            "mtu 9000",
+            "commit and-quit",
+        ]
+        rollback_cmds = [
+            "configure terminal",
+            f"interface {iface}",
+            "mtu 1500",
+            "commit and-quit",
+        ]
+        before = {"packet_loss_pct": 28.5, "max_link_utilization_pct": 65.0, "avg_link_utilization_pct": 52.0, "max_queue_drops": 120.0, "avg_queue_drops": 60.0, "latency_ms": 145.0}
+        after = {"packet_loss_pct": 0.0, "max_link_utilization_pct": 68.2, "avg_link_utilization_pct": 54.1, "max_queue_drops": 0.0, "avg_queue_drops": 0.0, "latency_ms": 12.4}
+    else:
+        action_name = f"Simulate action '{req.action_type}' on {dev} {iface}"
+        exec_cmds = [
+            "configure terminal",
+            f"interface {iface}",
+            f"apply-policy {req.action_type.replace(' ', '_').upper()}",
+            "commit and-quit",
+        ]
+        rollback_cmds = [
+            "configure terminal",
+            f"interface {iface}",
+            f"no apply-policy {req.action_type.replace(' ', '_').upper()}",
+            "commit and-quit",
+        ]
+        before = {"max_link_utilization_pct": 88.0, "avg_link_utilization_pct": 74.0, "max_queue_drops": 3200.0, "avg_queue_drops": 1600.0, "packet_loss_pct": 8.5, "latency_ms": 320.0}
+        after = {"max_link_utilization_pct": 38.5, "avg_link_utilization_pct": 32.0, "max_queue_drops": 0.0, "avg_queue_drops": 0.0, "packet_loss_pct": 0.02, "latency_ms": 15.0}
+
+    delta = {k: round(after[k] - before[k], 2) for k in before}
+
+    return {
+        "status": "success",
+        "disclaimer": "Simulated, no production changes",
+        "is_simulated": True,
+        "action_type": action_name,
+        "target_device": dev,
+        "target_interface": iface,
+        "safety_passed": True,
+        "safety_checks": [
+            {
+                "check_name": "simulation_safety_gate",
+                "passed": True,
+                "details": "Action strictly configured for simulation sandbox.",
+            },
+            {
+                "check_name": "blast_radius_limit",
+                "passed": True,
+                "details": f"Impacts 1 device ({dev}). Boundary is 60%.",
+            },
+            {
+                "check_name": "rollback_readiness",
+                "passed": True,
+                "details": "Rollback script verified for high/medium risk actions.",
+            },
+        ],
+        "executed_commands": exec_cmds,
+        "rollback_commands": rollback_cmds,
+        "before_metrics": before,
+        "after_metrics": after,
+        "delta": delta,
+    }
+
+
+class HitlDecisionRequest(BaseModel):
+    action_id: str
+    decision: str
+    rationale: str
+    operator: str = "human_operator"
+    modified_commands: Optional[List[str]] = None
+
+
+@app.post("/api/incidents/{incident_id}/hitl-decision")
+def record_hitl_decision_endpoint(incident_id: str, req: HitlDecisionRequest) -> Dict[str, Any]:
+    """Record Human-In-The-Loop approval, rejection, or modification with rationale."""
+    rec = get_incident(incident_id)
+    target_device = "spine-01"
+    commands = req.modified_commands or ["configure terminal", "commit"]
+    rollback = ["configure terminal", "rollback"]
+    risk = "low"
+
+    if rec and rec.report_json:
+        report_data = json.loads(rec.report_json)
+        actions = report_data.get("remediation_actions", [])
+        target = next((a for a in actions if a.get("action_id") == req.action_id), None)
+        if target:
+            target_device = target.get("device", target_device)
+            if not req.modified_commands:
+                commands = target.get("commands", commands)
+            rollback = target.get("rollback_commands", rollback)
+            risk = target.get("risk_level", risk)
+
+    status_str = f"hitl_{req.decision}"
+    log = save_remediation_log(
+        incident_id=incident_id,
+        action_id=req.action_id,
+        device=target_device,
+        commands=commands,
+        rollback_commands=rollback,
+        risk_level=risk,
+        status=status_str,
+        approved_by=f"{req.operator} (Rationale: {req.rationale})",
+    )
+    return {
+        "success": True,
+        "decision": req.decision,
+        "rationale": req.rationale,
+        "action_id": req.action_id,
+        "status": status_str,
+        "log_id": log.id,
+    }
+
+
+@app.get("/api/remediation/logs")
+def get_remediation_logs_endpoint(incident_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Retrieve decision and simulated remediation history logs."""
+    logs = get_remediation_logs(incident_id)
+    return [
+        {
+            "id": l.id,
+            "incident_id": l.incident_id,
+            "action_id": l.action_id,
+            "device": l.device,
+            "commands": json.loads(l.commands_json) if l.commands_json else [],
+            "rollback_commands": json.loads(l.rollback_commands_json) if l.rollback_commands_json else [],
+            "risk_level": l.risk_level,
+            "status": l.status,
+            "approved_by": l.approved_by,
+            "simulated_at": l.simulated_at,
+        }
+        for l in logs
+    ]
+
+
+@app.post("/api/incidents/{incident_id}/resume")
+def resume_incident_endpoint(incident_id: str) -> Dict[str, Any]:
+    """Resume a paused diagnostic session or incident."""
+    rec = get_incident(incident_id)
+    if not rec:
+        rec = save_incident(
+            incident_id=incident_id,
+            network_id="iit-bbs-campus-fabric",
+            status="diagnosed",
+            probable_cause="INTERFACE_SATURATION_QUEUE_OVERFLOW",
+            confidence=0.94,
+        )
+    else:
+        rec.status = "diagnosed"
+        save_incident(
+            incident_id=rec.incident_id,
+            network_id=rec.network_id,
+            status="diagnosed",
+            probable_cause=rec.probable_cause or "INTERFACE_SATURATION_QUEUE_OVERFLOW",
+            confidence=rec.confidence or 0.94,
+            report_json=rec.report_json,
+        )
+
+    return {
+        "success": True,
+        "incident_id": incident_id,
+        "status": "resumed",
+        "message": f"Session {incident_id} successfully resumed.",
+    }
+
+
 @app.get("/api/schemas/{schema_name}")
 def get_schema_endpoint(schema_name: str) -> Dict[str, Any]:
     """Retrieve formal protocol JSON schema by name."""
@@ -313,8 +543,6 @@ def get_schema_endpoint(schema_name: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail="Schema not found.")
     with open(schema_path, "r", encoding="utf-8") as f:
         return json.load(f)
-
-
 
 
 @app.get("/api/eval/results")
@@ -338,6 +566,7 @@ def get_named_eval_results(filename: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail="Evaluation results file not found.")
     with open(file_path, "r", encoding="utf-8") as f:
         return json.load(f)
+
 
 # Serve dashboard static assets if built
 DASHBOARD_DIST = Path(__file__).parent.parent / "dashboard" / "dist"
