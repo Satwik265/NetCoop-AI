@@ -192,3 +192,4 @@ with open(scenarios_dir / "manifest.json", "w", encoding="utf-8") as f:
     json.dump(manifest, f, indent=2)
 
 print(f"Successfully generated {len(interop_entries)} interop variants and updated manifest.")
+

@@ -130,3 +130,4 @@ Benchmark asserts:
 - Diagnosed status and confidence >= target threshold for all fault scenarios.
 - Insufficient evidence status and confidence == 0 for ambiguous and sparse scenarios.
 - 100% pass rate across all interoperability failure variants.
+

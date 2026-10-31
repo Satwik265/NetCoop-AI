@@ -82,3 +82,4 @@ def test_knobs_staleness_seconds() -> None:
     ts_stale = stale["telemetry"][0]["timestamp"]
     assert ts_fresh != ts_stale
     assert "11:00:00" in ts_stale  # 1 hour prior to 12:00:00
+

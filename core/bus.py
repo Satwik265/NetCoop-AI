@@ -62,3 +62,4 @@ class MessageBus:
 
 # Default global bus instance
 bus = MessageBus()
+

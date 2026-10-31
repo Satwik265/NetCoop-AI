@@ -118,3 +118,4 @@ def test_adapter_handles_malformed_json_string() -> None:
     assert len(adapted["telemetry"]) == 1
     assert adapted["telemetry"][0]["device_id"] == "sw-10"
     assert adapted["telemetry"][0]["latency_ms"] == 35.0
+

@@ -255,3 +255,4 @@ class OrganizerAdapter:
             "configurations": container.get("configurations", []),
             "logs": container.get("logs", []),
         }
+
