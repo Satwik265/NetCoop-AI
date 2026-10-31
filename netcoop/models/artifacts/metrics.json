@@ -1,19 +1,47 @@
 {
   "train_samples": 2400,
-  "calibration_samples": 600,
+  "calibrator_fit_samples": 300,
+  "conformal_calib_samples": 300,
   "validation_samples": 600,
   "test_samples": 720,
-  "ece_calibration": 0.0,
-  "ece_test": 0.0341,
-  "conformal_test_coverage": 0.8472,
+  "ece_calibration": 0.0014,
+  "ece_test": 0.0372,
+  "conformal_test_coverage": 0.8444,
+  "selective_accuracy": 0.9825,
   "cutoffs": {
-    "high": 0.4,
-    "medium": 0.4,
+    "high": 0.8,
+    "medium": 0.6,
     "low": 0.4
   },
   "precisions": {
-    "high": 0.97,
-    "medium": 0.97,
-    "low": 0.97
+    "high": 0.981,
+    "medium": 0.979,
+    "low": 0.972
+  },
+  "threshold_metadata": {
+    "high": {
+      "target_precision": 0.95,
+      "actual_empirical_precision": 0.981,
+      "accepted_sample_count": 530,
+      "correct_prediction_count": 520,
+      "selected_threshold": 0.8,
+      "estimation_status": "estimated"
+    },
+    "medium": {
+      "target_precision": 0.85,
+      "actual_empirical_precision": 0.979,
+      "accepted_sample_count": 536,
+      "correct_prediction_count": 525,
+      "selected_threshold": 0.6,
+      "estimation_status": "estimated"
+    },
+    "low": {
+      "target_precision": 0.7,
+      "actual_empirical_precision": 0.972,
+      "accepted_sample_count": 541,
+      "correct_prediction_count": 526,
+      "selected_threshold": 0.4,
+      "estimation_status": "estimated"
+    }
   }
 }

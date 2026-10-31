@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     in_process_fallback: bool = False
     allow_dev_in_process_fallback: bool = False
 
+    # Feature flags
+    feature_mcp: bool = True
+    feature_remediation_sim: bool = True
+
     # Persistence
     database_url: str = "sqlite:///./netcoop.db"
 
@@ -163,3 +167,5 @@ settings = Settings()
 # Module-level feature flag exports
 FEATURE_RESUME: bool = settings.feature_resume
 FEATURE_HITL: bool = settings.feature_hitl
+FEATURE_MCP: bool = settings.feature_mcp
+FEATURE_REMEDIATION_SIM: bool = settings.feature_remediation_sim

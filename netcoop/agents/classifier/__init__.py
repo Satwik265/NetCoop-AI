@@ -81,3 +81,4 @@ except Exception:
     from netcoop.agents.classifier.agent import ClassifierAgent
 
 __all__ = ["ScenarioClassifier", "ClassifierAgent"]
+

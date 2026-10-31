@@ -106,3 +106,4 @@ class HeldoutNetworkGenerator:
                 "links": cls.HELDOUT_EDGES,
             },
         }
+

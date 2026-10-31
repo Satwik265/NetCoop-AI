@@ -37,6 +37,30 @@ class DatasetSplitter:
         onset_offset_range=(0.0, 60.0),
     )
 
+    # Disjoint sub-partitions for statistically defensible calibration:
+    # 1. Fit probability calibrator on calibrator_fit partition
+    CALIBRATOR_FIT_SPEC = SplitSpec(
+        name="calibrator_fit",
+        seed_start=201,
+        seed_end=225,
+        severities=(SeverityLevel.LOW, SeverityLevel.MEDIUM),
+        noise_shapes=(NoiseShape.GAUSSIAN, NoiseShape.UNIFORM),
+        missing_rate_range=(0.0, 0.2),
+        onset_offset_range=(0.0, 60.0),
+    )
+
+    # 2. Evaluate nonconformity scores using the fixed calibrator on conformal_calib partition
+    CONFORMAL_CALIB_SPEC = SplitSpec(
+        name="conformal_calib",
+        seed_start=226,
+        seed_end=250,
+        severities=(SeverityLevel.LOW, SeverityLevel.MEDIUM),
+        noise_shapes=(NoiseShape.GAUSSIAN, NoiseShape.UNIFORM),
+        missing_rate_range=(0.0, 0.2),
+        onset_offset_range=(0.0, 60.0),
+    )
+
+    # Composite calibration split encompassing both sub-partitions (seeds 201-250)
     CALIBRATION_SPEC = SplitSpec(
         name="calibration",
         seed_start=201,
@@ -69,18 +93,36 @@ class DatasetSplitter:
 
     @classmethod
     def verify_no_seed_overlap(cls) -> None:
-        """Assert that no seed is shared between any partitions."""
+        """Assert that no seed is shared between any active disjoint partitions."""
         train_s = cls.TRAIN_SPEC.seeds
-        calib_s = cls.CALIBRATION_SPEC.seeds
+        calib_fit_s = cls.CALIBRATOR_FIT_SPEC.seeds
+        conf_calib_s = cls.CONFORMAL_CALIB_SPEC.seeds
         val_s = cls.VALIDATION_SPEC.seeds
         test_s = cls.TEST_SPEC.seeds
 
-        assert len(train_s & calib_s) == 0, f"Overlap between train and calib: {train_s & calib_s}"
-        assert len(train_s & val_s) == 0, f"Overlap between train and val: {train_s & val_s}"
-        assert len(train_s & test_s) == 0, f"Overlap between train and test: {train_s & test_s}"
-        assert len(calib_s & val_s) == 0, f"Overlap between calib and val: {calib_s & val_s}"
-        assert len(calib_s & test_s) == 0, f"Overlap between calib and test: {calib_s & test_s}"
-        assert len(val_s & test_s) == 0, f"Overlap between val and test: {val_s & test_s}"
+        # Verify disjointness between individual operational partitions
+        partitions = [
+            ("train", train_s),
+            ("calibrator_fit", calib_fit_s),
+            ("conformal_calib", conf_calib_s),
+            ("validation", val_s),
+            ("test", test_s),
+        ]
+        for i in range(len(partitions)):
+            for j in range(i + 1, len(partitions)):
+                name_a, set_a = partitions[i]
+                name_b, set_b = partitions[j]
+                overlap = set_a & set_b
+                assert len(overlap) == 0, f"Overlap between {name_a} and {name_b}: {overlap}"
+
+        # Verify composite calibration specification integrity
+        composite_calib = cls.CALIBRATION_SPEC.seeds
+        assert composite_calib == (calib_fit_s | conf_calib_s), (
+            "CALIBRATION_SPEC must match union of CALIBRATOR_FIT_SPEC and CONFORMAL_CALIB_SPEC"
+        )
+        assert len(train_s & composite_calib) == 0, f"Overlap between train and composite calib: {train_s & composite_calib}"
+        assert len(val_s & composite_calib) == 0, f"Overlap between val and composite calib: {val_s & composite_calib}"
+        assert len(test_s & composite_calib) == 0, f"Overlap between test and composite calib: {test_s & composite_calib}"
 
     @classmethod
     def get_split_spec(cls, split_name: str) -> SplitSpec:
@@ -88,6 +130,8 @@ class DatasetSplitter:
         cls.verify_no_seed_overlap()
         specs = {
             "train": cls.TRAIN_SPEC,
+            "calibrator_fit": cls.CALIBRATOR_FIT_SPEC,
+            "conformal_calib": cls.CONFORMAL_CALIB_SPEC,
             "calibration": cls.CALIBRATION_SPEC,
             "validation": cls.VALIDATION_SPEC,
             "test": cls.TEST_SPEC,

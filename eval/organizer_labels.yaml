@@ -1,0 +1,27 @@
+# NetCoop AI Organizer Ground-Truth Label Mapping Specification
+# A judgment call documented in docs/eval_report.md
+
+mappings:
+  normal:
+    canonical: "no_fault"
+    accepted_set:
+      - "no_fault"
+      - "normal_operation"
+      - "benign"
+    rationale: "Normal operational telemetry with healthy baseline latencies, zero packet loss, and low utilization."
+
+  hardware_failure:
+    canonical: "device_hardware_failure"
+    accepted_set:
+      - "device_hardware_failure"
+      - "ethernet_interface_fault"
+      - "device_cpu_overload"
+    rationale: "Saturated CPU (99.9%), saturated link (100.0%), and interface CRC errors indicating physical hardware or interface failure."
+
+  latency_spike:
+    canonical: "link_congestion"
+    accepted_set:
+      - "link_congestion"
+      - "upstream_congestion"
+      - "upstream_failure_cascade"
+    rationale: "Moderate link utilization (60-85%) with 150-400ms latency spikes and modest drops is ambiguous between link congestion and upstream bottleneck."

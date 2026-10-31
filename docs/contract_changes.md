@@ -282,3 +282,156 @@ Managed in `netcoop/config.py` (and mirrored in `core/config.py`):
 - **Envelope Audit Trail**: Every operator decision emits an audit log record with `message_type="REMEDIATION_DECISION"`, `sender=operator`, and `recipient="remediation_engine"`.
 - **Simulation Sandbox Only**: All commands remain strictly simulated in sandbox test environments. No actual network interface changes occur.
 - **Monochrome & Clean Output**: Zero emojis across API responses, CLI logs, and documentation.
+
+---
+
+---
+
+## 6. Remediation Simulation & Human-in-the-Loop (HITL) Contract Extensions
+
+To support Member C's interactive dashboard remediation tabs and Member A's HITL approval checkpoints, the platform defines the following backward-compatible API endpoints and payload schemas:
+
+### 5.1 In-Memory Simulation Endpoint: `POST /api/remediate/simulate`
+
+Applies an action to in-memory scenario telemetry without modifying production state or touching real network sockets. Returns before/after metric deltas and verification status.
+
+#### Request Payload (`application/json`)
+```json
+{
+  "scenario_or_incident_id": "link_congestion.json",
+  "action_type": "rebalance traffic",
+  "device": "spine-01",
+  "interface": "et-0/0/1",
+  "peer_device": "spine-02",
+  "operator": "operator_alice"
+}
+```
+
+#### Field Specifications
+| Field | Type | Required | Description | Allowed Values |
+| :--- | :--- | :---: | :--- | :--- |
+| `scenario_or_incident_id` | String | No | Target scenario filename or existing incident ID | e.g. `"link_congestion.json"`, `"inc-1001"` |
+| `incident_data` | Object | No | Inline telemetry object (optional override) | Conforming to `schemas/telemetry.json` |
+| `action_type` | String | Yes | Action to apply to in-memory state | `"rebalance traffic"`, `"clear interface counters"`, `"raise QoS priority"`, `"fail over a link"`, `"harmonize mtu"` |
+| `device` | String | No | Specific device identifier to target | e.g. `"spine-01"`, `"SW_CAMPUS_1"` (inferred if omitted) |
+| `interface` | String | No | Interface name on target device | default: `"et-0/0/1"` |
+| `peer_device` | String | No | Redundant failover peer device | e.g. `"spine-02"` |
+| `operator` | String | No | Identifier of the operator or agent triggering simulation | default: `"operator"` |
+
+#### Response Payload (`application/json`, Status `200 OK`)
+```json
+{
+  "status": "success",
+  "disclaimer": "Simulated, no production changes",
+  "is_simulated": true,
+  "action_type": "Rebalance traffic across ECMP next-hops from spine-01 et-0/0/1",
+  "target_device": "spine-01",
+  "target_interface": "et-0/0/1",
+  "safety_passed": true,
+  "safety_checks": [
+    {
+      "check_name": "simulation_safety_gate",
+      "passed": true,
+      "details": "Action strictly configured for simulation sandbox."
+    },
+    {
+      "check_name": "blast_radius_limit",
+      "passed": true,
+      "details": "Impacts 1/2 devices (50%). Boundary is 60%."
+    },
+    {
+      "check_name": "rollback_readiness",
+      "passed": true,
+      "details": "Rollback script verified for high/medium risk actions."
+    }
+  ],
+  "executed_commands": [
+    "configure terminal",
+    "interface et-0/0/1",
+    "load-interval 30",
+    "traffic-policy REBALANCE_ECMP",
+    "commit and-quit"
+  ],
+  "rollback_commands": [
+    "configure terminal",
+    "interface et-0/0/1",
+    "no traffic-policy REBALANCE_ECMP",
+    "commit and-quit"
+  ],
+  "before_metrics": {
+    "max_link_utilization_pct": 94.2,
+    "avg_link_utilization_pct": 82.5,
+    "max_queue_drops": 4500.0,
+    "avg_queue_drops": 2250.0
+  },
+  "after_metrics": {
+    "max_link_utilization_pct": 42.39,
+    "avg_link_utilization_pct": 37.12,
+    "max_queue_drops": 0.0,
+    "avg_queue_drops": 0.0
+  },
+  "delta": {
+    "max_link_utilization_pct": -51.81,
+    "avg_link_utilization_pct": -45.38,
+    "max_queue_drops": -4500.0,
+    "avg_queue_drops": -2250.0
+  }
+}
+```
+
+---
+
+### 6.2 Operator HITL Approval Execution: `POST /api/incidents/{incident_id}/remediate`
+
+Member A's HITL gate requires explicit operator approval before executing simulated commands and recording audit trails in SQLite.
+
+#### Request Payload
+```json
+{
+  "action_id": "act-rebalance-spine-01",
+  "operator": "network_engineer_bob"
+}
+```
+
+#### Response Payload
+```json
+{
+  "success": true,
+  "disclaimer": "Simulated, no production changes",
+  "is_simulated": true,
+  "message": "Successfully simulated remediation action act-rebalance-spine-01 on spine-01.",
+  "executed_commands": [
+    "configure terminal",
+    "interface et-0/0/1",
+    "load-interval 30",
+    "traffic-policy REBALANCE_ECMP",
+    "commit and-quit"
+  ],
+  "rollback_commands": [
+    "configure terminal",
+    "interface et-0/0/1",
+    "no traffic-policy REBALANCE_ECMP",
+    "commit and-quit"
+  ],
+  "action": {
+    "action_id": "act-rebalance-spine-01",
+    "status": "simulated_success",
+    "risk_level": "low"
+  }
+}
+```
+
+---
+
+### 6.3 MCP Protocol Extensions
+
+The Model Context Protocol server (`netcoop/mcp/server.py`) exposes these exact simulation capabilities through JSON-RPC 2.0 tool invocation:
+
+- `simulate_remediation`: Accepts `incident_id`, `action_id`, and `action_type`.
+- `explain_finding`: Returns root cause analysis and evidentiary metric breakdowns for any finding ID.
+- `get_telemetry`: Returns recent telemetry windows for specific network nodes.
+- `get_topology`: Returns topology graph or gracefully reports `"topology unavailable"`.
+- `run_diagnosis`: Runs diagnosis against scenario files, organizer samples, or inline telemetry.
+- `list_devices`: Enumerates known devices across all loaded contexts.
+- Resources (`scenario://*`, `organizer://*`, `report://latest`).
+
