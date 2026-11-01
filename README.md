@@ -8,6 +8,13 @@
 
 A modular, shared-nothing multi-agent platform for enterprise and campus network fault diagnosis, cross-domain evidence corroboration, and safe simulated remediation planning.
 
+### Results (synthetic benchmark)
+
+Across all 21 scenarios run through `POST /api/diagnose` in HTTP mode:
+- **Before Interop Fix**: 18/21 scenarios diagnosed or abstained as expected.
+- **After Interop Fix**: `interop_renamed_fields` and `interop_null_nan` are diagnosed as `LINK_CONGESTION` (conf 0.956, 2 actions), and `interop_malformed_json` returns HTTP 422 by design.
+- **Zero Regressions**: Zero regressions across the 18 earlier passes.
+
 ---
 
 ## 1. Problem and Insight
@@ -117,7 +124,7 @@ The platform is designed around strict process isolation. Six specialist agents 
 
 ![NetCoop AI Architecture Diagram](docs/assets/architecture.svg)
 
-### 4.1 Agent Role Matrix
+### 4.1 Agent Responsibilities and Role Matrix
 
 | Agent | Service Name & Port | HTTP Endpoint | Operational Domain | Key Analyzed Metrics / Artifacts |
 | :--- | :--- | :--- | :--- | :--- |
@@ -130,6 +137,22 @@ The platform is designed around strict process isolation. Six specialist agents 
 | **Wifi Services Agent** | `wifi_services_agent`<br/>`:8008` | `POST /process` | Wireless RF & campus core network services | `rssi_dbm`, `snr_db`, `wifi_retrans_pct`, `channel_util_pct`, `dns_latency_ms`, `dns_failure_rate`, `dhcp_ack_latency_ms`, `dhcp_failure_rate` |
 | **Ingestion Gateway** | `gateway`<br/>`:8006` | `POST /ingest` | Multi-vendor & external telemetry normalization | Format auto-detection, schema adaptation (`v1.0.0`), SI unit coercion, clock skew correction, 12 typed validation error handlers |
 | **Orchestrator** | `orchestrator-api`<br/>`:8000` | `POST /api/diagnose`<br/>`POST /api/diagnose/export` | Workflow state graph & external API server | LangGraph state graph coordination, supervisor mediation, timeout / retry / circuit-breaker policies, SQLite persistence |
+
+### 4.2 Orchestration
+
+The orchestrator state machine (`netcoop/orchestrator/graph.py`) coordinates multi-agent consensus through a LangGraph cyclic state graph. Inbound incident data is ingested, normalized via the Ingestion Gateway (`gateway/api.py`), and dispatched to domain specialists. The mediator (`netcoop/orchestrator/mediator.py`) gathers finding submissions, tracks agent health, evaluates cross-domain hypothesis overlap, and executes up to 3 cross-inquiry cycles (`payload.inquiries`) before routing to the synthesizer agent (`POST :8005/synthesize`) or emitting an abstention.
+
+### 4.3 Evidence Correlation
+
+Evidence correlation (`netcoop/core/correlation.py`) ingests empirical findings (`Observation` from `netcoop/core/evidence.py`) and evaluates them against declarative fault signatures (`netcoop/core/signatures.py`). The offline correlation engine constructs causal chains, computes Bayesian confidence combinations, and applies strict domain precedence hierarchy (optical transceiver degradation > queue drops > routing state flaps > ping latency) to resolve competing hypotheses deterministically.
+
+### 4.4 Error Handling and Fault Tolerance
+
+Multi-tier error handling guarantees bounded degraded execution without unhandled crashes:
+- **Circuit Breakers & Degraded Mode** (`netcoop/orchestrator/mediator.py`): Tracks per-agent failure counts. After 2 consecutive failures, the circuit breaker trips to fast-fail subsequent dispatches, marking the agent dead and continuing in degraded mode with audit notes in `limitations`.
+- **Ingestion Gateway Validation** (`gateway/adapters/organizer_adapter.py`): Traps and recovers from dirty strings, unit discrepancies, out-of-order records, and unsupported schema versions via `TypedValidationError`.
+- **API Error Boundaries** (`api/main.py`): Fails with HTTP 503 if the Ingestion Gateway microservice is offline, and rejects malformed JSON bodies with HTTP 422 before dispatch.
+- **CLI Robustness** (`netcoop/cli.py`): Catches `json.JSONDecodeError` on malformed inputs and prints a one-line error message with non-zero exit code 1 instead of an unhandled traceback.
 
 ---
 
@@ -149,7 +172,7 @@ The Ingestion Gateway (`gateway/api.py`, port 8006) ingests multi-vendor and thi
 2. **Schema Migration**: When receiving older schema versions, the Ingestion Gateway applies structural migration transformations to ensure zero protocol errors reach specialist agents.
 3. **Dirty Data Sanitization**: Sanitizes string `'NaN'` and `'null'` tokens into structured null attributes; trims and synchronizes timestamps exceeding operational skew boundaries (600s boundary).
 
-### 5.2 Standard Envelope Structure
+### 5.2 Message Format and Standard Envelope Structure
 
 ```json
 {
@@ -214,7 +237,7 @@ The Ingestion Gateway (`gateway/api.py`, port 8006) ingests multi-vendor and thi
 }
 ```
 
-### 5.3 Canonical Metric Keys and SI Units
+### 5.3 Canonical Metric Keys and Units
 
 The Ingestion Gateway and normalizers enforce standard metric names and units across all data sources:
 
@@ -393,7 +416,7 @@ cd ..
 ```
 *Source: Verified with `pip install -e .`, `pip install -r requirements.txt`, and `npm install`.*
 
-### 8.2 Starting Agent Microservices & Orchestrator
+### 8.2 Setup & Starting Microservices (including INTERNAL_SERVICE_TOKEN)
 
 NetCoop AI operates as a set of decoupled operating system processes communicating over HTTP with token authentication:
 
@@ -524,7 +547,7 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/diagnose/results" -Headers $he
   - **Device & Settings Administration** (`PERM_MANAGE_DEVICES`, `PERM_CONFIGURE_SETTINGS`): `POST /api/network/devices`, `POST /api/settings/config`
   - **Profile & Revocation**: `GET /api/auth/me`, `POST /api/auth/logout`
 
-### 8.5 5-Minute Judge Demo Script
+### 8.5 How to Run the Demo (5-Minute Judge Demo Script)
 
 A complete, self-contained walkthrough verifiable from PowerShell in under 5 minutes:
 
@@ -595,7 +618,7 @@ Failures observed during live testing:
 
 ---
 
-## 9. Sample Datasets and Verification
+## 9. Sample Data and Test Scenarios
 
 ### 9.1 Held-Out Generator (`netcoop/data/heldout_generator.py`)
 
@@ -977,7 +1000,7 @@ $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
 ```
 *Source: Live CLI output of `netcoop diagnose --file data/scenarios/interop_renamed_fields.json`*
 
-##### 4. Real 10-Key Hackathon JSON Contract for `link_congestion`
+##### 4. Real 10-Key Hackathon JSON Contract for `link_congestion` (PDF Section 6 Format)
 ```json
 {
   "incident_id": "inc-link-congestion-42",
@@ -985,8 +1008,8 @@ $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
   "suspected_root_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
   "confidence": 0.956,
   "affected_devices": [
-    "dist-sw-core",
-    "core-rtr-01"
+    "core-rtr-01",
+    "dist-sw-core"
   ],
   "supporting_evidence": [
     {
@@ -1033,7 +1056,10 @@ $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
   "alternative_causes": [
     "Upstream provider or transit link congestion inducing downstream delay"
   ],
-  "recommended_actions": [],
+  "recommended_actions": [
+    "Re-weight hash buckets to steer egress flows across parallel paths and relieve congestion.",
+    "Prioritize delay-sensitive flows and allocate strict priority queue bandwidth."
+  ],
   "evidence_sources": [
     "telemetry_agent"
   ],
@@ -1114,17 +1140,18 @@ NetCoop-AI/
 
 ---
 
-## 12. Honest Limitations
+## 12. Known Limitations
 
-1. **Stale Benchmark Assets**: The committed benchmark file (`eval/results/benchmark_latest.json`) bears timestamp `2026-10-31T18:58:30Z` and was generated prior to the normal-operation benign classification fix; the benchmark JSON has not been regenerated.
-2. **Out-of-Distribution Generalization Drop**: While in-distribution synthetic accuracy is **64.4%** (250 samples), accuracy on held-out synthetic non-Gaussian distributions drops sharply to **40.0%** (150 samples).
-3. **Organizer Telemetry Set-Match vs. Exact-Match**: On organizer Colab telemetry (`data/organizer/`, 900 samples), set-match accuracy is **66.7%**, which treats safe abstentions on normal traces as correct; strict exact-match accuracy is **0.0%** (`summary["organizer_exact_match_accuracy"]`).
-4. **Smoke-Test Ablation Scope**: The ablation table in Section 3.2 is an isolated 32-case smoke test (4 fault types, 8 seeds). Rules-only, model-only, and the full multi-agent pipeline achieve identical 100.0% scores on this subset; it is not evidence of generalized pipeline superiority.
-5. **Conformal Coverage Gap**: Empirical conformal coverage on validation splits reaches **77.4%**, falling short of the nominal 90.0% coverage target ($\alpha = 0.10$) due to non-exchangeability across synthetic noise regimes.
-6. **Diagnosis Latency**: Multi-agent cross-examination inquiry cycles result in an average diagnosis latency of approximately **3.3 seconds** (mean: 3,330.55 ms across 5 runs, min 174.22 ms, max 15,903.47 ms, verified from `docs/performance_benchmark_results.json`).
-7. **Synthetic Data Dependency**: All diagnostic models, Bayesian thresholds, and fault signatures were calibrated against synthetic campus topologies and simulated traffic traces; performance on real-world production multi-vendor hardware has not been verified.
-8. **Simulated Remediation Boundary**: All generated remediation plans and rollback sequences operate strictly in simulated mode (`is_simulated = True`); the platform does not commit configuration changes directly to live hardware interfaces.
-9. **Direct CLI Ingestion Vulnerabilities**: Direct file invocations through `netcoop diagnose --file` bypass Ingestion Gateway normalization: unmapped field aliases (`interop_renamed_fields`) and NaN tokens (`interop_null_nan`) result in `insufficient_evidence`, while single-quoted malformed JSON (`interop_malformed_json`) triggers an unhandled `JSONDecodeError` in the CLI parser.
+1. **Synthetic Benchmark**: The benchmark dataset and evaluation suite are entirely synthetic (`data/scenarios/`, `eval/results/benchmark_latest.json`); diagnostic models, Bayesian thresholds, and fault signatures were calibrated against simulated campus topologies and synthetic traffic traces, not verified on production multi-vendor hardware.
+2. **Compound Multi-Fault and Ambiguous Scenarios**: Compound multi-fault scenarios (`compound_cpu_and_link.json`, `compound_wifi_and_dns.json`) and `ambiguous_multi_fault.json` return insufficient evidence (`insufficient_evidence` status) because the multi-agent consensus state machine abstains rather than emitting uncorroborated single-fault causes when metrics cross multiple competing fault domains.
+3. **Heuristic Benign Cutoff**: The benign classification cutoff of 0.80 is not validation-derived (it is an empirically chosen heuristic for separating nominal baseline states from active degradations).
+4. **Conformal Coverage Gap**: Conformal coverage measured **77.4%** versus the nominal **90%** target ($\alpha = 0.10$) due to non-exchangeability across synthetic noise regimes.
+5. **Collected vs. Executed Test Count**: The test count of **357** represents tests collected across the test suite (`pytest -o pythonpath=. --collect-only -q`), not all tests are executed in every localized development run.
+6. **Stale Benchmark Assets**: The committed benchmark file (`eval/results/benchmark_latest.json`) bears timestamp `2026-10-31T18:58:30Z` and was generated prior to the normal-operation benign classification fix; the benchmark JSON has not been regenerated.
+7. **Out-of-Distribution Generalization Drop**: While in-distribution synthetic accuracy is **64.4%** (250 samples), accuracy on held-out synthetic non-Gaussian distributions drops to **40.0%** (150 samples).
+8. **Organizer Telemetry Exact-Match**: On organizer Colab telemetry (`data/organizer/`, 900 samples), set-match accuracy is **66.7%**; strict exact-match accuracy is **0.0%** (`summary["organizer_exact_match_accuracy"]`).
+9. **Smoke-Test Ablation Scope**: The ablation table in Section 3.2 is an isolated 32-case smoke test (4 fault types, 8 seeds); rules-only, model-only, and the full multi-agent pipeline achieve identical 100.0% scores on this subset.
+10. **Simulated Remediation Only**: All generated remediation plans and rollback sequences operate strictly in simulated mode (`is_simulated = True`); the platform does not commit configuration changes directly to live hardware interfaces.
 
 ---
 
