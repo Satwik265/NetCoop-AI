@@ -410,12 +410,31 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
         exec_rec = response_env.context.get("execution_record")
         if exec_rec:
             agent_execution[role.value] = exec_rec
+        elif role.value not in agent_execution:
+            agent_execution[role.value] = {
+                "agent_id": role.value,
+                "status": "success",
+                "execution_status": "success",
+                "correlation_id": response_env.header.correlation_id or incident_id,
+            }
 
         # Inspect if response envelope contains an error
         if response_env.payload.error is not None or response_env.header.message_type == MessageType.PROTOCOL_ERROR:
             err = response_env.payload.error
             err_code = err.error_code if err else "INTERNAL_ERROR"
-            lim_msg = f"agent_failed: {role.value} ({err_code}): {err.message if err else 'Agent error'}"
+            err_msg = err.message if err else "Agent error"
+            corr_id = response_env.header.correlation_id or incident_id
+            rec_dict = dict(exec_rec) if exec_rec else {}
+            rec_dict.update({
+                "agent_id": role.value,
+                "status": "failed",
+                "execution_status": "failed",
+                "error_code": err_code,
+                "correlation_id": corr_id,
+                "message": err_msg,
+            })
+            agent_execution[role.value] = rec_dict
+            lim_msg = f"agent_failed: {role.value} ({err_code}): {err_msg}"
             if lim_msg not in limitations:
                 limitations.append(lim_msg)
             continue
@@ -776,10 +795,24 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     }
     is_statistical_domain = hypothesis and (hypothesis.cause_key in statistical_cause_keys)
 
+    specialist_obs = state.get("accumulated_observations", [])
+    top_class = max(classifier_calib_probs, key=classifier_calib_probs.get) if classifier_calib_probs else None
+    top_prob = float(classifier_calib_probs.get(top_class, 0.0)) if top_class else 0.0
+
+    is_benign_normal = (
+        len(specialist_obs) == 0
+        and not hypothesis
+        and top_class == "normal_operation"
+        and top_prob >= OfflineCorrelationEngine.ACCEPTANCE_CONFIDENCE_THRESHOLD
+    )
+
     classifier_abstained = (
-        classifier_conformal_status == "abstain"
-        or (is_statistical_domain and classifier_calib_probs and len(conformal_prediction_set) == 0)
-        or (not hypothesis and len(conformal_prediction_set) == 0 and classifier_calib_probs)
+        not is_benign_normal
+        and (
+            classifier_conformal_status == "abstain"
+            or (is_statistical_domain and classifier_calib_probs and len(conformal_prediction_set) == 0)
+            or (not hypothesis and len(conformal_prediction_set) == 0 and classifier_calib_probs)
+        )
     )
 
     if classifier_abstained:
@@ -790,6 +823,22 @@ def node_report(state: GraphState) -> Dict[str, Any]:
             score=1.0,
             reasons=["Classifier model layer abstained under split conformal prediction guarantee."],
             missing_evidence=["Decisive empirical attribution features"],
+            alternative_hypotheses=[],
+        )
+    elif is_benign_normal:
+        status = "benign"
+        conformal_prediction_set = ["normal_operation"]
+        confidence_category = "high" if top_prob >= 0.85 else "medium"
+        confidence_breakdown = {
+            "rules_score": 1.0,
+            "model_score": top_prob,
+            "blended_score": top_prob,
+            "calibrated_confidence": top_prob,
+        }
+        uncertainty = UncertaintyEvaluation(
+            score=round(1.0 - top_prob, 3),
+            reasons=[],
+            missing_evidence=[],
             alternative_hypotheses=[],
         )
 
@@ -854,6 +903,14 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         conformal_prediction_set=conformal_prediction_set,
         confidence_category=confidence_category,
     )
+
+    if status == "benign":
+        report.confidence = top_prob
+        report.probable_cause = "normal_operation"
+        if not report.summary or "insufficient" in report.summary.lower() or "status benign" in report.summary.lower():
+            report.summary = (
+                f"Normal network operation verified with {int(top_prob * 100)}% confidence. No anomalous faults detected."
+            )
 
     # Schema validation against schemas/diagnostic_report.json
     _validate_report_schema(report)

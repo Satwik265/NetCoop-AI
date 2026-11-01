@@ -1068,3 +1068,102 @@ def test_priority4_conflict_arbitration_boundary_and_contradictory_evidence():
     # Must declare a tie and abstain!
     assert res_miss.winner is None
     assert "Arbitration tie" in res_miss.rationale
+
+
+
+def test_regression_normal_operation_benign_status():
+    """REGRESSION TEST: Fix 1.
+    Normal operation over several seeds returns benign status.
+    Link congestion and insufficient data never return benign.
+    """
+    from netcoop.data.generator import SyntheticNetworkGenerator
+    from netcoop.orchestrator.graph import run_diagnosis
+
+    # 1. Verify normal operation over multiple seeds produces benign report
+    for seed in [42, 100, 2024]:
+        scen = SyntheticNetworkGenerator.generate(scenario="normal_operation", seed=seed)
+        report = run_diagnosis(scen)
+        assert report.status == "benign", f"Seed {seed} expected benign status, got {report.status}"
+        assert report.confidence >= 0.70, f"Seed {seed} expected confidence >= 0.70, got {report.confidence}"
+        assert report.probable_cause == "normal_operation"
+        assert "normal_operation" in report.conformal_prediction_set
+        assert report.confidence_category in ("high", "medium")
+
+    # 2. Also verify baseline scenario file normal_operation.json
+    scen_path = Path("data/scenarios/normal_operation.json")
+    if scen_path.exists():
+        with open(scen_path, "r", encoding="utf-8") as f:
+            scen_file = json.load(f)
+        rep_file = run_diagnosis(scen_file)
+        assert rep_file.status == "benign"
+        assert rep_file.confidence >= 0.70
+        assert rep_file.probable_cause == "normal_operation"
+
+    # 3. Verify link_congestion and insufficient_data never return benign
+    scen_lc_path = Path("data/scenarios/link_congestion.json")
+    if scen_lc_path.exists():
+        with open(scen_lc_path, "r", encoding="utf-8") as f:
+            scen_lc = json.load(f)
+        rep_lc = run_diagnosis(scen_lc)
+        assert rep_lc.status != "benign", f"link_congestion must never return benign (got {rep_lc.status})"
+
+    scen_id_path = Path("data/scenarios/insufficient_data.json")
+    if scen_id_path.exists():
+        with open(scen_id_path, "r", encoding="utf-8") as f:
+            scen_id = json.load(f)
+        rep_id = run_diagnosis(scen_id)
+        assert rep_id.status != "benign", f"insufficient_data must never return benign (got {rep_id.status})"
+
+
+def test_regression_stubbed_failing_agent_recorded_in_limitations():
+    """REGRESSION TEST: Fix 2.
+    In specialist dispatch node, inspect response_env.payload.error. If set, record the
+    agent as failed (not 'no findings'), preserve error code and correlation ID, and add
+    it to report limitations.
+    """
+    from unittest.mock import patch
+    from netcoop.core.envelope import ProtocolErrorDetail
+    from netcoop.orchestrator.graph import mediator, run_diagnosis
+
+    original_dispatch_concurrent = mediator.dispatch_concurrent
+
+    def mock_dispatch(envelopes):
+        resps = original_dispatch_concurrent(envelopes)
+        for i, (env, resp) in enumerate(zip(envelopes, resps)):
+            if env.header.recipient == AgentRole.LOG_AGENT:
+                failing_env = AgentEnvelope(
+                    header=ProtocolHeader(
+                        correlation_id="inc-stub-test-corr-456",
+                        sender=AgentRole.LOG_AGENT,
+                        recipient=AgentRole.ORCHESTRATOR,
+                        message_type=MessageType.PROTOCOL_ERROR,
+                    ),
+                    payload=EnvelopePayload(
+                        scope=NetworkScope(network_id="net-test", devices=["sw-1"]),
+                        error=ProtocolErrorDetail(
+                            error_code="SERVICE_UNAVAILABLE",
+                            message="Log storage cluster unreachable",
+                        ),
+                    ),
+                    context={"iteration": 0},
+                )
+                resps[i] = failing_env
+        return resps
+
+    with patch.object(mediator, "dispatch_concurrent", side_effect=mock_dispatch):
+        with open("data/scenarios/01_mtu_mismatch_blackhole.json", "r", encoding="utf-8") as f:
+            scen_mtu = json.load(f)
+        rep = run_diagnosis(scen_mtu)
+
+        agent_exec = rep.provenance.get("agent_execution", {})
+        assert "log_agent" in agent_exec, "log_agent must be recorded in agent_execution"
+        assert agent_exec["log_agent"]["status"] == "failed", (
+            f"Expected status 'failed' (not 'no findings'), got {agent_exec['log_agent'].get('status')}"
+        )
+        assert agent_exec["log_agent"]["error_code"] == "SERVICE_UNAVAILABLE"
+        assert agent_exec["log_agent"]["correlation_id"] == "inc-stub-test-corr-456"
+
+        # Verify added to report limitations
+        assert any(
+            "agent_failed: log_agent (SERVICE_UNAVAILABLE)" in lim for lim in rep.limitations
+        ), f"Missing limitation in report: {rep.limitations}"

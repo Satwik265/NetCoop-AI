@@ -248,7 +248,11 @@ class AgentMediator:
         notify_envelope_listeners(envelope)
 
         # 2. Dispatch via HTTP if mode is 'http'
-        if self.mode == "http":
+        active_mode = self.mode if self.mode is not None else settings.agents_mode
+        if active_mode == "http" and settings.agents_mode == "in_process":
+            active_mode = "in_process"
+
+        if active_mode == "http":
             # Check circuit breaker
             if self.circuit_breaker.is_open(target_role):
                 duration_ms = round((time.time() - t0) * 1000, 2)
@@ -522,7 +526,7 @@ class AgentMediator:
         duration_ms = round((time.time() - t0) * 1000, 2)
         completed_at = datetime.now(timezone.utc).isoformat()
 
-        if not settings.fallback_enabled:
+        if not settings.fallback_enabled and active_mode != "in_process":
             self.dead_agents.add(target_role.value)
             rec = AgentExecutionRecord(
                 agent_id=target_role.value,
