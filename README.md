@@ -411,6 +411,12 @@ GEMINI_API_KEY=
 
 The platform enforces least-privilege role-based access control with audited impersonation, token revocation (`jti`), and endpoint permission guards (`PERM_*`):
 
+> [!WARNING]
+> **Production Security & Credential Configuration**:
+> - **Randomize Development Password**: In any shared or deployed environment, set `$env:NETCOOP_DEV_PASSWORD` (or `NETCOOP_DEV_PASSWORD` in `.env`) to a cryptographically random, high-entropy secret rather than leaving the default string.
+> - **Production Mode**: Set `NETCOOP_ENV=production` on any host reachable from a network. When `NETCOOP_ENV=production`, default demonstration accounts are never automatically seeded on startup (`netcoop/storage/db.py:333-336`).
+> - **Demo Login Strict Restriction**: `POST /api/auth/demo-login` is guarded by `is_demo_mode_allowed()`. When `NETCOOP_ENV=production` and `DEMO_MODE` is not explicitly set, `is_demo_mode_allowed()` evaluates to `False`, and the endpoint immediately aborts with `HTTP 403 Forbidden` (`detail="Demo authentication is strictly disabled in production mode."`, `netcoop/main.py:550-558`). Demo login is designed strictly for local evaluation and rapid testing.
+
 #### 1. First User & Admin Account Seeding
 - **Development & Testing Seeding**: On API startup (`init_db()` in `netcoop/main.py`), `init_default_users()` (`netcoop/storage/db.py`) seeds 8 default demonstration accounts whenever `NETCOOP_ENV != "production"`:
   - `admin` (`network_admin`): Full network operations, remediation approval, diagnostic execution.
@@ -480,11 +486,11 @@ python scripts/run_agents.py --status
 
 # Step 5: Run Scenario 2 - Link Congestion (Fault diagnosis)
 .\.venv\Scripts\netcoop.exe diagnose --file data/scenarios/link_congestion.json
-# Expected: Status: diagnosed | Probable Cause: Link utilization saturation... | Confidence: 95% | Evidence: 8
+# Expected: Status: diagnosed | Probable Cause: LINK_CONGESTION | Confidence: 96% | Evidence: 8 | Remediation Actions: 2
 
-# Step 6: Run Scenario 3 - Interoperability with unmapped aliases
+# Step 6: Run Scenario 3 - Interoperability with unmapped aliases (KNOWN FAILURE)
 .\.venv\Scripts\netcoop.exe diagnose --file data/scenarios/interop_renamed_fields.json
-# Expected: Status: insufficient_evidence | Confidence: 0% (Strict schema validation abstention)
+# KNOWN FAILURE: data/scenarios/manifest.json sets expected_status = "diagnosed", but direct CLI execution returns Status: insufficient_evidence | Confidence: 0% because the CLI directly calls json.load() and bypasses Gateway alias normalization.
 
 # Step 7: Ingest and diagnose organizer Colab telemetry format
 python scripts/demo_organizer.py --sample latency_spike
@@ -697,41 +703,44 @@ python scripts/run_agents.py --daemon
 | Scenario File | Expected Status | Actual Status | Actual Top Cause Key | Confidence | Evidence Count | Remediation Actions | Match? |
 | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: |
 | `normal_operation.json` | `benign` | `benign` | `NO_FAULT` | 100% | 0 | 0 | **YES** |
-| `link_congestion.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 8 | 0 | **YES** |
-| `weak_wifi_signal.json` | `diagnosed` | `diagnosed` | `WEAK_WIFI_SIGNAL` | 94% | 4 | 0 | **YES** |
-| `ethernet_interface_fault.json` | `diagnosed` | `diagnosed` | `ETHERNET_INTERFACE_FAULT` | 97% | 2 | 0 | **YES** |
-| `dns_failure.json` | `diagnosed` | `diagnosed` | `DNS_FAILURE` | 97% | 16 | 0 | **YES** |
-| `dhcp_failure.json` | `diagnosed` | `diagnosed` | `DHCP_FAILURE` | 96% | 2 | 0 | **YES** |
-| `device_cpu_overload.json` | `diagnosed` | `diagnosed` | `DEVICE_CPU_OVERLOAD` | 97% | 1 | 0 | **YES** |
-| `upstream_failure_cascade.json` | `diagnosed` | `diagnosed` | `UPSTREAM_FAILURE_CASCADE` | 98% | 3 | 0 | **YES** |
+| `link_congestion.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 8 | 2 | **YES** |
+| `weak_wifi_signal.json` | `diagnosed` | `diagnosed` | `WEAK_WIFI_SIGNAL` | 94% | 4 | 1 | **YES** |
+| `ethernet_interface_fault.json` | `diagnosed` | `diagnosed` | `ETHERNET_INTERFACE_FAULT` | 97% | 2 | 2 | **YES** |
+| `dns_failure.json` | `diagnosed` | `diagnosed` | `DNS_FAILURE` | 97% | 16 | 1 | **YES** |
+| `dhcp_failure.json` | `diagnosed` | `diagnosed` | `DHCP_FAILURE` | 96% | 2 | 1 | **YES** |
+| `device_cpu_overload.json` | `diagnosed` | `diagnosed` | `DEVICE_CPU_OVERLOAD` | 97% | 1 | 2 | **YES** |
+| `upstream_failure_cascade.json` | `diagnosed` | `diagnosed` | `UPSTREAM_FAILURE_CASCADE` | 98% | 3 | 1 | **YES** |
 | `ambiguous_multi_fault.json` | `insufficient_evidence` | `insufficient_evidence` | `None` | 0% | 0 | 0 | **YES** |
 | `insufficient_data.json` | `insufficient_evidence` | `insufficient_evidence` | `None` | 0% | 0 | 0 | **YES** |
 | `interop_renamed_fields.json` | `diagnosed` | `insufficient_evidence` | `None` | 0% | 0 | 0 | **NO** |
-| `interop_seconds_vs_ms.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 6 | 0 | **YES** |
-| `interop_kbps_vs_mbps.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 8 | 0 | **YES** |
-| `interop_schema_v1_vs_v2.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 8 | 0 | **YES** |
-| `interop_missing_fields.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 6 | 0 | **YES** |
+| `interop_seconds_vs_ms.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 6 | 2 | **YES** |
+| `interop_kbps_vs_mbps.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 8 | 2 | **YES** |
+| `interop_schema_v1_vs_v2.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 8 | 2 | **YES** |
+| `interop_missing_fields.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 6 | 2 | **YES** |
 | `interop_null_nan.json` | `diagnosed` | `insufficient_evidence` | `None` | 0% | 0 | 0 | **NO** |
-| `interop_duplicate_out_of_order.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 8 | 0 | **YES** |
-| `interop_clock_skew.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 8 | 0 | **YES** |
+| `interop_duplicate_out_of_order.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 8 | 2 | **YES** |
+| `interop_clock_skew.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 8 | 2 | **YES** |
 | `interop_malformed_json.json` | `diagnosed` | `CRASH (JSONDecodeError)` | `None` | 0% | 0 | 0 | **NO** |
 | `compound_cpu_and_link.json` | `insufficient_evidence` | `insufficient_evidence` | `None` | 0% | 0 | 0 | **YES** |
 | `compound_wifi_and_dns.json` | `insufficient_evidence` | `insufficient_evidence` | `None` | 0% | 0 | 0 | **YES** |
 
 *Source: Measured live over HTTP with all 8 specialist agents and gateway active on ports 8001–8008 (`INTERNAL_SERVICE_TOKEN` set, `AGENTS_MODE` unset).*
 
-> **Detailed Analysis & Remediation Action Explanations**:
-> 1. **Why Diagnosed Scenarios Return 0 Remediation Actions**:
->    In the orchestrator pipeline, the learned classifier and cross-domain synthesizer output uppercase cause keys (e.g., `LINK_CONGESTION`, `WEAK_WIFI_SIGNAL`, `ETHERNET_INTERFACE_FAULT`, `DNS_FAILURE`, `DHCP_FAILURE`, `DEVICE_CPU_OVERLOAD`, `UPSTREAM_FAILURE_CASCADE`).
->    In `netcoop/remediation/engine.py`, `RemediationEngine.generate_plan` performs exact string matching without case normalization (`cause in ("INTERFACE_SATURATION_QUEUE_OVERFLOW", "link_congestion")`). Consequently, uppercase `LINK_CONGESTION` does not match lowercase `link_congestion`. In addition, dedicated catalog creators for causes such as `WEAK_WIFI_SIGNAL`, `DNS_FAILURE`, and `DHCP_FAILURE` are absent from `generate_plan` on this branch. Thus, exactly 0 remediation actions are generated across all diagnosed scenarios.
-> 2. **Abstentions & Controlled Rejections**:
->    - `normal_operation.json` resolves cleanly to `benign` with `NO_FAULT` and 100% confidence.
->    - `ambiguous_multi_fault.json`, `insufficient_data.json`, `compound_cpu_and_link.json`, and `compound_wifi_and_dns.json` correctly abstain with `insufficient_evidence` (0% confidence) due to conflicting or insufficient cross-agent evidence.
->    - `interop_renamed_fields.json` and `interop_null_nan.json` abstain with `insufficient_evidence` when fed directly to the orchestrator because unmapped field aliases and NaN telemetry fail validation thresholds.
-> 3. **CLI Parser Crash on Malformed JSON**:
->    - `interop_malformed_json.json` crashes the CLI with:
->      `json.decoder.JSONDecodeError: Expecting property name enclosed in double quotes: line 2 column 3 (char 4)`
->      This crash occurs because the CLI entry point (`netcoop/cli.py:132`) executes standard Python `json.load()` directly on the file path before passing data to the Ingestion Gateway (`gateway/api.py`). The Ingestion Gateway possesses lenient repair capabilities, but direct file invocations through the CLI bypass the gateway and fail at standard JSON parsing.
+> **Remediation Action Coverage & Zero-Action Explanations**:
+> - **Full Action Coverage on Diagnosed Causes**: Following the remediation cause normalization and catalog expansion (`netcoop/remediation/engine.py:32-118`, commit `a7ee939`), every single diagnosed scenario successfully generates between 1 and 2 targeted, simulated remediation actions (e.g. ECMP traffic rebalancing, priority QoS queues, interface failovers, RF power increases, and daemon restarts).
+> - **Zero Actions on Benign & Abstentions**: Scenarios returning exactly 0 remediation actions are strictly:
+>   1. `normal_operation.json`: Resolves to `benign` (`NO_FAULT`) with 100% confidence. Remediation plans are suppressed by design on healthy networks (`RemediationEngine.generate_plan` returns `[]`).
+>   2. Abstention Scenarios (`ambiguous_multi_fault`, `insufficient_data`, `compound_*`, `interop_renamed_fields`, `interop_null_nan`): Because diagnostic status is `insufficient_evidence`, uncertainty scores exceed safe execution thresholds and no automated actions are generated.
+
+#### Known Interoperability Failures
+
+While the Ingestion Gateway (`gateway/api.py:31` on port 8006) successfully repairs and canonicalizes all three schemas when submitted via HTTP, running them directly through the local CLI (`netcoop diagnose --file`) bypasses the gateway and reveals the following failure modes:
+
+| Scenario File | Expected Status | Direct CLI Result (`netcoop diagnose --file`) | Direct Gateway Ingestion (`POST :8006/ingest`) | Root Cause of CLI Failure |
+| :--- | :--- | :--- | :--- | :--- |
+| `interop_renamed_fields.json` | `diagnosed` | `insufficient_evidence` (Conf: 0%, Ev: 0, Act: 0) | **HTTP 200 OK** (`record_count: 8`, applied: `alias_mapping`) | Unmapped telemetry aliases (`cpu_load_pct`, `packet_loss_rate`) fail direct orchestrator Pydantic validation without the Gateway normalizer. |
+| `interop_null_nan.json` | `diagnosed` | `insufficient_evidence` (Conf: 0%, Ev: 0, Act: 0) | **HTTP 200 OK** (`record_count: 8`, applied: `dirty_string_sanitization`) | String `'NaN'` and `'null'` tokens fail direct float schema parsing without the Gateway sanitization filter. |
+| `interop_malformed_json.json` | `diagnosed` | `CRASH (JSONDecodeError)` | **HTTP 200 OK** (`record_count: 1`, repair: `ERR_MALFORMED_JSON`) | Raw file uses single quotes (`'incident_id'`). Python `json.load()` in `netcoop/cli.py:132` crashes before reaching the Gateway. Gateway HTTP endpoint succeeds because it falls back to raw text parsing and tolerant single-quote repair. |
 
 #### Automated Pytest Suite Results
 
@@ -739,25 +748,17 @@ Executed across the entire codebase:
 ```powershell
 pytest -o pythonpath=. --collect-only -q
 ```
-**Collection Result**: **327 tests collected across 31 test files** (duration: 4.61s).
+**Collection Result**: **355 tests collected across 32 test files** (duration: 4.85s).
 
 Executed in `in_process` mode:
 ```powershell
-$env:AGENTS_MODE="in_process"; pytest -o pythonpath=. -q
+$env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
 ```
-**Execution Result**: **326 passed, 1 failed, 4 warnings in 97.93s (0:01:37)**.
+**Execution Result**: **355 passed, 4 warnings in 101.32s (0:01:41)** (100% pass rate; zero failures across all 355 unit, property, security, contract, and remediation tests).
 
-#### Failing Test Analysis & Repro
-- **Failing Test**: `tests/test_phase4_security.py::test_logout_and_token_invalidation`
-- **Standalone Execution Result**: 1 failed, 4 warnings in 5.19s (`AssertionError: assert 401 == 200`).
-- **Full Suite Execution Result**: 326 passed, 1 failed, 4 warnings in 97.93s (`AssertionError: assert 401 == 200`).
-- **Root Cause**: In `tests/test_phase4_security.py:461`, the test attempts to log in with `json={"username": "engineer", "password": "NetCoopEng!2026"}`. However, `init_default_users()` in `netcoop/storage/db.py` hashes and seeds all initial development accounts with the password from `$env:NETCOOP_DEV_PASSWORD` (which defaults to `"NetCoopDev!2026"`). Because `"NetCoopEng!2026"` does not match `"NetCoopDev!2026"`, the authentication endpoint `/api/auth/login` rejects the request with HTTP 401 Unauthorized, failing `assert login_res.status_code == 200` at line 463.
-- **One-Line Repro**:
-  ```powershell
-  pytest -o pythonpath=. tests/test_phase4_security.py::test_logout_and_token_invalidation
-  ```
+> **Test Fix Verification**: The previous failure in `tests/test_phase4_security.py::test_logout_and_token_invalidation` (which submitted a mismatched password `"NetCoopEng!2026"` against the seeded `"NetCoopDev!2026"`) was resolved in commit `0027d88` by referencing `os.getenv("NETCOOP_DEV_PASSWORD", "NetCoopDev!2026")`. Together with the 28 tests in `tests/test_remediation_coverage.py` from commit `a7ee939`, all 355 tests pass cleanly.
 
-#### Inventory of All 31 Test Files
+#### Inventory of All 32 Test Files
 
 | Test File | Coverage Description | Tests Collected |
 | :--- | :--- | :---: |
@@ -782,6 +783,7 @@ $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. -q
 | `test_phase3_validation.py` | Targeted regression and validation test suite for Phase 3 System Validation. | 5 |
 | `test_phase4_security.py` | Comprehensive test suite for Phase 4 production security hardening. | 31 |
 | `test_protocol_envelope.py` | Unit tests verifying envelope serialization, SI unit validation, and JSON schema compliance. | 4 |
+| `test_remediation_coverage.py` | Comprehensive coverage tests for all cause keys, case variants, and simulated action counts. | 28 |
 | `test_remediation_safety.py` | Unit and integration tests for simulated remediation safety gates. | 3 |
 | `test_reporting_contract.py` | Rigorous integration-readiness test suite for the Network Diagnostic Report contract. | 15 |
 | `test_reporting_hackathon_shape.py` | Test asserting exact key set for hackathon-required report JSON shape. | 1 |
@@ -1025,7 +1027,7 @@ NetCoop-AI/
 |   |-- demo.py                 # End-to-end diagnostic demonstration
 |   |-- demo_organizer.py       # Organizer Colab telemetry demo
 |   `-- run_agents.py           # Multi-process agent launcher
-|-- tests/                      # Automated unit and integration test suite (31 test files)
+|-- tests/                      # Automated unit and integration test suite (32 test files)
 |-- Makefile                    # Automation commands (wrapped for PowerShell)
 `-- pyproject.toml              # Package configuration and dependencies
 ```
@@ -1046,3 +1048,25 @@ NetCoop-AI/
 | Human-in-the-Loop Approval | `netcoop/storage/models.py`, `api/main.py` | Verified (`tests/test_resume_hitl.py`) |
 | Checkpoint Pause / Resume | `netcoop/storage/db.py`, `netcoop/orchestrator/graph.py` | Verified (`tests/test_resume_hitl.py`) |
 | Hackathon Report Contract Export | `netcoop/reporting/builder.py`, `POST /api/diagnose/export` | Verified (`tests/test_reporting_hackathon_shape.py`) |
+
+---
+
+## 12. Honest Limitations
+
+1. **Stale Benchmark Assets**: The committed benchmark file (`eval/results/benchmark_latest.json`) bears timestamp `2026-10-31T18:58:30Z` and was generated prior to the normal-operation benign classification fix; the benchmark JSON has not been regenerated.
+2. **Out-of-Distribution Generalization Drop**: While in-distribution synthetic accuracy is **64.4%** (250 samples), accuracy on held-out synthetic non-Gaussian distributions drops sharply to **40.0%** (150 samples).
+3. **Organizer Telemetry Set-Match vs. Exact-Match**: On organizer Colab telemetry (`data/organizer/`, 900 samples), set-match accuracy is **66.7%**, which treats safe abstentions on normal traces as correct; strict exact-match accuracy is **0.0%** (`summary["organizer_exact_match_accuracy"]`).
+4. **Smoke-Test Ablation Scope**: The ablation table in Section 3.2 is an isolated 32-case smoke test (4 fault types, 8 seeds). Rules-only, model-only, and the full multi-agent pipeline achieve identical 100.0% scores on this subset; it is not evidence of generalized pipeline superiority.
+5. **Conformal Coverage Gap**: Empirical conformal coverage on validation splits reaches **77.4%**, falling short of the nominal 90.0% coverage target ($\alpha = 0.10$) due to non-exchangeability across synthetic noise regimes.
+6. **Diagnosis Latency**: Multi-agent cross-examination inquiry cycles result in an average diagnosis latency of approximately **3.3 seconds** (mean: 3,330.55 ms across 5 runs, min 174.22 ms, max 15,903.47 ms, verified from `docs/performance_benchmark_results.json`).
+7. **Synthetic Data Dependency**: All diagnostic models, Bayesian thresholds, and fault signatures were calibrated against synthetic campus topologies and simulated traffic traces; performance on real-world production multi-vendor hardware has not been verified.
+8. **Simulated Remediation Boundary**: All generated remediation plans and rollback sequences operate strictly in simulated mode (`is_simulated = True`); the platform does not commit configuration changes directly to live hardware interfaces.
+9. **Direct CLI Ingestion Vulnerabilities**: Direct file invocations through `netcoop diagnose --file` bypass Ingestion Gateway normalization: unmapped field aliases (`interop_renamed_fields`) and NaN tokens (`interop_null_nan`) result in `insufficient_evidence`, while single-quoted malformed JSON (`interop_malformed_json`) triggers an unhandled `JSONDecodeError` in the CLI parser.
+
+---
+
+## 13. Team & License
+
+- **Authors**: Team inSANE MITRA (`satwikj9@gmail.com`), as specified in `pyproject.toml` (`authors = [{ name = "Team inSANE MITRA", email = "satwikj9@gmail.com" }]`).
+- **Repository**: [Satwik265/NetCoop-AI](https://github.com/Satwik265/NetCoop-AI)
+- **License**: Built and released for hackathon evaluation under the project terms defined by Team inSANE MITRA (see package metadata in `pyproject.toml`).
