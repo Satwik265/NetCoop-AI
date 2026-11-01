@@ -86,6 +86,8 @@ def format_risk_coverage_table(rc: list) -> str:
 
 
 def build_readme() -> None:
+    import sys
+    sys.exit("README.md is maintained by hand; this generator is deprecated because it reads mock.json")
     results_path = get_latest_results_file()
     print(f"Loading benchmark metrics from: {results_path}")
     with open(results_path, "r", encoding="utf-8") as f:

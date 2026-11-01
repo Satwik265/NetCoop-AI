@@ -1,3 +1,6 @@
+> [!WARNING]
+> README.md is maintained by hand; this generator template is deprecated because it reads mock.json.
+
 # NetCoop AI: Cooperative Multi-Agent Network Fault Diagnosis Platform
 
 [![Python](https://img.shields.io/badge/Python-3.12%20|%203.13-2A2A2D?style=flat-square&labelColor=161618)](https://python.org)
