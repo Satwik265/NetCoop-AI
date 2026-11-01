@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 from core.config import settings
-from core.envelope import AgentEnvelope, AgentRole
+from core.envelope import AgentEnvelope, AgentRole, ProtocolHeader, MessageType, EnvelopePayload, ProtocolErrorDetail, NetworkScope
 from agents.base import BaseAgent
 from agents.config_agent import ConfigAgent
 from agents.log_agent import LogAgent
@@ -59,6 +59,78 @@ def create_agent_app(role: AgentRole) -> FastAPI:
         allow_headers=["*"],
     )
 
+    @app.middleware("http")
+    async def verify_service_auth(request: Request, call_next):
+        # Health check is intentionally public for orchestrator/docker lifecycle monitoring
+        if request.url.path == "/health":
+            return await call_next(request)
+
+        # In non-production mode, allow interactive docs
+        if not settings.is_production and request.url.path in ("/docs", "/openapi.json"):
+            return await call_next(request)
+
+        configured_token = settings.internal_service_token
+
+        # Production mode must fail closed if token is missing or weak
+        if settings.is_production:
+            valid, reason = settings.validate_service_token_strength(configured_token)
+            if not valid:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(
+                    status_code=500,
+                    content={"detail": f"Production configuration error: {reason}. All processing endpoints fail closed."},
+                )
+
+            client_token = request.headers.get(settings.service_auth_header)
+            if not client_token or client_token != configured_token:
+                from fastapi.responses import JSONResponse
+                err_envelope = AgentEnvelope(
+                    header=ProtocolHeader(
+                        correlation_id=request.headers.get("X-Correlation-ID", "unauthorized"),
+                        sender=role,
+                        recipient=AgentRole.ORCHESTRATOR,
+                        message_type=MessageType.PROTOCOL_ERROR,
+                    ),
+                    payload=EnvelopePayload(
+                        scope=NetworkScope(network_id="unknown", devices=[]),
+                        error=ProtocolErrorDetail(
+                            error_code="UNAUTHORIZED",
+                            message="Unauthorized: missing or invalid service authentication token",
+                        ),
+                    ),
+                )
+                return JSONResponse(
+                    status_code=401,
+                    content=err_envelope.model_dump(mode="json"),
+                )
+        else:
+            # Development mode: if token is explicitly configured, verify it; otherwise allow unauthenticated dev use
+            if configured_token:
+                client_token = request.headers.get(settings.service_auth_header)
+                if not client_token or client_token != configured_token:
+                    from fastapi.responses import JSONResponse
+                    err_envelope = AgentEnvelope(
+                        header=ProtocolHeader(
+                            correlation_id=request.headers.get("X-Correlation-ID", "unauthorized"),
+                            sender=role,
+                            recipient=AgentRole.ORCHESTRATOR,
+                            message_type=MessageType.PROTOCOL_ERROR,
+                        ),
+                        payload=EnvelopePayload(
+                            scope=NetworkScope(network_id="unknown", devices=[]),
+                            error=ProtocolErrorDetail(
+                                error_code="UNAUTHORIZED",
+                                message="Unauthorized: missing or invalid service authentication token",
+                            ),
+                        ),
+                    )
+                    return JSONResponse(
+                        status_code=401,
+                        content=err_envelope.model_dump(mode="json"),
+                    )
+
+        return await call_next(request)
+
     @app.get("/health")
     def health() -> Dict[str, str]:
         """Health check endpoint for process lifecycle monitoring."""
@@ -84,10 +156,15 @@ def create_agent_app(role: AgentRole) -> FastAPI:
             response = agent.handle_envelope(envelope)
             return response
         except Exception as e:
-            return AgentEnvelope.create_error_response(
+            from fastapi.responses import JSONResponse
+            error_envelope = AgentEnvelope.create_error_response(
                 original=envelope,
-                error_code="PROCESSING_ERROR",
+                error_code="INTERNAL_ERROR",
                 message=f"Agent internal error: {str(e)}",
+            )
+            return JSONResponse(
+                status_code=500,
+                content=error_envelope.model_dump(mode="json"),
             )
 
     @app.post("/envelope", response_model=AgentEnvelope)
