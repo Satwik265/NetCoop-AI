@@ -31,6 +31,7 @@ services:
       - GATEWAY_PORT=8006
       - CLASSIFIER_AGENT_PORT=8007
       - WIFI_SERVICES_AGENT_PORT=8008
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
     volumes:
       - ./data:/app/data
       - netcoop-db:/app/storage
@@ -67,6 +68,8 @@ services:
     command: ["python", "-m", "agents.server", "--role", "telemetry_agent", "--host", "0.0.0.0", "--port", "8001"]
     ports:
       - "8001:8001"
+    environment:
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')"]
       interval: 5s
@@ -83,6 +86,8 @@ services:
     command: ["python", "-m", "agents.server", "--role", "topology_agent", "--host", "0.0.0.0", "--port", "8002"]
     ports:
       - "8002:8002"
+    environment:
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health')"]
       interval: 5s
@@ -99,6 +104,8 @@ services:
     command: ["python", "-m", "agents.server", "--role", "config_agent", "--host", "0.0.0.0", "--port", "8003"]
     ports:
       - "8003:8003"
+    environment:
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8003/health')"]
       interval: 5s
@@ -115,6 +122,8 @@ services:
     command: ["python", "-m", "agents.server", "--role", "log_agent", "--host", "0.0.0.0", "--port", "8004"]
     ports:
       - "8004:8004"
+    environment:
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/health')"]
       interval: 5s
@@ -131,6 +140,8 @@ services:
     command: ["python", "-m", "agents.server", "--role", "synthesizer_agent", "--host", "0.0.0.0", "--port", "8005"]
     ports:
       - "8005:8005"
+    environment:
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8005/health')"]
       interval: 5s
@@ -144,9 +155,11 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: netcoop-gateway
-    command: ["uvicorn", "gateway.api:app", "--host", "0.0.0.0", "--port", "8006"]
+    command: ["python", "-m", "gateway.api", "--host", "0.0.0.0", "--port", "8006"]
     ports:
       - "8006:8006"
+    environment:
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8006/health')"]
       interval: 5s
@@ -163,6 +176,8 @@ services:
     command: ["python", "-m", "agents.server", "--role", "classifier_agent", "--host", "0.0.0.0", "--port", "8007"]
     ports:
       - "8007:8007"
+    environment:
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8007/health')"]
       interval: 5s
@@ -179,6 +194,8 @@ services:
     command: ["python", "-m", "agents.server", "--role", "wifi_services_agent", "--host", "0.0.0.0", "--port", "8008"]
     ports:
       - "8008:8008"
+    environment:
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8008/health')"]
       interval: 5s

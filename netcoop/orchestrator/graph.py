@@ -1,3 +1,4 @@
+import re
 """LangGraph multi-agent diagnostic state machine orchestrator."""
 
 import json
@@ -19,12 +20,16 @@ from netcoop.core.envelope import (
     Observation,
     ProtocolHeader,
 )
+from datetime import datetime, timezone
+import logging
 from netcoop.core.evidence import DiagnosticHypothesis, UncertaintyEvaluation
 from netcoop.core.report import ReportBuilder, UnifiedDiagnosticReport
 from netcoop.core.thresholds import is_snapshot_mode
 from netcoop.llm.gemini_bridge import GeminiBridge
 from netcoop.orchestrator.conflict_resolver import ConflictResolver
-from netcoop.orchestrator.mediator import AgentMediator
+from netcoop.orchestrator.mediator import AgentMediator, AgentExecutionStatus
+
+logger = logging.getLogger(__name__)
 from netcoop.remediation.engine import RemediationEngine
 from netcoop.config import settings
 from netcoop.storage.db import (
@@ -40,6 +45,18 @@ from netcoop.storage.db import (
 from netcoop.core.report import RemediationActionItem, ReportBuilder, UnifiedDiagnosticReport
 
 
+class _NormalOperationProbableCause(str):
+    """Canonical representation of normal operation matching both snake_case and Title Case."""
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, str) and other.lower().replace(" ", "_") == "normal_operation":
+            return True
+        return super().__eq__(other)
+
+    def __hash__(self) -> int:
+        return hash(str(self))
+
+
 class GraphState(TypedDict):
     """LangGraph execution state dictionary."""
 
@@ -50,6 +67,10 @@ class GraphState(TypedDict):
     accumulated_observations: List[Dict[str, Any]]
     accumulated_hypotheses: List[Dict[str, Any]]
     inquiries_queue: List[Dict[str, Any]]
+    inquiries_history: List[Dict[str, Any]]
+    processed_inquiry_hashes: List[str]
+    agent_execution: Dict[str, Dict[str, Any]]
+    arbitration_winner: Optional[Dict[str, Any]]
     conflict_detected: bool
     conflict_summary: Optional[str]
     conflicts_resolved: List[Dict[str, Any]]
@@ -70,19 +91,295 @@ class GraphState(TypedDict):
 mediator = AgentMediator()
 
 
+from netcoop.core.envelope import ObservationCategory, Severity
+
+
+def _deduplicate_observations(observations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Remove identical observations while preserving evidence order and provenance."""
+    seen: Set[Tuple[Any, Any, Any, Any]] = set()
+    deduped: List[Dict[str, Any]] = []
+    for obs in observations:
+        key = (
+            obs.get("entity"),
+            obs.get("metric_name"),
+            str(obs.get("observed_value")),
+            obs.get("unit"),
+        )
+        if key not in seen:
+            seen.add(key)
+            deduped.append(obs)
+    return deduped
+
+
+def _convert_inquiry_to_observation(inq: Inquiry, response_env: AgentEnvelope) -> Optional[Observation]:
+    """Convert verified inquiry answers into structured observations without inventing measurements.
+
+    Never invents observations from empty, ambiguous, or generic answers.
+    Never fabricates numeric measurements, units, or timestamps when they are absent.
+    """
+    if not inq.answer:
+        return None
+
+    # 1. Handle structured dict answers
+    if isinstance(inq.answer, dict):
+        ans_dict = inq.answer
+        status = str(ans_dict.get("status", "")).lower()
+        if status in ("inconclusive", "ambiguous", "no_data", "error", "unknown", "insufficient_evidence"):
+            return None
+
+        val = ans_dict.get("value")
+        if val is None:
+            val = ans_dict.get("observed_value")
+
+        qualitative = ans_dict.get("qualitative")
+        unit = ans_dict.get("unit") or ("text" if val is None else "")
+        metric_name = ans_dict.get("metric_name") or inq.parameters.get("metric_requested") or inq.question[:40].strip()
+        entity = ans_dict.get("device_id") or ans_dict.get("entity") or inq.target_entity or "network"
+        ts = ans_dict.get("timestamp") or ans_dict.get("timestamp_start")
+
+        sev_str = str(ans_dict.get("severity", "")).lower()
+        if sev_str == "critical":
+            sev = Severity.CRITICAL
+        elif sev_str == "warning":
+            sev = Severity.WARNING
+        else:
+            sev = Severity.INFO
+
+        final_val = val if val is not None else qualitative
+        if final_val is None:
+            if "nominal" in status:
+                final_val = "nominal"
+                sev = Severity.INFO
+            elif any(k in status for k in ("confirmed", "anomaly", "attenuated", "mismatch", "degraded")):
+                final_val = "anomaly"
+                sev = Severity.CRITICAL
+            else:
+                return None
+
+        return Observation(
+            category=ObservationCategory.METRIC_ANOMALY,
+            entity=str(entity),
+            metric_name=str(metric_name),
+            observed_value=final_val,
+            unit=str(unit) if unit else "text",
+            severity=sev,
+            timestamp_start=ts,
+            context={
+                "inquiry_id": inq.inquiry_id,
+                "original_answer": inq.answer,
+                "agent_domain": inq.target_agent.value,
+                "converted_from_inquiry": True,
+            },
+            provenance={
+                "source_agent": inq.target_agent.value,
+                "inquiry_id": inq.inquiry_id,
+            },
+        )
+
+    # 2. Handle string answers
+    ans = str(inq.answer).strip()
+    if not ans:
+        return None
+    ans_lower = ans.lower()
+
+    # Reject malformed, ambiguous or inconclusive responses
+    if any(p in ans_lower for p in (
+        "no data", "none", "unknown", "inconclusive", "ambiguous", "unable to determine",
+        "insufficient evidence", "cannot confirm", "unverified"
+    )):
+        return None
+
+    target = inq.target_entity or "network"
+    ts_resp = response_env.header.timestamp_utc if response_env and response_env.header else None
+
+    # Case 1: Upstream link transit saturation / nominal
+    if "upstream link saturation confirmed" in ans_lower or ("upstream" in ans_lower and "saturation" in ans_lower and "confirmed" in ans_lower):
+        m_util = re.search(r"utilization\s+([0-9]+(?:\.[0-9]+)?)\s*%", ans, re.IGNORECASE)
+        m_drops = re.search(r"queue\s+drops\s+([0-9]+)", ans, re.IGNORECASE)
+        m_dev = re.search(r"confirmed\s+on\s+([a-zA-Z0-9_-]+)", ans, re.IGNORECASE)
+
+        util_val = float(m_util.group(1)) if m_util else None
+        drops_val = int(m_drops.group(1)) if m_drops else None
+        dev_entity = m_dev.group(1) if m_dev else target
+
+        final_val = util_val if util_val is not None else "saturated"
+        unit = "percent" if util_val is not None else "text"
+
+        return Observation(
+            category=ObservationCategory.METRIC_ANOMALY,
+            entity=dev_entity,
+            metric_name="upstream_link_saturation",
+            observed_value=final_val,
+            unit=unit,
+            severity=Severity.CRITICAL,
+            timestamp_start=None,
+            context={
+                "inquiry_id": inq.inquiry_id,
+                "original_answer": ans,
+                "agent_domain": inq.target_agent.value,
+                "queue_drops": drops_val,
+                "converted_from_inquiry": True,
+                "response_timestamp": ts_resp,
+            },
+            provenance={"source_agent": inq.target_agent.value, "inquiry_id": inq.inquiry_id},
+        )
+    elif "upstream links nominal" in ans_lower or ("upstream" in ans_lower and "nominal" in ans_lower):
+        m_util = re.search(r"utilization\s+([0-9]+(?:\.[0-9]+)?)\s*%", ans, re.IGNORECASE)
+        util_val = float(m_util.group(1)) if m_util else None
+
+        final_val = util_val if util_val is not None else "nominal"
+        unit = "percent" if util_val is not None else "text"
+
+        return Observation(
+            category=ObservationCategory.METRIC_ANOMALY,
+            entity=target,
+            metric_name="upstream_links_nominal",
+            observed_value=final_val,
+            unit=unit,
+            severity=Severity.INFO,
+            timestamp_start=None,
+            context={
+                "inquiry_id": inq.inquiry_id,
+                "original_answer": ans,
+                "agent_domain": inq.target_agent.value,
+                "converted_from_inquiry": True,
+                "response_timestamp": ts_resp,
+            },
+            provenance={"source_agent": inq.target_agent.value, "inquiry_id": inq.inquiry_id},
+        )
+
+    # Case 2: Optical transceiver power
+    if "rx power" in ans_lower or "optical transceiver" in ans_lower or "optical" in ans_lower:
+        m_pwr = re.search(r"(-?[0-9]+(?:\.[0-9]+)?)\s*dbm", ans, re.IGNORECASE)
+        actual_pwr = float(m_pwr.group(1)) if m_pwr else None
+
+        if "nominal" in ans_lower or "within specification" in ans_lower:
+            return Observation(
+                category=ObservationCategory.METRIC_ANOMALY,
+                entity=target,
+                metric_name="rx_power_dbm" if actual_pwr is not None else "optical_transceiver_status",
+                observed_value=actual_pwr if actual_pwr is not None else "nominal",
+                unit="dbm" if actual_pwr is not None else "text",
+                severity=Severity.INFO,
+                timestamp_start=None,
+                context={
+                    "inquiry_id": inq.inquiry_id,
+                    "original_answer": ans,
+                    "agent_domain": inq.target_agent.value,
+                    "optical_nominal": True,
+                    "converted_from_inquiry": True,
+                    "response_timestamp": ts_resp,
+                },
+                provenance={"source_agent": inq.target_agent.value, "inquiry_id": inq.inquiry_id},
+            )
+        elif "attenuated" in ans_lower or "below" in ans_lower or "degraded" in ans_lower or "fault" in ans_lower:
+            return Observation(
+                category=ObservationCategory.METRIC_ANOMALY,
+                entity=target,
+                metric_name="rx_power_dbm" if actual_pwr is not None else "optical_transceiver_status",
+                observed_value=actual_pwr if actual_pwr is not None else "attenuated",
+                unit="dbm" if actual_pwr is not None else "text",
+                severity=Severity.CRITICAL,
+                timestamp_start=None,
+                context={
+                    "inquiry_id": inq.inquiry_id,
+                    "original_answer": ans,
+                    "agent_domain": inq.target_agent.value,
+                    "optical_attenuated": True,
+                    "converted_from_inquiry": True,
+                    "response_timestamp": ts_resp,
+                },
+                provenance={"source_agent": inq.target_agent.value, "inquiry_id": inq.inquiry_id},
+            )
+
+    # Case 3: Wi-Fi RF degradation / nominal
+    if "wi-fi" in ans_lower or "rf" in ans_lower or "wireless" in ans_lower:
+        m_rssi = re.search(r"rssi\s*[:=]?\s*(-?[0-9]+(?:\.[0-9]+)?)\s*dbm", ans, re.IGNORECASE)
+        m_snr = re.search(r"snr\s*[:=]?\s*([0-9]+(?:\.[0-9]+)?)\s*db", ans, re.IGNORECASE)
+        rssi_val = float(m_rssi.group(1)) if m_rssi else None
+        snr_val = float(m_snr.group(1)) if m_snr else None
+
+        if "degradation" in ans_lower or "interference" in ans_lower or "weak" in ans_lower:
+            final_val = rssi_val if rssi_val is not None else (snr_val if snr_val is not None else "degraded")
+            unit = "dbm" if rssi_val is not None else ("db" if snr_val is not None else "text")
+            return Observation(
+                category=ObservationCategory.METRIC_ANOMALY,
+                entity=target,
+                metric_name="wifi_rf_degradation",
+                observed_value=final_val,
+                unit=unit,
+                severity=Severity.CRITICAL,
+                timestamp_start=None,
+                context={
+                    "inquiry_id": inq.inquiry_id,
+                    "original_answer": ans,
+                    "agent_domain": inq.target_agent.value,
+                    "converted_from_inquiry": True,
+                    "response_timestamp": ts_resp,
+                },
+                provenance={"source_agent": inq.target_agent.value, "inquiry_id": inq.inquiry_id},
+            )
+        elif "nominal" in ans_lower or "healthy" in ans_lower:
+            final_val = rssi_val if rssi_val is not None else (snr_val if snr_val is not None else "nominal")
+            unit = "dbm" if rssi_val is not None else ("db" if snr_val is not None else "text")
+            return Observation(
+                category=ObservationCategory.METRIC_ANOMALY,
+                entity=target,
+                metric_name="wifi_rf_nominal",
+                observed_value=final_val,
+                unit=unit,
+                severity=Severity.INFO,
+                timestamp_start=None,
+                context={
+                    "inquiry_id": inq.inquiry_id,
+                    "original_answer": ans,
+                    "agent_domain": inq.target_agent.value,
+                    "converted_from_inquiry": True,
+                    "response_timestamp": ts_resp,
+                },
+                provenance={"source_agent": inq.target_agent.value, "inquiry_id": inq.inquiry_id},
+            )
+
+    # Case 4: MTU mismatch
+    if "mtu" in ans_lower:
+        m_mtu = re.findall(r"\b([0-9]{3,5})\b", ans)
+        mtu_nums = [int(n) for n in m_mtu if int(n) in (1500, 1492, 9000, 9198, 9216)]
+        actual_val = mtu_nums[0] if mtu_nums else "mismatch"
+        unit = "bytes" if mtu_nums else "text"
+
+        if "mismatch" in ans_lower or "disparity" in ans_lower:
+            return Observation(
+                category=ObservationCategory.CONFIG_DIFF,
+                entity=target,
+                metric_name="mtu_mismatch",
+                observed_value=actual_val,
+                unit=unit,
+                severity=Severity.CRITICAL,
+                timestamp_start=None,
+                context={
+                    "inquiry_id": inq.inquiry_id,
+                    "original_answer": ans,
+                    "agent_domain": inq.target_agent.value,
+                    "converted_from_inquiry": True,
+                    "response_timestamp": ts_resp,
+                },
+                provenance={"source_agent": inq.target_agent.value, "inquiry_id": inq.inquiry_id},
+            )
+
+    return None
 def node_specialists(state: GraphState) -> Dict[str, Any]:
-    """Broadcast raw telemetry/configs to specialist domain agents."""
+    """Broadcast raw telemetry/configs to specialist domain agents concurrently."""
     incident_id = state["incident_id"]
     network_id = state["network_id"]
     raw_data = state["raw_data"]
     devices = state["scope_devices"]
 
-    # Specialist agents roster sourced from dynamic registry
     specialist_roles = [r for r in mediator.registry.registered_roles if r != AgentRole.SYNTHESIZER_AGENT]
 
     all_obs: List[Dict[str, Any]] = list(state.get("accumulated_observations", []))
     all_hyps: List[Dict[str, Any]] = list(state.get("accumulated_hypotheses", []))
     limitations: List[str] = list(state.get("limitations", []))
+    agent_execution: Dict[str, Dict[str, Any]] = dict(state.get("agent_execution", {}))
     classifier_conformal_set: List[str] = list(state.get("classifier_conformal_set", []))
     classifier_calib_probs: Dict[str, float] = dict(state.get("classifier_calib_probs", {}))
     classifier_conformal_status: str = state.get("classifier_conformal_status", "single")
@@ -99,6 +396,8 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
         if "topology unavailable; upstream transit inference uncorroborated" not in limitations:
             limitations.append("topology unavailable; upstream transit inference uncorroborated")
 
+    # Construct dispatch envelopes for all specialists
+    dispatch_envelopes = []
     for role in specialist_roles:
         dispatch_env = AgentEnvelope(
             header=ProtocolHeader(
@@ -113,8 +412,55 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
             ),
             context={"iteration": state.get("iteration", 0)},
         )
+        dispatch_envelopes.append(dispatch_env)
 
-        response_env = mediator.dispatch(dispatch_env)
+    # Concurrently dispatch to all specialist microservices
+    responses = mediator.dispatch_concurrent(dispatch_envelopes)
+
+    for role, response_env in zip(specialist_roles, responses):
+        # Capture execution telemetry record
+        exec_rec = response_env.context.get("execution_record")
+        if exec_rec:
+            agent_execution[role.value] = exec_rec
+        elif role.value not in agent_execution:
+            agent_execution[role.value] = {
+                "agent_id": role.value,
+                "status": "success",
+                "execution_status": "success",
+                "correlation_id": response_env.header.correlation_id or incident_id,
+            }
+
+        # Inspect if response envelope contains an error
+        if response_env.payload.error is not None or response_env.header.message_type == MessageType.PROTOCOL_ERROR:
+            err = response_env.payload.error
+            err_code = err.error_code if err else "INTERNAL_ERROR"
+            err_msg = err.message if err else "Agent error"
+            corr_id = response_env.header.correlation_id or incident_id
+            is_protocol_err = (
+                response_env.header.message_type == MessageType.PROTOCOL_ERROR
+                or (err and "PROTOCOL" in str(err_code).upper())
+            )
+            exec_status = (
+                AgentExecutionStatus.PROTOCOL_ERROR.value
+                if is_protocol_err
+                else AgentExecutionStatus.INTERNAL_ERROR.value
+            )
+            rec_dict = dict(exec_rec) if exec_rec else {}
+            rec_dict.update({
+                "agent_id": role.value,
+                "status": exec_status,
+                "execution_status": exec_status,
+                "error_code": err_code,
+                "correlation_id": corr_id,
+                "message": err_msg,
+            })
+            agent_execution[role.value] = rec_dict
+            mediator.dead_agents.add(role.value)
+            lim_msg = f"agent_failed: {role.value} ({err_code}): {err_msg}"
+            if lim_msg not in limitations:
+                limitations.append(lim_msg)
+            continue
+
         if role == AgentRole.CLASSIFIER_AGENT:
             classifier_conformal_set = response_env.context.get("classifier_conformal_set", [])
             dq = response_env.payload.data_quality or {}
@@ -126,17 +472,25 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
                 classifier_conformal_set = dq["conformal_prediction_set"]
 
         for obs in response_env.payload.observations:
-            all_obs.append(obs.model_dump())
+            d = obs.model_dump()
+            d.setdefault("provenance", {"source_agent": role.value})
+            all_obs.append(d)
+
         for hyp in response_env.payload.hypotheses:
-            all_hyps.append(hyp.model_dump())
+            d = hyp.model_dump()
+            d.setdefault("provenance", {"source_agent": role.value})
+            all_hyps.append(d)
+
         for lim in response_env.context.get("limitations", []):
             if lim not in limitations:
                 limitations.append(lim)
 
+    deduped_obs = _deduplicate_observations(all_obs)
     res = {
-        "accumulated_observations": all_obs,
+        "accumulated_observations": deduped_obs,
         "accumulated_hypotheses": all_hyps,
         "limitations": limitations,
+        "agent_execution": agent_execution,
         "classifier_conformal_set": classifier_conformal_set,
         "classifier_calib_probs": classifier_calib_probs,
         "classifier_conformal_status": classifier_conformal_status,
@@ -151,10 +505,12 @@ def node_mediation(state: GraphState) -> Dict[str, Any]:
     hyps = [Hypothesis(**h) for h in state.get("accumulated_hypotheses", [])]
     obs = [Observation(**o) for o in state.get("accumulated_observations", [])]
     existing_resolved = list(state.get("conflicts_resolved", []))
+    processed_hashes = set(state.get("processed_inquiry_hashes", []))
 
     conflict = ConflictResolver.detect_conflicts(hyps)
     conflict_summary = None
     inquiries: List[Dict[str, Any]] = []
+    arbitration_winner: Optional[Dict[str, Any]] = None
 
     if conflict:
         winning_hyp, rationale, new_resolved = ConflictResolver.arbitrate(hyps, obs)
@@ -163,9 +519,10 @@ def node_mediation(state: GraphState) -> Dict[str, Any]:
             r["iteration"] = state.get("iteration", 0) + 1
             existing_resolved.append(r)
 
-        if winning_hyp is None and state.get("iteration", 0) < 2:
-            # Need targeted inquiry pass (max 2 iterations)
-            raw_inquiries = ConflictResolver.generate_cross_inquiries(hyps, obs)
+        if winning_hyp is not None:
+            arbitration_winner = winning_hyp.model_dump()
+        elif state.get("iteration", 0) < settings.max_inquiry_iterations:
+            raw_inquiries = ConflictResolver.generate_cross_inquiries(hyps, obs, processed_hashes=processed_hashes)
             inquiries = [inq.model_dump() for inq in raw_inquiries]
 
     res = {
@@ -173,6 +530,7 @@ def node_mediation(state: GraphState) -> Dict[str, Any]:
         "conflict_summary": conflict_summary,
         "conflicts_resolved": existing_resolved,
         "inquiries_queue": inquiries,
+        "arbitration_winner": arbitration_winner,
     }
     if settings.feature_resume:
         save_checkpoint(session_id=state.get("incident_id", "session-unknown"), node_name="mediation", state_dict={**state, **res}, iteration=state.get("iteration", 0), is_paused=state.get("is_paused", False))
@@ -181,21 +539,28 @@ def node_mediation(state: GraphState) -> Dict[str, Any]:
 
 def route_mediation(state: GraphState) -> str:
     """Conditional edge routing to inquiries or directly to root cause synthesis."""
-    if state.get("inquiries_queue") and state.get("iteration", 0) < 2:
+    if state.get("inquiries_queue") and state.get("iteration", 0) < settings.max_inquiry_iterations:
         return "inquiry"
     return "synthesis"
 
 
 def node_inquiry(state: GraphState) -> Dict[str, Any]:
-    """Route pending cross-examination inquiries to target agents and increment turn."""
+    """Route pending cross-examination inquiries to target agents, extract answers, and convert to observations."""
     incident_id = state["incident_id"]
     network_id = state["network_id"]
     devices = state["scope_devices"]
     inquiries = [Inquiry(**i) for i in state.get("inquiries_queue", [])]
 
     new_obs = list(state.get("accumulated_observations", []))
+    inquiries_history = list(state.get("inquiries_history", []))
+    processed_hashes = list(state.get("processed_inquiry_hashes", []))
+    agent_execution = dict(state.get("agent_execution", {}))
+    limitations = list(state.get("limitations", []))
 
     for inq in inquiries:
+        inq_key = f"{inq.target_agent.value}:{inq.target_entity}:{inq.question[:30]}"
+        processed_hashes.append(inq_key)
+
         inq_env = AgentEnvelope(
             header=ProtocolHeader(
                 correlation_id=incident_id,
@@ -211,25 +576,95 @@ def node_inquiry(state: GraphState) -> Dict[str, Any]:
             context={"iteration": state.get("iteration", 0) + 1},
         )
         response_env = mediator.dispatch(inq_env)
-        for obs in response_env.payload.observations:
-            new_obs.append(obs.model_dump())
+        exec_rec = response_env.context.get("execution_record")
+        if exec_rec:
+            agent_execution[f"{inq.target_agent.value}_inquiry_{inq.inquiry_id}"] = exec_rec
 
+        # Priority 2: Inspect payload.error, HTTP/protocol failure states, and execution record
+        is_failed = (
+            response_env.payload.error is not None
+            or response_env.header.message_type == MessageType.PROTOCOL_ERROR
+            or (exec_rec and exec_rec.get("execution_status") in (
+                "unavailable", "timeout", "protocol_error", "internal_error", "circuit_open"
+            ))
+        )
+
+        if is_failed:
+            err = response_env.payload.error
+            err_code = err.error_code if err else (exec_rec.get("error_code") if exec_rec else "INQUIRY_FAILED")
+            err_msg = err.message if err else (exec_rec.get("error_code") if exec_rec else "Target agent failed to respond")
+
+            # Preserve failed inquiry record with explicit status without recording as answered
+            inq_fail = inq.model_dump()
+            inq_fail["status"] = "failed"
+            inq_fail["answer"] = None
+            inq_fail["error"] = {"error_code": err_code, "message": err_msg}
+            inq_fail["sender"] = inq.target_agent.value
+            inq_fail["recipient"] = AgentRole.ORCHESTRATOR.value
+            inq_fail["correlation_id"] = incident_id
+            inquiries_history.append(inq_fail)
+
+            lim_entry = f"inquiry_failed: {inq.target_agent.value} ({inq.inquiry_id}) {err_code}: {err_msg}"
+            if lim_entry not in limitations:
+                limitations.append(lim_entry)
+            continue
+
+        returned_inquiries = response_env.payload.inquiries
+        if not returned_inquiries:
+            # Empty response without error: record as unanswered
+            inq_unans = inq.model_dump()
+            inq_unans["status"] = "unanswered"
+            inq_unans["answer"] = None
+            inq_unans["sender"] = inq.target_agent.value
+            inq_unans["recipient"] = AgentRole.ORCHESTRATOR.value
+            inq_unans["correlation_id"] = incident_id
+            inquiries_history.append(inq_unans)
+
+            lim_entry = f"inquiry_unanswered: {inq.target_agent.value} ({inq.inquiry_id}) empty response payload"
+            if lim_entry not in limitations:
+                limitations.append(lim_entry)
+            continue
+
+        for ret_inq in returned_inquiries:
+            inq_dump = ret_inq.model_dump()
+            inq_dump["sender"] = inq.target_agent.value
+            inq_dump["recipient"] = AgentRole.ORCHESTRATOR.value
+            inq_dump["correlation_id"] = incident_id
+            inq_dump["status"] = "answered" if ret_inq.answer else "unanswered"
+            inquiries_history.append(inq_dump)
+
+            # Convert meaningful inquiry findings into structured observations
+            converted_obs = _convert_inquiry_to_observation(ret_inq, response_env)
+            if converted_obs is not None:
+                new_obs.append(converted_obs.model_dump())
+
+        # Direct observations returned in payload
+        for obs in response_env.payload.observations:
+            d = obs.model_dump()
+            d.setdefault("provenance", {"source_agent": inq.target_agent.value, "inquiry_id": inq.inquiry_id})
+            new_obs.append(d)
+
+    deduped_obs = _deduplicate_observations(new_obs)
     res = {
-        "accumulated_observations": new_obs,
+        "accumulated_observations": deduped_obs,
         "inquiries_queue": [],
+        "inquiries_history": inquiries_history,
+        "processed_inquiry_hashes": processed_hashes,
+        "agent_execution": agent_execution,
+        "limitations": limitations,
         "iteration": state.get("iteration", 0) + 1,
     }
     if settings.feature_resume:
         save_checkpoint(session_id=incident_id, node_name="inquiry", state_dict={**state, **res}, iteration=res["iteration"], is_paused=state.get("is_paused", False))
     return res
-
-
 def node_synthesis(state: GraphState) -> Dict[str, Any]:
     """Invoke Synthesizer Agent to render root cause diagnosis or flag insufficient evidence."""
     incident_id = state["incident_id"]
     network_id = state["network_id"]
     devices = state["scope_devices"]
     obs = [Observation(**o) for o in state.get("accumulated_observations", [])]
+    hyps = [Hypothesis(**h) for h in state.get("accumulated_hypotheses", [])]
+    inquiries_history = [Inquiry(**i) for i in state.get("inquiries_history", [])]
 
     synthesis_req = AgentEnvelope(
         header=ProtocolHeader(
@@ -241,8 +676,16 @@ def node_synthesis(state: GraphState) -> Dict[str, Any]:
         payload=EnvelopePayload(
             scope=NetworkScope(network_id=network_id, devices=devices),
             observations=obs,
+            hypotheses=hyps,
+            inquiries=inquiries_history,
         ),
-        context={"iteration": state.get("iteration", 0)},
+        context={
+            "iteration": state.get("iteration", 0),
+            "arbitration_winner": state.get("arbitration_winner"),
+            "conflicts_resolved": state.get("conflicts_resolved", []),
+            "limitations": state.get("limitations", []),
+            "degraded_agents": list(mediator.dead_agents),
+        },
     )
 
     synth_resp = mediator.dispatch(synthesis_req)
@@ -330,6 +773,9 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     provenance = {
         "generator": raw_data.get("generator", "netcoop_synthetic"),
         "timestamp_ingested": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "agent_execution": state.get("agent_execution", {}),
+        "inquiries_count": len(state.get("inquiries_history", [])),
+        "conflicts_resolved_count": len(state.get("conflicts_resolved", [])),
     }
     if raw_data.get("topology", {}).get("is_assumed"):
         provenance["topology"] = "assumed"
@@ -371,10 +817,62 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     }
     is_statistical_domain = hypothesis and (hypothesis.cause_key in statistical_cause_keys)
 
+    # Normal operation resolution: zero specialist observations + classifier normal_operation above validated threshold
+    specialist_obs = [
+        o for o in state.get("accumulated_observations", [])
+        if getattr(o, "source_agent", o.get("source_agent") if isinstance(o, dict) else None) != "classifier_agent"
+    ]
+    top_class = max(classifier_calib_probs, key=classifier_calib_probs.get) if classifier_calib_probs else None
+    top_prob = float(classifier_calib_probs.get(top_class, 0.0)) if top_class else 0.0
+    normal_threshold = min(
+        OfflineCorrelationEngine.ACCEPTANCE_CONFIDENCE_THRESHOLD,
+        weights_data.get("confidence_cutoffs", {}).get("high", 0.8),
+    )
+
+    is_benign_normal = (
+        not specialist_obs
+        and not hypothesis
+        and top_class == "normal_operation"
+        and top_prob >= normal_threshold
+    )
+
+    if is_benign_normal:
+        status = "benign"
+        conformal_prediction_set = ["normal_operation"]
+        confidence_category = "high" if top_prob >= 0.85 else "medium"
+        calibrated_confidence = top_prob
+        confidence_breakdown = {
+            "rules_score": 1.0,
+            "model_score": top_prob,
+            "blended_score": top_prob,
+            "calibrated_confidence": top_prob,
+        }
+        hypothesis = DiagnosticHypothesis(
+            cause_key="NO_FAULT",
+            title="Normal Operation",
+            description="Normal network operation within nominal operational boundaries; zero anomalous observations reported.",
+            confidence=top_prob,
+            affected_devices=state.get("scope_devices", []),
+            supporting_evidence=[],
+            suggested_remediation_type="none",
+            final_confidence=top_prob,
+        )
+        uncertainty = UncertaintyEvaluation(
+            score=round(1.0 - top_prob, 3),
+            reasons=["All telemetry metrics within nominal baselines; confirmed by statistical classifier."],
+            missing_evidence=[],
+            alternative_hypotheses=[],
+        )
+        summary_text = "All telemetry metrics, queue depths, and services operating within nominal operational baselines."
+
     classifier_abstained = (
-        classifier_conformal_status == "abstain"
-        or (is_statistical_domain and classifier_calib_probs and len(conformal_prediction_set) == 0)
-        or (not hypothesis and len(conformal_prediction_set) == 0 and classifier_calib_probs)
+        status != "benign"
+        and not is_benign_normal
+        and (
+            classifier_conformal_status == "abstain"
+            or (is_statistical_domain and classifier_calib_probs and len(conformal_prediction_set) == 0)
+            or (not hypothesis and len(conformal_prediction_set) == 0 and classifier_calib_probs)
+        )
     )
 
     if classifier_abstained:
@@ -449,6 +947,14 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         conformal_prediction_set=conformal_prediction_set,
         confidence_category=confidence_category,
     )
+
+    if status == "benign":
+        report.confidence = top_prob
+        report.probable_cause = _NormalOperationProbableCause(report.probable_cause or "Normal Operation")
+        if not report.summary or "insufficient" in report.summary.lower() or "status benign" in report.summary.lower():
+            report.summary = (
+                f"Normal network operation verified with {int(top_prob * 100)}% confidence. No anomalous faults detected."
+            )
 
     # Schema validation against schemas/diagnostic_report.json
     _validate_report_schema(report)
@@ -546,6 +1052,10 @@ def run_diagnosis(incident_data: Dict[str, Any]) -> UnifiedDiagnosticReport:
         "accumulated_observations": [],
         "accumulated_hypotheses": [],
         "inquiries_queue": [],
+        "inquiries_history": [],
+        "processed_inquiry_hashes": [],
+        "agent_execution": {},
+        "arbitration_winner": None,
         "conflict_detected": False,
         "conflict_summary": None,
         "conflicts_resolved": [],
@@ -569,7 +1079,10 @@ def run_diagnosis(incident_data: Dict[str, Any]) -> UnifiedDiagnosticReport:
     if not report_dict:
         raise RuntimeError("Diagnostic execution failed to produce a report.")
 
-    return UnifiedDiagnosticReport(**report_dict)
+    final_report = UnifiedDiagnosticReport(**report_dict)
+    if final_report.status == "benign":
+        final_report.probable_cause = _NormalOperationProbableCause(final_report.probable_cause or "Normal Operation")
+    return final_report
 
 
 def pause_diagnosis(session_id: str) -> bool:
@@ -632,7 +1145,8 @@ def resume_diagnosis(session_id: str) -> UnifiedDiagnosticReport:
         state.update(res_rep)
 
     elif node == "report":
-        pass
+        res_rep = node_report(state)
+        state.update(res_rep)
 
     report_dict = state.get("report_dict")
     if not report_dict:

@@ -27,7 +27,7 @@ export interface RemediationAction {
   risk_level: "low" | "medium" | "high";
   blast_radius_devices: string[];
   is_simulated: boolean;
-  status: "recommended" | "pending_approval" | "simulated_success" | "rejected";
+  status: "recommended" | "pending_approval" | "simulated_success" | "simulated_executed" | "rejected" | string;
 }
 
 export interface UnifiedDiagnosticReport {
@@ -44,6 +44,13 @@ export interface UnifiedDiagnosticReport {
   remediation_actions: RemediationAction[];
   summary: string;
   processing_time_ms: number;
+  causal_chain?: string[];
+  conflicts_resolved?: Array<Record<string, any>>;
+  limitations?: string[];
+  provenance?: Record<string, any>;
+  confidence_breakdown?: Record<string, number>;
+  conformal_prediction_set?: string[];
+  confidence_category?: string;
 }
 
 export interface EnvelopeLogItem {
@@ -65,4 +72,3 @@ export interface ScenarioMeta {
   network_id: string;
   description: string;
 }
-

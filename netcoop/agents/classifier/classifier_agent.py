@@ -86,9 +86,18 @@ class ClassifierAgent(BaseAgent):
             try:
                 with open(q_path, "r", encoding="utf-8") as f:
                     q_data = json.load(f)
-                    self.conformal_engine.q_hat = float(q_data.get("q_hat", 0.0))
+                    if "q_hat" in q_data and q_data["q_hat"] is not None:
+                        self.conformal_engine.q_hat = float(q_data["q_hat"])
+                        self.conformal_engine.is_calibrated = bool(q_data.get("is_calibrated", True))
+                    else:
+                        self.conformal_engine.q_hat = None
+                        self.conformal_engine.is_calibrated = False
             except Exception:
-                pass
+                self.conformal_engine.q_hat = None
+                self.conformal_engine.is_calibrated = False
+        else:
+            self.conformal_engine.q_hat = None
+            self.conformal_engine.is_calibrated = False
 
         # 4. Load Ensembling Weights
         w_path = weights_path or (ARTIFACTS_DIR / "weights.json")
@@ -143,7 +152,7 @@ class ClassifierAgent(BaseAgent):
         observations: List[Observation] = []
         feat_names = WindowFeatureExtractor.get_feature_names()
 
-        # Find top abnormal metrics across devices
+        # Find abnormal metrics across devices
         for d_idx, d_id in enumerate(dev_ids):
             d_vec = matrix[d_idx]
             for f_idx, f_name in enumerate(feat_names):
@@ -177,39 +186,25 @@ class ClassifierAgent(BaseAgent):
                         )
                         observations.append(obs)
 
-        # 6. Generate Hypotheses
+        # 6. Generate Hypotheses: only if positive evidence exists (never emit exact fault diagnoses on empty/insufficient evidence)
         hypotheses: List[Hypothesis] = []
-        active_classes = prediction_set if prediction_set else [max(calib_probs, key=calib_probs.get)]
+        if conformal_status != "insufficient_evidence" or len(prediction_set) > 0:
+            active_classes = prediction_set if prediction_set else [max(calib_probs, key=calib_probs.get)]
 
-        for cname in active_classes:
-            prob = calib_probs.get(cname, 0.0)
-            if prob >= 0.15:
-                hyp = Hypothesis(
-                    probable_cause=FAULT_DESCRIPTIONS.get(cname, cname),
-                    confidence=prob,
-                    supporting_observation_ids=[o.observation_id for o in observations[:4]],
-                    provenance={
-                        "agent": "classifier_agent",
-                        "conformal_status": conformal_status,
-                        "calibrated": True,
-                    },
-                )
-                hypotheses.append(hyp)
-
-        # Fallback guarantee: if no hypotheses met 0.15 threshold, emit top predicted class
-        if not hypotheses:
-            top_class = max(calib_probs, key=calib_probs.get)
-            hyp = Hypothesis(
-                probable_cause=FAULT_DESCRIPTIONS.get(top_class, top_class),
-                confidence=float(calib_probs.get(top_class, 0.1)),
-                supporting_observation_ids=[o.observation_id for o in observations[:4]],
-                provenance={
-                    "agent": "classifier_agent",
-                    "conformal_status": conformal_status,
-                    "calibrated": True,
-                },
-            )
-            hypotheses.append(hyp)
+            for cname in active_classes:
+                prob = calib_probs.get(cname, 0.0)
+                if prob >= 0.15:
+                    hyp = Hypothesis(
+                        probable_cause=FAULT_DESCRIPTIONS.get(cname, cname),
+                        confidence=prob,
+                        supporting_observation_ids=[o.observation_id for o in observations[:4]],
+                        provenance={
+                            "agent": "classifier_agent",
+                            "conformal_status": conformal_status,
+                            "calibrated": True,
+                        },
+                    )
+                    hypotheses.append(hyp)
 
         response.payload.observations = observations
         response.payload.hypotheses = hypotheses

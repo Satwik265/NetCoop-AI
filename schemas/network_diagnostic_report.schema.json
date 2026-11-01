@@ -1,0 +1,739 @@
+{
+  "$defs": {
+    "AgentInvestigationRecord": {
+      "description": "Audit record of an agent's participation in the diagnostic workflow.",
+      "properties": {
+        "agent_role": {
+          "title": "Agent Role",
+          "type": "string"
+        },
+        "agent_name": {
+          "title": "Agent Name",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/AgentState",
+          "default": "queued"
+        },
+        "execution_time_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Execution Time Ms"
+        },
+        "observations_count": {
+          "default": 0,
+          "title": "Observations Count",
+          "type": "integer"
+        },
+        "findings_summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Findings Summary"
+        },
+        "error_message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Message"
+        }
+      },
+      "required": [
+        "agent_role",
+        "agent_name"
+      ],
+      "title": "AgentInvestigationRecord",
+      "type": "object"
+    },
+    "AgentState": {
+      "description": "Execution state of a diagnostic agent.",
+      "enum": [
+        "queued",
+        "running",
+        "completed",
+        "failed",
+        "skipped"
+      ],
+      "title": "AgentState",
+      "type": "string"
+    },
+    "AuditReference": {
+      "description": "Traceability references linking report to persistent SQLite storage.",
+      "properties": {
+        "audit_logged": {
+          "default": false,
+          "title": "Audit Logged",
+          "type": "boolean"
+        },
+        "storage_engine": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Storage Engine"
+        },
+        "incident_record_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Incident Record Id"
+        },
+        "checkpoint_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checkpoint Id"
+        },
+        "envelope_count": {
+          "default": 0,
+          "title": "Envelope Count",
+          "type": "integer"
+        },
+        "replay_trace_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Replay Trace Id"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "title": "AuditReference",
+      "type": "object"
+    },
+    "CampusTopologyReference": {
+      "description": "Demonstration topology linkage adhering to IITBBSR campus schema.",
+      "properties": {
+        "campus_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Campus Id"
+        },
+        "affected_node_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Affected Node Ids",
+          "type": "array"
+        },
+        "affected_site_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Affected Site Ids",
+          "type": "array"
+        },
+        "affected_site_names": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Affected Site Names",
+          "type": "array"
+        },
+        "affected_path_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Affected Path Ids",
+          "type": "array"
+        },
+        "topology_provenance": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Topology Provenance"
+        },
+        "simulated_inventory": {
+          "default": true,
+          "title": "Simulated Inventory",
+          "type": "boolean"
+        },
+        "disclaimer": {
+          "default": "All network equipment, nodes, links, and paths are synthetic demonstration inventory. Official campus maps establish physical building landmarks only and contain zero network routing equipment records.",
+          "title": "Disclaimer",
+          "type": "string"
+        }
+      },
+      "title": "CampusTopologyReference",
+      "type": "object"
+    },
+    "DiagnosticStatus": {
+      "description": "Categorical diagnostic outcome.",
+      "enum": [
+        "diagnosed",
+        "insufficient_evidence",
+        "inconclusive",
+        "abstained",
+        "benign"
+      ],
+      "title": "DiagnosticStatus",
+      "type": "string"
+    },
+    "ExecutiveReport": {
+      "description": "Level 1: Concise operational summary for operations leadership and incident commanders.",
+      "properties": {
+        "report_id": {
+          "title": "Report Id",
+          "type": "string"
+        },
+        "incident_id": {
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "generated_timestamp": {
+          "title": "Generated Timestamp",
+          "type": "string"
+        },
+        "diagnostic_status": {
+          "$ref": "#/$defs/DiagnosticStatus"
+        },
+        "severity": {
+          "$ref": "#/$defs/ReportSeverity",
+          "default": "info"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Diagnostic confidence when genuinely available; None when abstained or insufficient evidence.",
+          "title": "Confidence"
+        },
+        "confidence_category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence Category"
+        },
+        "is_confidence_calibrated": {
+          "default": false,
+          "title": "Is Confidence Calibrated",
+          "type": "boolean"
+        },
+        "confidence_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence Type"
+        },
+        "affected_devices": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Affected Devices",
+          "type": "array"
+        },
+        "affected_site_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Affected Site Ids",
+          "type": "array"
+        },
+        "affected_site_names": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Affected Site Names",
+          "type": "array"
+        },
+        "affected_sites": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Affected Sites",
+          "type": "array"
+        },
+        "probable_root_cause": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Probable root cause title or null if diagnosis abstained or inconclusive.",
+          "title": "Probable Root Cause"
+        },
+        "root_cause_status": {
+          "$ref": "#/$defs/RootCauseStatus",
+          "default": "probable"
+        },
+        "executive_summary": {
+          "title": "Executive Summary",
+          "type": "string"
+        },
+        "key_observations": {
+          "items": {
+            "$ref": "#/$defs/MetricObservation"
+          },
+          "title": "Key Observations",
+          "type": "array"
+        },
+        "supporting_evidence_summary": {
+          "default": "",
+          "title": "Supporting Evidence Summary",
+          "type": "string"
+        },
+        "agent_investigation_status": {
+          "items": {
+            "$ref": "#/$defs/AgentInvestigationRecord"
+          },
+          "title": "Agent Investigation Status",
+          "type": "array"
+        },
+        "recommended_actions": {
+          "items": {
+            "$ref": "#/$defs/RecommendedAction"
+          },
+          "title": "Recommended Actions",
+          "type": "array"
+        },
+        "recovery_verification_status": {
+          "$ref": "#/$defs/RecoveryStatus",
+          "default": "pending_verification"
+        },
+        "data_provenance": {
+          "additionalProperties": true,
+          "title": "Data Provenance",
+          "type": "object"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "report_id",
+        "incident_id",
+        "diagnostic_status",
+        "executive_summary"
+      ],
+      "title": "ExecutiveReport",
+      "type": "object"
+    },
+    "MetricObservation": {
+      "description": "Individual empirical metric observation with explicit provenance.\n\nMissing or uncollected metrics must be represented with value=None,\nnever fabricated or defaulted to zero.",
+      "properties": {
+        "metric_name": {
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "entity": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Entity"
+        },
+        "source": {
+          "default": "telemetry_agent",
+          "title": "Source",
+          "type": "string"
+        },
+        "timestamp": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timestamp"
+        },
+        "provenance": {
+          "additionalProperties": true,
+          "title": "Provenance",
+          "type": "object"
+        },
+        "severity": {
+          "$ref": "#/$defs/ReportSeverity",
+          "default": "info"
+        },
+        "is_available": {
+          "default": true,
+          "title": "Is Available",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "metric_name"
+      ],
+      "title": "MetricObservation",
+      "type": "object"
+    },
+    "RecommendedAction": {
+      "description": "Advisory remediation proposal.\n\nRemediation actions are strictly advisory and simulated. They must not\nbe mistaken for executed changes to a production network.",
+      "properties": {
+        "action_id": {
+          "title": "Action Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "target_device": {
+          "title": "Target Device",
+          "type": "string"
+        },
+        "commands": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Commands",
+          "type": "array"
+        },
+        "rollback_commands": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Rollback Commands",
+          "type": "array"
+        },
+        "risk_level": {
+          "default": "medium",
+          "title": "Risk Level",
+          "type": "string"
+        },
+        "blast_radius_devices": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Blast Radius Devices",
+          "type": "array"
+        },
+        "is_simulated": {
+          "default": true,
+          "title": "Is Simulated",
+          "type": "boolean"
+        },
+        "status": {
+          "$ref": "#/$defs/RemediationState",
+          "default": "proposed"
+        },
+        "is_advisory": {
+          "default": true,
+          "title": "Is Advisory",
+          "type": "boolean"
+        },
+        "advisory_notice": {
+          "default": "Action is advisory and simulated only. No production network change has occurred.",
+          "title": "Advisory Notice",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action_id",
+        "title",
+        "description",
+        "target_device"
+      ],
+      "title": "RecommendedAction",
+      "type": "object"
+    },
+    "RecoveryStatus": {
+      "description": "Post-incident network recovery verification status.",
+      "enum": [
+        "pending_verification",
+        "recovered",
+        "not_recovered",
+        "not_applicable"
+      ],
+      "title": "RecoveryStatus",
+      "type": "string"
+    },
+    "RemediationState": {
+      "description": "State of a recommended remediation action.",
+      "enum": [
+        "proposed",
+        "approved",
+        "simulated",
+        "blocked",
+        "verified",
+        "rejected"
+      ],
+      "title": "RemediationState",
+      "type": "string"
+    },
+    "ReportSeverity": {
+      "description": "Incident severity classification.",
+      "enum": [
+        "info",
+        "warning",
+        "critical",
+        "unknown"
+      ],
+      "title": "ReportSeverity",
+      "type": "string"
+    },
+    "RootCauseStatus": {
+      "description": "Verification classification of the root-cause finding.",
+      "enum": [
+        "verified",
+        "probable",
+        "unverified_hypothesis",
+        "inconclusive",
+        "abstained"
+      ],
+      "title": "RootCauseStatus",
+      "type": "string"
+    },
+    "TechnicalReport": {
+      "description": "Level 2: Comprehensive, traceable technical report for network engineering analysis.",
+      "properties": {
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/TechnicalSection"
+          },
+          "title": "Sections",
+          "type": "array"
+        }
+      },
+      "title": "TechnicalReport",
+      "type": "object"
+    },
+    "TechnicalSection": {
+      "description": "Extensible section container for Level 2 technical diagnostic findings.",
+      "properties": {
+        "section_id": {
+          "title": "Section Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "order": {
+          "title": "Order",
+          "type": "integer"
+        },
+        "is_available": {
+          "default": true,
+          "title": "Is Available",
+          "type": "boolean"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "required": [
+        "section_id",
+        "title",
+        "order"
+      ],
+      "title": "TechnicalSection",
+      "type": "object"
+    }
+  },
+  "description": "Version 2.0.0 two-level diagnostic report payload containing Executive (Level 1) and Technical (Level 2) views with IITBBSR topology linkage and scientific calibration.",
+  "properties": {
+    "schema_version": {
+      "default": "2.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "report_id": {
+      "title": "Report Id",
+      "type": "string"
+    },
+    "incident_id": {
+      "title": "Incident Id",
+      "type": "string"
+    },
+    "network_id": {
+      "title": "Network Id",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "executive": {
+      "$ref": "#/$defs/ExecutiveReport"
+    },
+    "technical": {
+      "$ref": "#/$defs/TechnicalReport"
+    },
+    "topology_reference": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CampusTopologyReference"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "audit": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AuditReference"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "report_id",
+    "incident_id",
+    "network_id",
+    "executive",
+    "technical"
+  ],
+  "title": "NetworkDiagnosticReport",
+  "type": "object",
+  "": "https://json-schema.org/draft/2020-12/schema"
+}

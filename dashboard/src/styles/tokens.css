@@ -1,0 +1,41 @@
+:root {
+  --bg-color: #FAFAF9;
+  --surface-color: #FFFFFF;
+  --border-color: #E5E5E3;
+  --text-color: #111111;
+  --muted-color: #6B6B66;
+  --accent-slate: #475569;
+  --status-ok: #5E7A6A;
+  --status-warning: #A08A5B;
+  --status-critical: #9A5B5B;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  --motion-duration: 200ms;
+  --motion-ease: cubic-bezier(0, 0, 0.2, 1);
+}
+
+.dark {
+  --bg-color: #0F0F10;
+  --surface-color: #161618;
+  --border-color: #2A2A2D;
+  --text-color: #EDEDEA;
+  --muted-color: #6B6B66;
+  --accent-slate: #475569;
+  --status-ok: #5E7A6A;
+  --status-warning: #A08A5B;
+  --status-critical: #9A5B5B;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.transition-token {
+  transition: all var(--motion-duration) var(--motion-ease);
+}
+

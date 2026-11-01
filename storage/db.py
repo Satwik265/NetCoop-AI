@@ -21,4 +21,6 @@ from netcoop.storage.db import (
     get_remediation_action_log,
     list_remediation_action_logs,
     record_hitl_decision,
+    get_remediation_logs,
+    save_remediation_log,
 )

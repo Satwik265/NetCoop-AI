@@ -50,6 +50,7 @@ class UnifiedDiagnosticReport(BaseModel):
     confidence_breakdown: Optional[Dict[str, float]] = None
     conformal_prediction_set: List[str] = Field(default_factory=list)
     confidence_category: Optional[str] = None
+    hypothesis_key: Optional[str] = None
 
     def to_json(self) -> str:
         """Serialize report to formatted JSON string."""
@@ -185,8 +186,9 @@ class ReportBuilder:
         affected_interfaces: List[str] = []
         probable_cause = None
         confidence = 0.0
+        hypothesis_key = hypothesis.cause_key if hypothesis else None
 
-        if hypothesis and status == "diagnosed":
+        if hypothesis and status in ("diagnosed", "benign"):
             probable_cause = hypothesis.title
             confidence = hypothesis.final_confidence
             affected_devices = hypothesis.affected_devices
@@ -206,7 +208,7 @@ class ReportBuilder:
                 )
 
         if summary is None:
-            if status == "diagnosed" and hypothesis:
+            if status in ("diagnosed", "benign") and hypothesis:
                 summary = (
                     f"Diagnosed {hypothesis.title} with {int(confidence * 100)}% confidence. "
                     f"Affecting devices: {', '.join(affected_devices)}."
@@ -234,4 +236,5 @@ class ReportBuilder:
             confidence_breakdown=confidence_breakdown,
             conformal_prediction_set=conformal_prediction_set or [],
             confidence_category=confidence_category,
+            hypothesis_key=hypothesis_key,
         )

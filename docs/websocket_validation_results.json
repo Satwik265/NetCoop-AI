@@ -1,0 +1,13 @@
+{
+  "handshake_ws_events": {
+    "event_type": "connected",
+    "message": "NetCoop WebSocket streaming active"
+  },
+  "ping_pong": "pong",
+  "handshake_ws_envelopes": {
+    "event_type": "connected",
+    "message": "NetCoop WebSocket streaming active"
+  },
+  "multi_client_broadcast": true,
+  "cleanup_verified": true
+}

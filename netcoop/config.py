@@ -1,6 +1,6 @@
 """Application configuration and settings."""
 
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from netcoop.core.envelope import AgentRole
 
@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     in_process_fallback: bool = False
     allow_dev_in_process_fallback: bool = False
 
+    # Feature flags
+    feature_mcp: bool = True
+    feature_remediation_sim: bool = True
+
     # Persistence
     database_url: str = "sqlite:///./netcoop.db"
 
@@ -73,6 +77,20 @@ class Settings(BaseSettings):
     agent_timeout_seconds: float = 3.0
     agent_max_retries: int = 2
     circuit_breaker_failure_threshold: int = 2
+    circuit_breaker_recovery_timeout_s: float = 30.0
+    max_concurrent_agent_calls: int = 6
+
+    # Environment mode (development, staging, production)
+    environment: str = "development"
+    enforce_service_auth: bool = False
+
+    # Service-to-service authentication contract (coordinated with Anjali)
+    internal_service_token: Optional[str] = None
+    service_auth_header: str = "X-NetCoop-Service-Token"
+
+    # Configurable domain thresholds
+    optical_rx_power_warn_dbm: float = -14.0
+    optical_rx_power_crit_dbm: float = -18.0
 
     # Remediation safety
     remediation_simulated_only: bool = True
@@ -80,6 +98,24 @@ class Settings(BaseSettings):
     # Feature flags (default on for demo; when off, core pipeline remains untouched)
     feature_resume: bool = True
     feature_hitl: bool = True
+
+    @property
+    def is_production(self) -> bool:
+        """Return True if operating in production mode or if auth enforcement is enabled."""
+        env = (self.environment or "").strip().lower()
+        return env in ("production", "prod") or self.enforce_service_auth
+
+    def validate_service_token_strength(self, token: Optional[str]) -> Tuple[bool, str]:
+        """Validate whether an internal service authentication token meets production security standards."""
+        if not token or not token.strip():
+            return False, "INTERNAL_SERVICE_TOKEN is missing or empty"
+        cleaned = token.strip()
+        if len(cleaned) < 16:
+            return False, f"INTERNAL_SERVICE_TOKEN length ({len(cleaned)}) is less than required minimum of 16 characters"
+        weak_tokens = {'test', 'default', 'secret', 'token', 'changeme', 'password', 'admin', '12345678', 'development'}
+        if cleaned.lower() in weak_tokens:
+            return False, "INTERNAL_SERVICE_TOKEN uses an insecure common default keyword"
+        return True, "OK"
 
     @property
     def fallback_enabled(self) -> bool:
@@ -163,3 +199,5 @@ settings = Settings()
 # Module-level feature flag exports
 FEATURE_RESUME: bool = settings.feature_resume
 FEATURE_HITL: bool = settings.feature_hitl
+FEATURE_MCP: bool = settings.feature_mcp
+FEATURE_REMEDIATION_SIM: bool = settings.feature_remediation_sim

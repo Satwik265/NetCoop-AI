@@ -415,17 +415,35 @@ class OrganizerAdapter:
             lat = cls.clean_numeric_value(
                 mapped.get("latency_ms"), "latency_ms", errors, quarantined, allow_negative=False
             )
-            if lat is not None and lat < 1.0 and "latency" in merged_raw and not str(merged_raw.get("latency")).endswith("ms"):
-                lat = round(lat * 1000.0, 2)
-                if "unit_conversion" not in transformations:
-                    transformations.append("unit_conversion")
-            elif lat is not None and "latency_s" not in mapped and not str(merged_raw.get("latency", "")).endswith("ms"):
-                # Use ValueUnitInferencer decision tree
-                u_infer, _ = cls.get_unit_inferencer().infer_latency_unit([lat])
-                if u_infer == "seconds" and lat < 1.5:
+            # Differentiate explicit units, unambiguous fractional seconds, and ambiguous values
+            raw_lat_key = "latency" if "latency" in merged_raw else ("delay" if "delay" in merged_raw else None)
+            is_explicit_ms = "latency_ms" in merged_raw or "delay_ms" in merged_raw or (raw_lat_key and str(merged_raw.get(raw_lat_key, "")).strip().endswith("ms"))
+            is_explicit_s = "latency_s" in merged_raw or (raw_lat_key and str(merged_raw.get(raw_lat_key, "")).strip().endswith("s"))
+
+            if lat is not None and not is_explicit_ms:
+                if is_explicit_s:
+                    lat = round(lat * 1000.0, 2)
+                    if "unit_conversion" not in transformations:
+                        transformations.append("unit_conversion")
+                elif lat < 0.2:
+                    # Unambiguously fractional seconds (e.g. 0.015s = 15ms)
                     lat = round(lat * 1000.0, 2)
                     if "unit_inference" not in transformations:
                         transformations.append("unit_inference")
+                elif 0.2 <= lat <= 2.5:
+                    # Ambiguous value: could be sub-millisecond LAN ping or 1-2s WAN latency.
+                    # Do not silently infer units without evidence; flag in validation errors & provenance.
+                    errors.append(
+                        TypedValidationError(
+                            code="WARN_AMBIGUOUS_UNIT",
+                            field="latency",
+                            explanation=f"Latency value {lat} is ambiguous between milliseconds and seconds without explicit unit indicator.",
+                            suggested_fix="Explicitly specify unit as 'ms' or 's' (e.g. latency_ms: 1.2).",
+                        )
+                    )
+                    if "ambiguous_unit_flagged" not in transformations:
+                        transformations.append("ambiguous_unit_flagged")
+
         elif not is_organizer_format:
             lat = 5.0
 
