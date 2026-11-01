@@ -7,7 +7,7 @@
 [![Offline Engine](https://img.shields.io/badge/Offline%20Engine-100%25%20Deterministic-2A2A2D?style=flat-square&labelColor=161618)](netcoop/core/)
 [![License](https://img.shields.io/badge/License-MIT-2A2A2D?style=flat-square&labelColor=161618)](LICENSE)
 
-A production-grade, shared-nothing multi-agent platform for enterprise and campus network fault diagnosis, cross-domain evidence corroboration, and safe simulated remediation planning.
+A modular, shared-nothing multi-agent platform for enterprise and campus network fault diagnosis, cross-domain evidence corroboration, and safe simulated remediation planning.
 
 ---
 
@@ -20,7 +20,7 @@ Existing approaches fall into two failure modes:
 2. **Naive LLM Wrappers**: Direct prompt-engineering wrappers hallucinate network topology, invent non-existent interfaces, violate JSON wire schemas, leak state across diagnostic turns, and cannot operate in air-gapped, zero-connectivity datacenters.
 
 **The NetCoop AI Insight**:
-Network diagnosis is fundamentally a multi-perspective consensus problem. NetCoop AI decomposes network intelligence into isolated, domain-specialist microservices (Telemetry, Topology, Configuration, and Syslogs) operating as decoupled operating system processes. Agents share zero memory and communicate strictly through versioned, strongly-typed wire envelopes (`schemas/envelope.json`). A LangGraph state-machine orchestrator manages multi-turn mediation, routing targeted cross-inquiries (`payload.inquiries`) between specialists to corroborate empirical evidence (`Observation`) and debate causal hypotheses (`Hypothesis`). When evidence is incomplete, corrupted, or conflicting, the system strictly refuses to guess and emits an auditable `insufficient_evidence` determination.
+Network diagnosis is fundamentally a multi-perspective consensus problem. NetCoop AI decomposes network intelligence into six specialist agents plus a synthesizer operating as decoupled processes (Telemetry, Topology, Configuration, Log, Classifier, and Wifi Services specialists, with consensus mediation by the Synthesizer). Agents share zero memory and communicate strictly through versioned, strongly-typed wire envelopes (`schemas/envelope.json`). A LangGraph state-machine orchestrator manages multi-turn mediation, routing targeted cross-inquiries (`payload.inquiries`) between specialists to corroborate empirical evidence (`Observation`) and debate causal hypotheses (`Hypothesis`). When evidence is incomplete, corrupted, or conflicting, the system strictly refuses to guess and emits an auditable `insufficient_evidence` determination.
 
 
 ---
@@ -30,7 +30,7 @@ Network diagnosis is fundamentally a multi-perspective consensus problem. NetCoo
 | Evaluation Pillar | Hackathon Weight | NetCoop AI Implementation |
 | :--- | :---: | :--- |
 | **Interoperability & Protocol Design** | 30% | Versioned JSON schema envelope (v1.0.0), strict Pydantic v2 validation, explicit field semantics, SI unit enforcement, zero internal state leakage between agents (`docs/protocol.md`, `schemas/envelope.json`, `gateway/adapters/organizer_adapter.py`). |
-| **Diagnostic Accuracy & Evidence Quality** | 25% | Multi-evidence correlation graph, timestamp alignment, 21 ground-truth benchmark scenarios (100% accuracy), and strict enforcement of `status: "insufficient_evidence"` when criteria are unmet. |
+| **Diagnostic Accuracy & Evidence Quality** | 25% | Multi-evidence correlation graph, timestamp alignment, measured synthetic benchmark evaluation (in-distribution 64.4%, held-out 40.0%, selective accuracy 93.8% at 40% coverage), and strict enforcement of `status: "insufficient_evidence"` when criteria are unmet. |
 | **Orchestration & Conflict Resolution** | 15% | LangGraph state graph with supervisory mediation, message bus pub/sub, targeted peer inquiry passes, dynamic hypothesis ranking, and deterministic conflict arbitration matrix (`orchestrator/`, `core/bus.py`). |
 | **Robustness to Missing / Incompatible Data** | 15% | Clock skew normalization, unit converter layer (bps/Kbps/Mbps/Gbps, ms/us), fuzzy device alias mapping, and Hypothesis property-based fuzzing (`core/normalizer.py`, `gateway/adapters/organizer_adapter.py`, `tests/test_robustness_hypothesis.py`, `tests/test_chaos.py`). |
 | **Innovation, Usability, Extensibility** | 10% | Model Context Protocol (MCP) server for external AI tools, Human-in-the-Loop (HITL) approval gates, pause/resume persistence via SQLite, simulated remediation sandbox, twin UI (Web Dashboard + Typer CLI), seeded generator with chaos knobs (`data/generator.py`, `mcp_server/`, `dashboard/`, `cli/`). |
@@ -38,9 +38,9 @@ Network diagnosis is fundamentally a multi-perspective consensus problem. NetCoo
 | Evaluation Dimension | Weight | Our Implementation & Architectural Advantage | Verifiable Benchmark Result |
 | :--- | :---: | :--- | :---: |
 | **Interoperability & Protocol Design** | **30%** | Dedicated HTTP REST microservices with zero shared memory. Fully documented wire schema (`schemas/envelope.json`), semantic versioning (`1.0.0`), strict SI unit conversions, and Ingestion Gateway with 12 typed validation error handlers for multi-vendor and organizer Colab telemetry. | **100% Schema Validation**<br/>Zero Protocol Leaks |
-| **Diagnostic Accuracy & Evidence Quality** | **25%** | Two-layer finding architecture: empirical facts (`Observation`) separate from inferred causes (`Hypothesis`). Complete corroboration matrix with calibrated confidence scoring and mathematical abstention bounds. | **95.8% Overall Accuracy**<br/>**0.952 Macro F1** across 120 samples |
+| **Diagnostic Accuracy & Evidence Quality** | **25%** | Two-layer finding architecture: empirical facts (`Observation`) separate from inferred causes (`Hypothesis`). Complete corroboration matrix with calibrated confidence scoring and mathematical abstention bounds. | **64.4% In-Distribution Accuracy** (synthetic)<br/>**93.8% Selective Accuracy** at 40% coverage |
 | **Orchestration & Conflict Resolution** | **15%** | LangGraph cyclical state graph. The Mediator agent evaluates hypothesis overlap, triggers cross-inquiry turns, and applies a strict domain precedence hierarchy (physical optics > buffer drops > routing flaps > ping latency). | **+8.3% F1 gain** over unmediated pipelines |
-| **Robustness to Missing & Corrupted Data** | **15%** | Evaluated on independently generated non-Gaussian held-out data (Pareto/log-normal noise, bursty dropouts) and organizer Colab telemetry. Degrades gracefully to `insufficient_evidence` rather than hallucinating root causes. | **93.3% Held-Out Accuracy**<br/>**92.0% Organizer Accuracy** |
+| **Robustness to Missing & Corrupted Data** | **15%** | Evaluated on independently generated non-Gaussian held-out data (Pareto/log-normal noise, bursty dropouts) and organizer Colab telemetry. Degrades gracefully to `insufficient_evidence` rather than hallucinating root causes. | **40.0% Held-Out Accuracy** (synthetic)<br/>**66.7% Organizer Set Match** |
 | **Usability, Extensibility & Innovation** | **10%** | Stdio Model Context Protocol (MCP) server for IDE/agent tooling; blast-radius bounded simulated remediation engine with rollback automation; Rich monochrome CLI (`netcoop`); and real-time React web dashboard. | **Sub-120ms P95 Latency**<br/>Zero Real Device Impact |
 | **Code Quality, Docs & Demo** | **5%** | Clean-room architectural separation, 105 passing automated tests, automated dynamic README generation, Playwright visual tests, and deterministic offline replay. | **105 Passing Tests**<br/>100% Offline Core |
 
@@ -48,16 +48,16 @@ Network diagnosis is fundamentally a multi-perspective consensus problem. NetCoo
 
 ## 3. Results at a Glance
 
-All metrics below are dynamically extracted from benchmark evaluations in `eval/results/` by `scripts/build_readme.py`:
+> Note: Benchmark evaluations were executed in in-process fallback mode (zero external microservice dependency). Synthetic benchmark performance reflects measured metrics from `eval/results/benchmark_latest.json`: in-distribution 64.4%, held-out 40.0%, selective accuracy 93.8% at 40% coverage.
 
 ### 3.1 Benchmark Dataset Splits
 
 | Evaluation Split | Sample Count | Accuracy | Macro F1 | Expected Calibration Error (ECE) | Brier Score |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **In-Distribution Evaluation** | 65 | **98.5%** | 0.982 | 0.021 | 0.019 |
-| **Held-Out Evaluation (Non-Gaussian)** | 30 | **93.3%** | 0.925 | 0.054 | 0.048 |
-| **Organizer Colab Telemetry** | 25 | **92.0%** | 0.912 | 0.068 | 0.059 |
-| **Combined Benchmark** | **120** | **95.8%** | **0.952** | **0.042** | **0.038** |
+| **In-Distribution Evaluation (Synthetic)** | 250 | **64.4%** | 0.593 | 0.180 | 0.201 |
+| **Held-Out Evaluation (Synthetic Non-Gaussian)** | 150 | **40.0%** | - | - | - |
+| **Organizer Colab Telemetry (Set Match)** | 900 | **66.7%** | - | - | - |
+| **Selective Classification (Coverage 40%)** | 160 | **93.8%** | - | - | - |
 
 > Note on Organizer Dataset: The organizer evaluation dataset consists of narrow single-device campus distribution telemetry snapshots (`data/organizer/`) rather than full multi-tier backbone fabric traces.
 
@@ -107,7 +107,7 @@ NetCoop AI enables operators to trade coverage for zero diagnostic risk by confi
 
 ## 4. Architecture & Agent Specifications
 
-The platform is designed around strict process isolation. Every specialist agent runs in its own dedicated Python interpreter process with an independent HTTP REST server:
+The platform is designed around strict process isolation. Six specialist agents plus a synthesizer operate with independent responsibilities across dedicated microservices or in-process fallback:
 
 ![NetCoop AI Architecture Diagram](docs/assets/architecture.svg)
 
@@ -119,7 +119,9 @@ The platform is designed around strict process isolation. Every specialist agent
 | **Telemetry Agent** | `telemetry_agent`<br/>`:8001` | `POST /process` | Time-series metrics (loss, latency, jitter, bandwidth, drops) | `metric_anomaly`: Interface saturation, loss spikes, buffer tail-drops | Loss > 1.0%, Latency > 100ms, Link Util > 90% | Missing time-series: emits `insufficient_evidence` |
 | **Topology Agent** | `topology_agent`<br/>`:8002` | `POST /process` | Graph adjacency, LLDP/CDP, STP root, BGP state | `topology_change`: Path reroutes, BGP session flaps, blackholes | Flap count > 3/min, STP topology change = true | Disconnected graph: reports isolated nodes |
 | **Config Agent** | `config_agent`<br/>`:8003` | `POST /process` | Running configs, commit diffs, interface MTU/duplex | `config_diff`: MTU mismatches, duplex mismatches, VLAN pruning | MTU delta != 0, speed auto-neg mismatch | Unparsed vendor syntax quarantined |
-| **Log Agent** | `log_agent`<br/>`:8004` | `POST /process` | Device syslog stream, event severity, timestamps | `log_pattern`: CRC/FCS error bursts, auth failures, link downs | Pattern match frequency > 5 in 60s window | Corrupted logs: dropped to audit log |
+| **Log Agent** | `log_agent`<br/>`:8004` | `POST /process` | Device syslog stream, event severity, timestamps | `log_pattern`: CRC/FCS error bursts, session flaps, link downs | Pattern match frequency > 5 in 60s window | Corrupted logs: dropped to audit log |
+| **Classifier Agent** | `classifier_agent`<br/>`:8007` | `POST /process` | Time-window feature vectors across devices | `classifier_calib_probs`: Multi-class fault probability distribution | Split conformal quantile cutoff | Prediction set empty: model abstention |
+| **Wifi Services Agent** | `wifi_services_agent`<br/>`:8008` | `POST /process` | AP RSSI, SNR, client retransmissions, channel utilization | `wifi_degradation`: RF attenuation, coverage hole, AP saturation | RSSI < -75 dBm, Retransmit > 15% | Missing RF telemetry: emits `insufficient_evidence` |
 | **Synthesizer** | `synthesizer_agent`<br/>`:8005` | `POST /process` | All specialist observations, hypotheses, inquiries | `synthesis_submission`: Consolidated root cause and confidence | Corroboration score >= 0.70 | Conflict unresolvable: emits `insufficient_evidence` |
 | **Ingestion Gateway** | `gateway`<br/>`:8006` | `POST /ingest` | Raw heterogeneous telemetry, organizer JSONL | Canonicalized telemetry stream, audit quality report | Missing required keys, clock skew > 300s | Unrecognized format: 12 typed validation errors |
 
@@ -381,7 +383,7 @@ pip install -r requirements.txt
 ### 8.2 Start Specialist Agents & Orchestrator
 
 ```powershell
-# Launch all 5 specialist agents, gateway, and orchestrator in background processes
+# Launch all six specialist agents, synthesizer, gateway, and orchestrator in background processes
 python scripts/run_agents.py
 ```
 
@@ -494,7 +496,7 @@ NetCoop-AI/
 
 | Requirement | Implementation Module | Verification Status |
 | :--- | :--- | :---: |
-| 5 Isolated Agents Communicating Over HTTP | `netcoop/agents/*.py` (ports 8001–8005) | **Complete** (All tests passing) |
+| Six Specialist Agents Plus a Synthesizer | `netcoop/agents/*.py` (ports 8001–8005) | **Complete** (All tests passing) |
 | Authoritative Wire Envelope Schema | `schemas/envelope.json`, `docs/contract.md` | **Complete** |
 | LangGraph Orchestration & Mediation | `netcoop/orchestrator/graph.py`, `mediator.py` | **Complete** |
 | Zero-LLM Deterministic Engine | `netcoop/core/correlation.py`, `evidence.py` | **Complete** (100% offline) |
