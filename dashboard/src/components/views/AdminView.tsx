@@ -145,28 +145,28 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate }) => {
   });
 
   return (
-    <div className="space-y-6 font-mono text-[#111111] dark:text-[#EDEDEA]">
+    <div className="space-y-6 font-sans text-slate-800 dark:text-slate-100">
       {/* Network Administrator Header */}
-      <div className="border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5">
+      <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 border border-[#475569] text-[#475569] dark:text-[#94A3B8]">
+              <span className="text-[11px] uppercase font-bold tracking-wider px-2 py-0.5 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
                 Network Infrastructure Administration
               </span>
-              <span className="text-[10px] text-[#6B6B66] dark:text-[#888884]">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
                 Campus Fabric Domain: iitbbsr-campus-prod
               </span>
             </div>
-            <h2 className="text-xl font-bold tracking-tight">Network Administrator Operations</h2>
-            <p className="text-xs text-[#6B6B66] dark:text-[#888884] mt-0.5">
+            <h2 className="text-2xl font-bold tracking-tight text-[#0B2545] dark:text-slate-100">Network Administrator Operations</h2>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
               Fabric device health, maintenance scheduling, and operational incident assignment.
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => onNavigate && onNavigate("role_engineer")}
-              className="px-3.5 py-2 bg-[#475569] hover:bg-[#334155] text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-sm"
+              className="px-4 py-2 bg-[#0B2545] hover:bg-[#133E87] text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-sm"
             >
               Investigate Active Incidents &rarr;
             </button>
@@ -174,14 +174,14 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate }) => {
         </div>
 
         {scheduledMsg && (
-          <div className="mt-4 p-3 bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400 text-xs">
+          <div className="mt-4 p-3 bg-green-500/10 border border-green-500/30 text-green-700 dark:text-green-400 text-xs">
             {scheduledMsg}
           </div>
         )}
       </div>
 
       {/* Navigation Sub-Tabs */}
-      <div className="flex border-b border-[#E5E5E3] dark:border-[#2A2A2D] gap-1 overflow-x-auto text-xs">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-1 overflow-x-auto text-xs">
         {[
           { id: "overview", label: "Network Overview" },
           { id: "incidents", label: `Active Incidents (${activeIncidents.length})` },
@@ -196,8 +196,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate }) => {
             onClick={() => setActiveTab(tab.id as any)}
             className={`px-3.5 py-2.5 font-bold uppercase tracking-wider whitespace-nowrap border-b-2 transition-colors ${
               activeTab === tab.id
-                ? "border-[#475569] text-[#111111] dark:text-[#EDEDEA] bg-[#FAFAF9] dark:bg-[#0F0F10]"
-                : "border-transparent text-[#6B6B66] dark:text-[#888884] hover:text-[#111111] dark:hover:text-[#EDEDEA]"
+                ? "border-[#0B2545] text-[#0B2545] dark:text-blue-400 bg-slate-50 dark:bg-slate-800/50"
+                : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
             }`}
           >
             {tab.label}
@@ -270,7 +270,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate }) => {
             </div>
             <button
               onClick={() => onNavigate && onNavigate("role_engineer")}
-              className="px-4 py-2 bg-[#475569] hover:bg-[#334155] text-white text-xs font-bold uppercase tracking-wider transition-colors whitespace-nowrap"
+              className="px-4 py-2 bg-[#0B2545] hover:bg-[#133E87] text-white text-xs font-bold uppercase tracking-wider transition-colors whitespace-nowrap"
             >
               Investigate Active Incidents &rarr;
             </button>
@@ -576,7 +576,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate }) => {
                   type="button"
                   disabled={!newMaintReason.trim()}
                   onClick={() => setShowMaintConfirm(true)}
-                  className="w-full p-2 bg-[#475569] hover:bg-[#334155] disabled:opacity-40 text-white font-bold uppercase tracking-wider text-xs transition-colors"
+                  className="w-full p-2 bg-[#0B2545] hover:bg-[#133E87] disabled:opacity-40 text-white font-bold uppercase tracking-wider text-xs transition-colors"
                 >
                   Schedule Window...
                 </button>
@@ -626,7 +626,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate }) => {
                   </button>
                   <button
                     onClick={handleConfirmScheduleMaintenance}
-                    className="px-4 py-1.5 bg-[#475569] hover:bg-[#334155] text-white text-xs font-bold uppercase tracking-wider"
+                    className="px-4 py-1.5 bg-[#0B2545] hover:bg-[#133E87] text-white text-xs font-bold uppercase tracking-wider"
                   >
                     Confirm &amp; Schedule
                   </button>

@@ -3,6 +3,7 @@
 
 import asyncio
 import httpx
+import uuid
 
 from datetime import datetime, timezone
 
@@ -181,6 +182,11 @@ from storage.db import (
     list_tickets,
     update_ticket_status,
     link_ticket_incident,
+    save_diagnosis_run,
+    get_diagnosis_run,
+    get_latest_diagnosis_run_for_scenario,
+    list_diagnosis_runs_for_scenario,
+    compare_diagnosis_runs,
 
 )
 
@@ -1533,9 +1539,19 @@ def list_scenarios() -> List[Dict[str, Any]]:
 
 @app.get("/api/scenarios/{filename:path}")
 
-def get_scenario(filename: str) -> Dict[str, Any]:
+def get_scenario(
+    filename: str,
+    current_user: UserRecord = Depends(require_permissions([PERM_VIEW_FABRIC_HEALTH])),
+) -> Any:
 
     """Retrieve contents of a specific scenario or organizer sample file."""
+
+    if filename.endswith("/validate"):
+        actual_file = filename[:-len("/validate")]
+        return validate_scenario_endpoint(actual_file, current_user=current_user)
+    if filename.endswith("/runs"):
+        actual_file = filename[:-len("/runs")]
+        return list_scenario_runs_endpoint(actual_file, current_user=current_user)
 
     if filename.startswith("organizer/"):
 
@@ -1556,6 +1572,177 @@ def get_scenario(filename: str) -> Dict[str, Any]:
     with open(file_path, "r", encoding="utf-8") as f:
 
         return json.load(f)
+
+
+@app.get("/api/reports/latest", response_model=UnifiedDiagnosticReport)
+def get_latest_report_endpoint(
+    current_user: Optional[UserRecord] = Depends(get_current_user),
+) -> UnifiedDiagnosticReport:
+    """Retrieve the most recently completed unified diagnostic report."""
+    records = list_incidents()
+    for r in records:
+        if r.report_json:
+            try:
+                rep_dict = json.loads(r.report_json)
+                return UnifiedDiagnosticReport(**rep_dict)
+            except Exception:
+                continue
+    raise HTTPException(status_code=404, detail="No diagnostic reports available.")
+
+
+@app.get("/api/scenarios/{filename:path}/validate")
+def validate_scenario_endpoint(
+    filename: str,
+    current_user: UserRecord = Depends(require_permissions([PERM_VIEW_FABRIC_HEALTH])),
+) -> Dict[str, Any]:
+    """Run live schema and input quality validation on scenario data."""
+    if filename.startswith("organizer/"):
+        file_path = ORGANIZER_SAMPLES_DIR / filename.replace("organizer/", "")
+    else:
+        file_path = SCENARIOS_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Scenario file not found.")
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        raw_content = f.read()
+
+    try:
+        raw_data = json.loads(raw_content)
+    except Exception:
+        raw_data = raw_content
+
+    adapted = OrganizerAdapter.adapt_dataset(raw_data)
+    dq = adapted.get("data_quality", {})
+    return {
+        "scenario_filename": filename,
+        "detected_format": adapted.get("detected_format", "canonical"),
+        "quality_score": round(dq.get("overall_score", 1.0), 3),
+        "transformations_count": len(dq.get("transformations_applied", [])),
+        "validation_errors": dq.get("validation_errors", []),
+        "is_validated": True,
+        "records_count": adapted.get("record_count", 0),
+    }
+
+
+@app.post("/api/scenarios/{filename:path}/run")
+def run_scenario_diagnosis_endpoint(
+    filename: str,
+    current_user: UserRecord = Depends(require_permissions([PERM_EXECUTE_DIAGNOSIS])),
+) -> Dict[str, Any]:
+    """Execute a fresh multi-agent diagnosis run for a selected scenario, recording a unique execution run ID."""
+    if filename.startswith("organizer/"):
+        file_path = ORGANIZER_SAMPLES_DIR / filename.replace("organizer/", "")
+    else:
+        file_path = SCENARIOS_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Scenario file not found.")
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        scenario_data = json.load(f)
+
+    # Find latest existing run for this scenario for comparison linking
+    prev_run = get_latest_diagnosis_run_for_scenario(filename)
+    prev_run_id = prev_run.run_id if prev_run else None
+    prev_report = json.loads(prev_run.report_json) if (prev_run and prev_run.report_json) else None
+
+    # Generate unique execution ID for repeated diagnosis runs
+    timestamp_suffix = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    exec_uuid = uuid.uuid4().hex[:6]
+    execution_id = f"run-{timestamp_suffix}-{exec_uuid}"
+
+    # Inject unique execution identifier so agent graph runs a fresh execution
+    scenario_data["incident_id"] = execution_id
+    scenario_data["execution_id"] = execution_id
+
+    # Detect format and run diagnosis
+    format_detected = OrganizerAdapter.detect_format(scenario_data)
+    if format_detected == "organizer":
+        adapted = OrganizerAdapter.adapt_dataset(scenario_data)
+        report = run_diagnosis(adapted)
+    else:
+        report = run_diagnosis(scenario_data)
+
+    # Persist diagnosis run in database
+    conformal_set = getattr(report, "conformal_prediction_set", []) or []
+    unc_score = getattr(report.uncertainty, "score", 0.0) if hasattr(report, "uncertainty") else 0.0
+    save_diagnosis_run(
+        run_id=execution_id,
+        execution_id=execution_id,
+        scenario_filename=filename,
+        status="completed",
+        report_json=report.to_json(),
+        probable_cause=report.probable_cause,
+        confidence=report.confidence,
+        uncertainty_score=unc_score,
+        conformal_prediction_set=conformal_set,
+        previous_run_id=prev_run_id,
+        triggered_by=current_user.username,
+    )
+
+    # Retrieve newly recorded envelope messages
+    envelopes = [
+        {
+            "id": l.id,
+            "message_id": l.message_id,
+            "timestamp_utc": l.timestamp_utc,
+            "sender": l.sender,
+            "recipient": l.recipient,
+            "message_type": l.message_type,
+            "priority": l.priority,
+            "payload": json.loads(l.payload_json) if l.payload_json else {},
+            "context": json.loads(l.context_json) if l.context_json else {},
+        }
+        for l in get_envelope_logs(execution_id)
+    ]
+
+    return {
+        "run_id": execution_id,
+        "execution_id": execution_id,
+        "scenario_filename": filename,
+        "timestamp_utc": report.timestamp_utc,
+        "status": "completed",
+        "report": report.model_dump(),
+        "envelopes": envelopes,
+        "previous_run_id": prev_run_id,
+        "previous_report": prev_report,
+    }
+
+
+@app.get("/api/scenarios/{filename:path}/runs")
+def list_scenario_runs_endpoint(
+    filename: str,
+    current_user: UserRecord = Depends(require_permissions([PERM_VIEW_FABRIC_HEALTH])),
+) -> List[Dict[str, Any]]:
+    """List historical diagnostic execution runs for a scenario."""
+    runs = list_diagnosis_runs_for_scenario(filename)
+    return [
+        {
+            "run_id": r.run_id,
+            "execution_id": r.execution_id,
+            "scenario_filename": r.scenario_filename,
+            "status": r.status,
+            "probable_cause": r.probable_cause,
+            "confidence": r.confidence,
+            "uncertainty_score": r.uncertainty_score,
+            "previous_run_id": r.previous_run_id,
+            "created_at": r.created_at,
+        }
+        for r in runs
+    ]
+
+
+@app.get("/api/runs/{run_id}/compare/{previous_run_id}")
+def compare_runs_endpoint(
+    run_id: str,
+    previous_run_id: str,
+    current_user: UserRecord = Depends(require_permissions([PERM_VIEW_FABRIC_HEALTH])),
+) -> Dict[str, Any]:
+    """Compare two diagnostic runs and return structured change differences."""
+    diff = compare_diagnosis_runs(run_id, previous_run_id)
+    if "error" in diff:
+        raise HTTPException(status_code=404, detail=diff["error"])
+    return diff
+
 
 
 @app.get("/api/incidents/{incident_id}/envelopes")

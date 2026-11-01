@@ -42,4 +42,9 @@ from netcoop.storage.db import (
     update_ticket_status,
     link_ticket_incident,
     init_default_tickets,
+    save_diagnosis_run,
+    get_diagnosis_run,
+    get_latest_diagnosis_run_for_scenario,
+    list_diagnosis_runs_for_scenario,
+    compare_diagnosis_runs,
 )

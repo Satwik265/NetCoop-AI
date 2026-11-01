@@ -159,3 +159,24 @@ class TicketRecord(SQLModel, table=True):
     user_facing_summary: Optional[str] = Field(default=None)
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+class DiagnosisRunRecord(SQLModel, table=True):
+    """Persisted diagnosis execution run record for historical tracking and run-to-run comparison."""
+
+    __tablename__ = "diagnosis_runs"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    run_id: str = Field(unique=True, index=True)
+    execution_id: str = Field(index=True)
+    scenario_filename: str = Field(index=True)
+    status: str = Field(default="completed", index=True)
+    probable_cause: Optional[str] = Field(default=None, index=True)
+    confidence: float = Field(default=0.0)
+    uncertainty_score: float = Field(default=0.0)
+    conformal_prediction_set_json: Optional[str] = Field(default=None)
+    report_json: str
+    previous_run_id: Optional[str] = Field(default=None, index=True)
+    triggered_by: Optional[str] = Field(default=None, index=True)
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+

@@ -92,9 +92,21 @@ export interface TicketItem {
 
 export interface PlatformAdminViewProps {
   onNavigate?: (navId: string) => void;
+  isChaosActive?: boolean;
+  onToggleChaos?: () => void;
+  features?: {
+    FEATURE_HITL: boolean;
+    FEATURE_REMEDIATION_SIM: boolean;
+    FEATURE_RESUME: boolean;
+  };
 }
 
-export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({ onNavigate }) => {
+export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
+  onNavigate,
+  isChaosActive = false,
+  onToggleChaos,
+  features,
+}) => {
   const { user: currentAuthUser, impersonateUser } = useAuth();
   const [activeTab, setActiveTab] = useState<
     "overview" | "health" | "agents" | "incidents" | "tickets" | "users" | "audit" | "evaluation"
@@ -349,7 +361,7 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({ onNavigate
           { id: "tickets", label: `Support Tickets (${openTickets.length} open)` },
           { id: "users", label: `Users & Roles (${users.length})` },
           { id: "audit", label: `Governance & Audit (${remediationLogs.length + authLogs.length})` },
-          { id: "evaluation", label: "Evaluator Test Guide" },
+          { id: "evaluation", label: "Testing & Evaluation" },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -897,11 +909,74 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({ onNavigate
       )}
 
       {/* ----------------------------------------------------------------- */}
-      {/* TAB 8: Evaluator Test Guide & 7 Mandatory Capabilities             */}
+      {/* TAB 8: Testing & Evaluation                                        */}
       {/* ----------------------------------------------------------------- */}
       {activeTab === "evaluation" && (
         <div className="space-y-6">
-          <div className="border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5 space-y-4">
+          {/* Restricted Testing & Fault Injection */}
+          <div className="p-5 border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#F8FAFC] dark:bg-[#0B132B] space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#B91C1C]">
+                    Restricted Test Operation
+                  </span>
+                  <span className="px-2 py-0.5 border border-[#B91C1C]/30 bg-[#FEF2F2] text-[#B91C1C] text-[11px] font-bold">
+                    Platform Admin Only
+                  </span>
+                </div>
+                <h4 className="text-base font-bold text-[#0B2545] dark:text-[#F1F5F9] mt-0.5">
+                  Run Fault-Injection Test (Chaos Mode)
+                </h4>
+                <p className="text-xs text-[#475569] dark:text-[#94A3B8]">
+                  Injects artificial link saturation, queue drops, and packet latency to stress-test multi-agent diagnostic consensus.
+                </p>
+              </div>
+              {onToggleChaos && (
+                <button
+                  onClick={onToggleChaos}
+                  className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors shadow-sm ${
+                    isChaosActive
+                      ? "bg-[#DC2626] text-white hover:bg-[#B91C1C]"
+                      : "bg-[#0B2545] text-white hover:bg-[#133E87]"
+                  }`}
+                >
+                  {isChaosActive ? "Fault-Injection Active" : "Run Fault-Injection Test"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Informational Feature Flags Status */}
+          {features && (
+            <div className="p-4 border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#0B2545] dark:text-[#94A3B8]">
+                Feature Availability &amp; Safeguards (Informational Status)
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="p-2.5 border border-[#E2E8F0] dark:border-[#2A2A2D] flex items-center justify-between">
+                  <span>Human-in-the-Loop (HITL)</span>
+                  <span className={`px-2 py-0.5 border font-semibold ${features.FEATURE_HITL ? "text-[#15803D] bg-[#F0FDF4] border-[#15803D]/30" : "text-[#475569] bg-[#F8FAFC]"}`}>
+                    {features.FEATURE_HITL ? "Enabled" : "Disabled"}
+                  </span>
+                </div>
+                <div className="p-2.5 border border-[#E2E8F0] dark:border-[#2A2A2D] flex items-center justify-between">
+                  <span>Remediation Simulation</span>
+                  <span className={`px-2 py-0.5 border font-semibold ${features.FEATURE_REMEDIATION_SIM ? "text-[#15803D] bg-[#F0FDF4] border-[#15803D]/30" : "text-[#475569] bg-[#F8FAFC]"}`}>
+                    {features.FEATURE_REMEDIATION_SIM ? "Enabled" : "Disabled"}
+                  </span>
+                </div>
+                <div className="p-2.5 border border-[#E2E8F0] dark:border-[#2A2A2D] flex items-center justify-between">
+                  <span>Session Checkpoint Resume</span>
+                  <span className={`px-2 py-0.5 border font-semibold ${features.FEATURE_RESUME ? "text-[#15803D] bg-[#F0FDF4] border-[#15803D]/30" : "text-[#475569] bg-[#F8FAFC]"}`}>
+                    {features.FEATURE_RESUME ? "Enabled" : "Disabled"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5 space-y-4">
             <h3 className="text-sm font-bold uppercase tracking-wider">7 Mandatory Project Capabilities Verification</h3>
             <p className="text-xs text-[#6B6B66] dark:text-[#888884]">
               Every mandatory project capability is wired to live backend contracts and persisted SQLite records across {scenariosCount || 25} benchmark scenarios.

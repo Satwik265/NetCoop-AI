@@ -319,3 +319,4 @@ def test_user_status_deactivation(client: TestClient):
     )
     assert res_enable.status_code == 200
     assert res_enable.json()["is_active"] is True
+

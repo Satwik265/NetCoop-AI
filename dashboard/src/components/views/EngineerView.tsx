@@ -60,9 +60,17 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
     "summary" | "explanation" | "evidence" | "action" | "tickets"
   >("summary");
   const [expandedPayloadId, setExpandedPayloadId] = useState<string | null>(null);
+  const [showTechnicalMessages, setShowTechnicalMessages] = useState<boolean>(false);
   const [showAllEvidence, setShowAllEvidence] = useState<boolean>(false);
   const [linkTicketId, setLinkTicketId] = useState<string>("");
   const [linkMsg, setLinkMsg] = useState<string | null>(null);
+
+  // Synchronize when report changes from external run
+  useEffect(() => {
+    if (report?.incident_id) {
+      setSelectedIncidentId(report.incident_id);
+    }
+  }, [report?.incident_id]);
 
   // Fetch live incident list
   useEffect(() => {
@@ -92,12 +100,13 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
               timestamp_utc: new Date(Date.now() - 300000).toISOString(),
               sender: "telemetry_agent",
               recipient: "synthesizer_agent",
-              message_type: "OBSERVATION",
-              priority: "high",
+              message_type: "METRIC_ANOMALY",
               payload: {
-                finding: "Interface spine-01:et-0/0/1 exceeded 90% utilization threshold (94.2%).",
                 metric: "link_utilization_pct",
                 value: 94.2,
+                threshold: 85.0,
+                unit: "percent",
+                finding: "High egress link utilization detected on spine-01 (et-0/0/1).",
               },
             },
             {
@@ -105,12 +114,9 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
               timestamp_utc: new Date(Date.now() - 240000).toISOString(),
               sender: "log_agent",
               recipient: "synthesizer_agent",
-              message_type: "OBSERVATION",
-              priority: "critical",
+              message_type: "LOG_ANOMALY",
               payload: {
-                finding: "Syslog buffer drop burst detected on egress queue (4,500 drops/s).",
-                metric: "queue_drops",
-                value: 4500,
+                finding: "Buffer queue tail drops corroborated at 4,500 drops/s.",
               },
             },
             {
@@ -118,24 +124,22 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
               timestamp_utc: new Date(Date.now() - 180000).toISOString(),
               sender: "topology_agent",
               recipient: "synthesizer_agent",
-              message_type: "HYPOTHESIS",
-              priority: "medium",
+              message_type: "PATH_DISCOVERY",
               payload: {
-                finding: "Secondary ECMP path via spine-02:et-0/0/2 available with 28.1% load and 0 drops.",
-                candidate_path: "spine-02",
+                finding: "Alternate redundant transit link spine-02 available with 28.1% load.",
               },
             },
             {
               message_id: "env-004",
               timestamp_utc: new Date(Date.now() - 120000).toISOString(),
               sender: "synthesizer_agent",
-              recipient: "remediation_engine",
-              message_type: "SYNTHESIS_DECISION",
-              priority: "high",
+              recipient: "remediation_agent",
+              message_type: "DIAGNOSTIC_CONSENSUS",
               payload: {
                 probable_cause: "INTERFACE_SATURATION_QUEUE_OVERFLOW",
                 confidence: 0.94,
-                recommended_action: "act-rebalance-ecmp-01",
+                uncertainty: 0.06,
+                conformal_prediction_set: ["INTERFACE_SATURATION_QUEUE_OVERFLOW", "ECMP_HASH_IMBALANCE"],
               },
             },
           ]);
@@ -155,50 +159,101 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
       .catch(() => {});
   }, []);
 
-  const handleLinkTicket = async () => {
-    if (!linkTicketId.trim() || !selectedIncidentId) return;
+  const handleLinkTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!linkTicketId.trim()) return;
+    setLinkMsg(null);
     try {
       const res = await apiFetch(`/api/tickets/${linkTicketId}/link-incident`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ incident_id: selectedIncidentId }),
       });
       if (res.ok) {
-        setTickets((prev) =>
-          prev.map((t) => (t.ticket_id === linkTicketId ? { ...t, linked_incident_id: selectedIncidentId } : t))
-        );
-        setLinkMsg(`Ticket ${linkTicketId} successfully linked to ${selectedIncidentId}.`);
+        setLinkMsg(`Ticket ${linkTicketId} successfully linked to incident ${selectedIncidentId}.`);
         setLinkTicketId("");
-        setTimeout(() => setLinkMsg(null), 3000);
+        const refreshed = await apiFetch("/api/tickets");
+        if (refreshed.ok) setTickets(await refreshed.json());
       } else {
-        const err = await res.json().catch(() => ({}));
-        setLinkMsg(err.detail || "Failed to link ticket.");
+        const err = await res.json().catch(() => ({ detail: "Failed to link ticket." }));
+        setLinkMsg(`Error: ${err.detail || "Unable to associate ticket."}`);
       }
     } catch {
-      setLinkMsg("Network error linking ticket.");
+      setLinkMsg("Network error connecting to ticket service.");
     }
   };
 
-  // Primary telemetry anomalies (top 3 critical) vs secondary
   const primaryTelemetry = [
-    { name: "Max Link Utilization", value: "94.2%", nominal: "< 70.0%", status: "critical", delta: "+24.2%" },
-    { name: "Interface Queue Drops", value: "4,500 /s", nominal: "0 /s", status: "critical", delta: "+4500" },
-    { name: "Packet Loss Rate", value: "14.8%", nominal: "< 0.1%", status: "critical", delta: "+14.7%" },
+    {
+      name: "Egress Link Utilization",
+      value: "94.2%",
+      unit: "percent",
+      nominal: "< 70.0%",
+      delta: "+24.2%",
+      source: "telemetry_agent (SNMP ifHCOutOctets)",
+      timestamp: "2026-11-01T07:15:00Z",
+      explanation: "Interface throughput exceeds the 85.0% critical threshold, driving tail-drop buffer starvation.",
+    },
+    {
+      name: "Queue Drop Rate",
+      value: "4,500 drops/s",
+      unit: "packets/second",
+      nominal: "0 drops/s",
+      delta: "+4,500",
+      source: "log_agent (Hardware ASIC Telemetry)",
+      timestamp: "2026-11-01T07:15:05Z",
+      explanation: "Hardware buffers are dropping egress packets due to downstream link congestion.",
+    },
+    {
+      name: "End-to-End Latency (RTT)",
+      value: "48.5 ms",
+      unit: "milliseconds",
+      nominal: "12.0 ms",
+      delta: "+36.5 ms",
+      source: "telemetry_agent (ICMP Active Probes)",
+      timestamp: "2026-11-01T07:15:10Z",
+      explanation: "Packets spend excess time queuing in transmission buffers across transit hops.",
+    },
   ];
 
   const secondaryTelemetry = [
-    { name: "End-to-End Latency", value: "512.5 ms", nominal: "< 25.0 ms", status: "warning", delta: "+487.5ms" },
-    { name: "Ping RTT Jitter", value: "84.2 ms", nominal: "< 5.0 ms", status: "warning", delta: "+79.2ms" },
-    { name: "Spine-01 CPU Load", value: "34.2%", nominal: "< 75.0%", status: "ok", delta: "Normal" },
+    {
+      name: "RTT Jitter Variance",
+      value: "14.2 ms",
+      unit: "milliseconds",
+      nominal: "< 3.0 ms",
+      delta: "+11.2 ms",
+      source: "telemetry_agent (TWAMP probes)",
+      timestamp: "2026-11-01T07:15:12Z",
+      explanation: "Micro-burst queuing induces delay variation affecting real-time UDP streams.",
+    },
+    {
+      name: "CPU Utilization",
+      value: "38.4%",
+      unit: "percent",
+      nominal: "< 60.0%",
+      delta: "Nominal",
+      source: "telemetry_agent (Host telemetry)",
+      timestamp: "2026-11-01T07:15:15Z",
+      explanation: "Control plane CPU remains unconstrained; fault is isolated to data-plane egress buffers.",
+    },
+    {
+      name: "Memory Utilization",
+      value: "42.1%",
+      unit: "percent",
+      nominal: "< 70.0%",
+      delta: "Nominal",
+      source: "telemetry_agent (Host telemetry)",
+      timestamp: "2026-11-01T07:15:15Z",
+      explanation: "Routing daemon memory usage is stable with no memory pressure or leakage.",
+    },
   ];
 
-  // Participating Agents
   const agentContributions = [
     {
       agent: "Telemetry Agent",
-      role: "Interface Saturation Analysis",
+      role: "Metric & Bandwidth Auditing",
       status: "COMPLETED",
-      finding: "Detected 94.2% bandwidth capacity saturation on spine-01:et-0/0/1.",
+      finding: "Detected 94.2% bandwidth capacity saturation on spine-01 (port et-0/0/1).",
     },
     {
       agent: "Log Agent",
@@ -222,56 +277,59 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
       agent: "Synthesizer Agent",
       role: "Evidence Cross-Corroboration",
       status: "COMPLETED",
-      finding: "Synthesized multi-agent hypotheses with 94% conformal confidence.",
+      finding: "Synthesized multi-agent hypotheses with 94% calibrated confidence.",
     },
   ];
 
   const probableCause = report?.probable_cause || "INTERFACE_SATURATION_QUEUE_OVERFLOW";
   const confidencePct = Math.round((report?.confidence || 0.94) * 100);
+  const uncertaintyPct = Math.round(((report?.uncertainty as any)?.score || 0.06) * 100);
   const affectedDevices =
     report?.affected_devices && report.affected_devices.length > 0
       ? report.affected_devices
       : ["spine-01", "leaf-01", "leaf-02"];
 
   const linkedTickets = tickets.filter((t) => t.linked_incident_id === selectedIncidentId);
-  const unlinkedTickets = tickets.filter((t) => !t.linked_incident_id);
 
   return (
-    <div className="space-y-6 font-mono text-xs text-[#111111] dark:text-[#EDEDEA]">
-      {/* Top Banner: Root Cause & Actions (Level 1 Summary) */}
-      <div className="border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
+    <div className="space-y-6 font-sans text-sm text-[#0F172A] dark:text-[#EDEDEA]">
+      {/* Top Banner: Incident Summary Card (Level 1) */}
+      <div className="border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-6 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 bg-[#A08A5B]"></span>
-              <span className="text-[10px] text-[#6B6B66] dark:text-[#888884] uppercase tracking-wider font-bold">
-                Level 1 Summary &bull; Network Engineer Triage
+              <span className="w-2.5 h-2.5 rounded-full bg-[#15803D]"></span>
+              <span className="text-xs text-[#0B2545] dark:text-[#94A3B8] uppercase tracking-wider font-bold">
+                Network Engineer Incident Investigation
               </span>
             </div>
-            <div className="text-base font-bold mt-1">
+            <h2 className="text-xl font-bold text-[#0B2545] dark:text-[#F1F5F9]">
               {probableCause.replace(/_/g, " ")}
+            </h2>
+            <div className="text-xs text-[#475569] dark:text-[#94A3B8] flex flex-wrap items-center gap-3">
+              <span>Incident ID: <strong className="font-mono text-[#0F172A] dark:text-[#EDEDEA]">{selectedIncidentId}</strong></span>
+              <span>&bull;</span>
+              <span>Affected Devices: <strong className="font-mono">{affectedDevices.join(", ")}</strong></span>
+              <span>&bull;</span>
+              <span>Status: <strong className="uppercase text-[#15803D]">{report?.status || "Diagnosed"}</strong></span>
             </div>
-            <p className="mt-1 text-[11px] text-[#6B6B66] dark:text-[#888884] leading-relaxed">
-              Incident ID: <code className="text-[#111111] dark:text-[#EDEDEA] font-bold">{selectedIncidentId}</code> | Affected Devices:{" "}
-              <span className="font-semibold">{affectedDevices.join(", ")}</span>
-            </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="border border-[#5E7A6A] px-3 py-1.5 bg-[#5E7A6A]/10 text-center">
-              <div className="text-[9px] uppercase text-[#5E7A6A] font-bold">Conformal Confidence</div>
-              <div className="text-lg font-bold text-[#5E7A6A]">{confidencePct}%</div>
-              <div className="text-[9px] text-[#5E7A6A]">Interval [0.88, 0.98]</div>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="border border-[#15803D]/30 px-4 py-2 bg-[#F0FDF4] text-center">
+              <div className="text-[11px] uppercase text-[#15803D] font-bold">Calibrated Confidence</div>
+              <div className="text-2xl font-bold text-[#15803D]">{confidencePct}%</div>
+              <div className="text-[11px] text-[#475569]">Uncertainty: {uncertaintyPct}%</div>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-2">
               {incidents.length > 0 && (
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className="text-[9px] text-[#6B6B66] uppercase">Active Incident:</span>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-[#475569] font-medium">Select Incident:</span>
                   <select
                     value={selectedIncidentId}
                     onChange={(e) => setSelectedIncidentId(e.target.value)}
-                    className="bg-[#FAFAF9] dark:bg-[#0F0F10] border border-[#E5E5E3] dark:border-[#2A2A2D] px-1.5 py-0.5 text-[10px] font-mono outline-none"
+                    className="bg-[#F8FAFC] dark:bg-[#0F0F10] border border-[#E2E8F0] dark:border-[#2A2A2D] px-2 py-1 text-xs font-mono outline-none"
                   >
                     {incidents.map((inc) => (
                       <option key={inc.incident_id} value={inc.incident_id}>
@@ -282,38 +340,38 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
                 </div>
               )}
               <button
-                onClick={onLaunchSimulation}
-                className="w-full px-3 py-1.5 bg-[#475569] hover:bg-[#334155] text-white uppercase text-[10px] font-semibold transition-colors"
+                onClick={() => setActiveTab("explanation")}
+                className="w-full px-4 py-2 bg-[#0B2545] hover:bg-[#133E87] text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-sm"
               >
-                Launch Remediation Sandbox
+                View Investigation &rarr;
               </button>
             </div>
           </div>
         </div>
 
         {linkMsg && (
-          <div className="mt-3 p-2 bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 text-xs">
+          <div className="mt-4 p-3 bg-[#EEF4FB] border border-[#133E87]/30 text-[#0B2545] text-xs">
             {linkMsg}
           </div>
         )}
       </div>
 
       {/* 4-Level Progressive Disclosure Navigation Bar */}
-      <div className="flex border-b border-[#E5E5E3] dark:border-[#2A2A2D] gap-1 overflow-x-auto text-xs">
+      <div className="flex border-b border-[#E2E8F0] dark:border-[#2A2A2D] gap-2 overflow-x-auto text-sm">
         {[
-          { id: "summary", label: "Level 1: Summary" },
-          { id: "explanation", label: "Level 2: Explanation & Timeline" },
-          { id: "evidence", label: "Level 3: Telemetry & Conformal" },
-          { id: "action", label: "Level 4: Remediation & Approvals" },
+          { id: "summary", label: "1. Incident Summary — What is wrong?" },
+          { id: "explanation", label: "2. Investigation Details — Why did it happen?" },
+          { id: "evidence", label: "3. Evidence & Measurements — What supports the diagnosis?" },
+          { id: "action", label: "4. Recommended Actions — What should happen next?" },
           { id: "tickets", label: `Linked Support Tickets (${linkedTickets.length})` },
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`px-3.5 py-2.5 font-bold uppercase tracking-wider whitespace-nowrap border-b-2 transition-colors ${
+            className={`px-4 py-3 font-semibold whitespace-nowrap border-b-2 transition-colors ${
               activeTab === tab.id
-                ? "border-[#475569] text-[#111111] dark:text-[#EDEDEA] bg-[#FAFAF9] dark:bg-[#0F0F10]"
-                : "border-transparent text-[#6B6B66] dark:text-[#888884] hover:text-[#111111] dark:hover:text-[#EDEDEA]"
+                ? "border-[#0B2545] dark:border-[#3A86FF] text-[#0B2545] dark:text-[#3A86FF] bg-[#EEF4FB]/50 dark:bg-[#161618]"
+                : "border-transparent text-[#475569] dark:text-[#888884] hover:text-[#0B2545] dark:hover:text-[#EDEDEA]"
             }`}
           >
             {tab.label}
@@ -322,99 +380,113 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
       </div>
 
       {/* ----------------------------------------------------------------- */}
-      {/* LEVEL 1: Summary                                                  */}
+      {/* LEVEL 1: Incident Summary — What is wrong?                        */}
       {/* ----------------------------------------------------------------- */}
       {activeTab === "summary" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618]">
-              <span className="text-[10px] uppercase text-[#6B6B66] dark:text-[#888884]">What is Wrong?</span>
-              <div className="text-sm font-bold mt-1 text-[#A08A5B]">Egress Buffer Saturation</div>
-              <p className="text-[11px] text-[#6B6B66] dark:text-[#888884] mt-1 leading-relaxed">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="p-5 border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] space-y-2">
+              <span className="text-xs uppercase font-bold text-[#B45309]">What is Wrong?</span>
+              <h3 className="text-base font-bold text-[#0B2545] dark:text-[#EDEDEA]">Egress Buffer Saturation</h3>
+              <p className="text-sm text-[#475569] dark:text-[#888884] leading-relaxed">
                 Heavy traffic load between Core Spine switch and Distribution Leaf has exceeded interface queue thresholds, causing tail drops and packet loss.
               </p>
             </div>
 
-            <div className="p-4 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618]">
-              <span className="text-[10px] uppercase text-[#6B6B66] dark:text-[#888884]">Why Did It Happen?</span>
-              <div className="text-sm font-bold mt-1">ECMP Flow Imbalance</div>
-              <p className="text-[11px] text-[#6B6B66] dark:text-[#888884] mt-1 leading-relaxed">
+            <div className="p-5 border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] space-y-2">
+              <span className="text-xs uppercase font-bold text-[#0B2545] dark:text-[#94A3B8]">Why Did It Happen?</span>
+              <h3 className="text-base font-bold text-[#0F172A] dark:text-[#EDEDEA]">ECMP Flow Imbalance</h3>
+              <p className="text-sm text-[#475569] dark:text-[#888884] leading-relaxed">
                 Elephant flow hash collision routed redundant data transfers through a single link while spine-02 remained underutilized at 28.1%.
               </p>
             </div>
 
-            <div className="p-4 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618]">
-              <span className="text-[10px] uppercase text-[#6B6B66] dark:text-[#888884]">What Should Be Done?</span>
-              <div className="text-sm font-bold mt-1 text-[#5E7A6A]">Rebalance ECMP Weights</div>
-              <p className="text-[11px] text-[#6B6B66] dark:text-[#888884] mt-1 leading-relaxed">
-                Execute safe simulated remediation proposal <code>act-rebalance-ecmp-01</code> to divert 40% of peak traffic to the alternate spine path.
+            <div className="p-5 border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] space-y-2">
+              <span className="text-xs uppercase font-bold text-[#15803D]">What Should Be Done?</span>
+              <h3 className="text-base font-bold text-[#15803D]">Rebalance ECMP Weights</h3>
+              <p className="text-sm text-[#475569] dark:text-[#888884] leading-relaxed">
+                Execute safe simulated remediation proposal <code className="font-mono text-xs">act-rebalance-ecmp-01</code> to divert 40% of peak traffic to the alternate spine path.
               </p>
             </div>
           </div>
 
-          <div className="p-4 border border-[#475569] bg-[#FAFAF9] dark:bg-[#0F0F10] flex items-center justify-between">
+          <div className="p-5 border border-[#133E87]/30 bg-[#EEF4FB] dark:bg-[#0B132B] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="font-bold text-xs uppercase">Step 2: Deep Dive Investigation Available</div>
-              <div className="text-[11px] text-[#6B6B66] dark:text-[#888884]">
+              <div className="font-bold text-sm text-[#0B2545] dark:text-[#F1F5F9]">
+                Step 2: Deep Dive Investigation Available
+              </div>
+              <div className="text-xs text-[#475569] dark:text-[#94A3B8]">
                 Explore participating agent observations or review calibrated telemetry evidence.
               </div>
             </div>
             <button
               onClick={() => setActiveTab("explanation")}
-              className="px-4 py-2 bg-[#475569] hover:bg-[#334155] text-white font-bold uppercase text-xs tracking-wider"
+              className="px-5 py-2.5 bg-[#0B2545] hover:bg-[#133E87] text-white font-bold text-xs uppercase tracking-wider transition-colors shadow-sm"
             >
-              View Explanation &rarr;
+              View Investigation Details &rarr;
             </button>
           </div>
         </div>
       )}
 
       {/* ----------------------------------------------------------------- */}
-      {/* LEVEL 2: Explanation & Collaboration Timeline                     */}
+      {/* LEVEL 2: Investigation Details — Why did it happen?               */}
       {/* ----------------------------------------------------------------- */}
       {activeTab === "explanation" && (
         <div className="space-y-6">
           {/* Agent Contributions Grid */}
-          <div className="border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618]">
-            <div className="p-4 border-b border-[#E5E5E3] dark:border-[#2A2A2D]">
-              <h3 className="text-sm font-bold uppercase tracking-wider">Participating Domain Agents</h3>
-              <p className="text-xs text-[#6B6B66] dark:text-[#888884]">
-                Observations and hypotheses contributed by isolated specialized agents.
+          <div className="border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618]">
+            <div className="p-5 border-b border-[#E2E8F0] dark:border-[#2A2A2D]">
+              <h3 className="text-base font-bold text-[#0B2545] dark:text-[#F1F5F9]">Participating Domain Agents</h3>
+              <p className="text-xs text-[#475569] dark:text-[#888884]">
+                Domain findings and hypotheses contributed by isolated specialized agents.
               </p>
             </div>
-            <div className="divide-y divide-[#E5E5E3] dark:divide-[#2A2A2D]">
+            <div className="divide-y divide-[#E2E8F0] dark:divide-[#2A2A2D]">
               {agentContributions.map((agent) => (
                 <div key={agent.agent} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-2">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold">{agent.agent}</span>
-                      <span className="text-[#6B6B66] dark:text-[#888884] text-[11px]">&bull; {agent.role}</span>
-                      <span className="px-1.5 py-0.2 border border-[#5E7A6A] text-[#5E7A6A] text-[9px] uppercase font-semibold">
+                      <span className="font-bold text-sm">{agent.agent}</span>
+                      <span className="text-[#475569] dark:text-[#888884] text-xs">&bull; {agent.role}</span>
+                      <span className="px-2 py-0.5 border border-[#15803D]/40 text-[#15803D] bg-[#F0FDF4] text-xs font-semibold">
                         {agent.status}
                       </span>
                     </div>
-                    <div className="text-[11px] text-[#6B6B66] dark:text-[#888884] mt-1">{agent.finding}</div>
+                    <div className="text-xs text-[#475569] dark:text-[#888884] mt-1">{agent.finding}</div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Collaboration Timeline (Raw Protocol Envelopes Collapsed by Default) */}
-          <div className="border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618]">
-            <div className="p-4 border-b border-[#E5E5E3] dark:border-[#2A2A2D] flex items-center justify-between">
+          {/* Collaboration Timeline & Collapsible Technical Messages */}
+          <div className="border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618]">
+            <div className="p-5 border-b border-[#E2E8F0] dark:border-[#2A2A2D] flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider">Inter-Agent Collaboration Timeline</h3>
-                <p className="text-xs text-[#6B6B66] dark:text-[#888884]">
-                  Protocol v1.0 message envelopes. Raw JSON payloads are collapsed by default.
+                <h3 className="text-base font-bold text-[#0B2545] dark:text-[#F1F5F9]">
+                  Inter-Agent Collaboration Timeline
+                </h3>
+                <p className="text-xs text-[#475569] dark:text-[#888884]">
+                  Protocol v1.0 message envelopes. Raw JSON payloads are collapsed under technical messages.
                 </p>
               </div>
-              <span className="text-xs text-[#6B6B66] dark:text-[#888884]">{envelopes.length} Envelopes</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-[#475569] dark:text-[#888884]">
+                  {envelopes.length} Messages Exchanged
+                </span>
+                <button
+                  onClick={() => setShowTechnicalMessages((prev) => !prev)}
+                  className="px-3 py-1 border border-[#133E87] text-[#133E87] hover:bg-[#EEF4FB] text-xs font-semibold transition-colors"
+                >
+                  {showTechnicalMessages ? "Hide Technical Messages" : "View Technical Messages"}
+                </button>
+              </div>
             </div>
 
-            <div className="divide-y divide-[#E5E5E3] dark:divide-[#2A2A2D]">
+            <div className="divide-y divide-[#E2E8F0] dark:divide-[#2A2A2D]">
               {loadingEnvelopes && (
-                <div className="p-4 text-xs text-[#6B6B66] dark:text-[#888884] text-center">
+                <div className="p-4 text-xs text-[#475569] text-center">
                   Loading protocol message envelopes...
                 </div>
               )}
@@ -422,36 +494,40 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
                 <div key={env.message_id} className="p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="px-1.5 py-0.5 border border-[#475569] text-[9px] uppercase font-semibold">
+                      <span className="px-2 py-0.5 border border-[#133E87]/30 bg-[#EEF4FB] text-[#133E87] text-xs font-mono font-semibold">
                         {env.message_type}
                       </span>
-                      <span className="font-bold">{env.sender}</span>
-                      <span className="text-[#6B6B66] dark:text-[#888884]">&rarr;</span>
-                      <span className="font-bold">{env.recipient}</span>
+                      <span className="font-bold text-xs">{env.sender}</span>
+                      <span className="text-[#475569]">&rarr;</span>
+                      <span className="font-bold text-xs">{env.recipient}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-[10px] text-[#6B6B66] dark:text-[#888884]">
+                      <span className="text-xs text-[#475569] font-mono">
                         {new Date(env.timestamp_utc).toLocaleTimeString()}
                       </span>
-                      <button
-                        onClick={() =>
-                          setExpandedPayloadId(expandedPayloadId === env.message_id ? null : env.message_id)
-                        }
-                        className="px-2 py-0.5 border border-[#E5E5E3] dark:border-[#2A2A2D] text-[10px] uppercase font-semibold hover:border-[#111111] dark:hover:border-[#EDEDEA]"
-                      >
-                        {expandedPayloadId === env.message_id ? "Hide JSON" : "Inspect Payload"}
-                      </button>
+                      {showTechnicalMessages && (
+                        <button
+                          onClick={() =>
+                            setExpandedPayloadId(
+                              expandedPayloadId === env.message_id ? null : env.message_id
+                            )
+                          }
+                          className="px-2 py-0.5 border border-[#E2E8F0] text-xs font-semibold hover:border-[#0B2545]"
+                        >
+                          {expandedPayloadId === env.message_id ? "Hide JSON" : "Inspect JSON"}
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  <div className="text-[11px] text-[#6B6B66] dark:text-[#888884]">
-                    {env.payload?.finding || env.payload?.probable_cause || "Message envelope processed."}
+                  <div className="text-xs text-[#475569] dark:text-[#888884]">
+                    {env.payload?.finding || env.payload?.probable_cause || "Message envelope processed cleanly."}
                   </div>
 
                   {/* Expandable Raw JSON Payload */}
-                  {expandedPayloadId === env.message_id && (
-                    <div className="p-3 bg-[#FAFAF9] dark:bg-[#0F0F10] border border-[#E5E5E3] dark:border-[#2A2A2D] mt-2 overflow-x-auto">
-                      <pre className="text-[10px] text-[#475569] dark:text-[#94A3B8]">
+                  {showTechnicalMessages && expandedPayloadId === env.message_id && (
+                    <div className="p-3 bg-[#F8FAFC] dark:bg-[#0B132B] border border-[#E2E8F0] dark:border-[#2A2A2D] mt-2 overflow-x-auto">
+                      <pre className="text-xs font-mono text-[#0B2545] dark:text-[#3A86FF]">
                         {JSON.stringify(env.payload, null, 2)}
                       </pre>
                     </div>
@@ -464,60 +540,84 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
       )}
 
       {/* ----------------------------------------------------------------- */}
-      {/* LEVEL 3: Evidence & Conformal Uncertainty                         */}
+      {/* LEVEL 3: Evidence & Measurements — What supports the diagnosis?    */}
       {/* ----------------------------------------------------------------- */}
       {activeTab === "evidence" && (
         <div className="space-y-6">
-          <div className="border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-4">
-            <h3 className="text-sm font-bold uppercase tracking-wider mb-1">Key Telemetry Anomalies</h3>
-            <p className="text-xs text-[#6B6B66] dark:text-[#888884] mb-4">
-              Observed measurements compared to nominal baselines.
+          <div className="border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5">
+            <h3 className="text-base font-bold text-[#0B2545] dark:text-[#F1F5F9] mb-1">
+              Calibrated Telemetry Measurements
+            </h3>
+            <p className="text-xs text-[#475569] dark:text-[#888884] mb-4">
+              Observed telemetry compared to nominal operational baselines with data source and timestamp verification.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {primaryTelemetry.map((item) => (
-                <div key={item.name} className="p-3 border border-[#9A5B5B]/30 bg-[#9A5B5B]/5 space-y-1">
-                  <div className="text-[10px] text-[#6B6B66] dark:text-[#888884] uppercase">{item.name}</div>
-                  <div className="text-lg font-bold text-[#9A5B5B]">{item.value}</div>
-                  <div className="text-[10px] text-[#6B6B66] dark:text-[#888884]">
-                    Nominal: {item.nominal} &bull; Delta: <span className="font-bold text-[#9A5B5B]">{item.delta}</span>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#F8FAFC] dark:bg-[#0F0F10] border-b border-[#E2E8F0] dark:border-[#2A2A2D] text-[#475569] uppercase font-bold text-[11px]">
+                  <tr>
+                    <th className="p-3">Measurement</th>
+                    <th className="p-3">Observed Value</th>
+                    <th className="p-3">Baseline</th>
+                    <th className="p-3">Difference</th>
+                    <th className="p-3">Data Source</th>
+                    <th className="p-3">Explanation</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E2E8F0] dark:divide-[#2A2A2D]">
+                  {primaryTelemetry.map((item) => (
+                    <tr key={item.name} className="hover:bg-[#F8FAFC] dark:hover:bg-[#0F0F10]">
+                      <td className="p-3 font-semibold text-[#0F172A] dark:text-[#EDEDEA]">{item.name}</td>
+                      <td className="p-3 font-mono font-bold text-[#DC2626]">{item.value}</td>
+                      <td className="p-3 font-mono text-[#475569]">{item.nominal}</td>
+                      <td className="p-3">
+                        <span className="px-2 py-0.5 border border-[#DC2626]/30 bg-[#FEF2F2] text-[#DC2626] font-bold text-[11px]">
+                          {item.delta}
+                        </span>
+                      </td>
+                      <td className="p-3 text-[#475569] font-mono text-[11px]">{item.source}</td>
+                      <td className="p-3 text-[#475569] text-xs max-w-xs">{item.explanation}</td>
+                    </tr>
+                  ))}
+                  {showAllEvidence &&
+                    secondaryTelemetry.map((item) => (
+                      <tr key={item.name} className="hover:bg-[#F8FAFC] dark:hover:bg-[#0F0F10]">
+                        <td className="p-3 font-semibold text-[#0F172A] dark:text-[#EDEDEA]">{item.name}</td>
+                        <td className="p-3 font-mono font-bold">{item.value}</td>
+                        <td className="p-3 font-mono text-[#475569]">{item.nominal}</td>
+                        <td className="p-3">
+                          <span className="px-2 py-0.5 border border-[#E2E8F0] bg-[#F8FAFC] text-[#475569] font-semibold text-[11px]">
+                            {item.delta}
+                          </span>
+                        </td>
+                        <td className="p-3 text-[#475569] font-mono text-[11px]">{item.source}</td>
+                        <td className="p-3 text-[#475569] text-xs max-w-xs">{item.explanation}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
             </div>
-
-            {/* Expandable Supporting Telemetry */}
-            {showAllEvidence && (
-              <div className="mt-4 pt-4 border-t border-[#E5E5E3] dark:border-[#2A2A2D] grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {secondaryTelemetry.map((item) => (
-                  <div key={item.name} className="p-3 border border-[#E5E5E3] dark:border-[#2A2A2D] space-y-1">
-                    <div className="text-[10px] text-[#6B6B66] dark:text-[#888884] uppercase">{item.name}</div>
-                    <div className="text-lg font-bold">{item.value}</div>
-                    <div className="text-[10px] text-[#6B6B66] dark:text-[#888884]">
-                      Nominal: {item.nominal} &bull; Delta: {item.delta}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
 
             <button
               onClick={() => setShowAllEvidence(!showAllEvidence)}
-              className="mt-4 text-xs text-[#475569] dark:text-[#94A3B8] font-bold uppercase tracking-wider hover:underline"
+              className="mt-4 text-xs text-[#133E87] dark:text-[#3A86FF] font-bold hover:underline"
             >
-              {showAllEvidence ? "Collapse Supporting Telemetry" : "View All Supporting Telemetry &rarr;"}
+              {showAllEvidence ? "Collapse Supporting Metrics" : "View All Supporting Metrics & Telemetry &rarr;"}
             </button>
           </div>
 
-          <div className="border border-[#5E7A6A]/30 bg-[#5E7A6A]/5 p-4 space-y-2">
-            <span className="text-[10px] uppercase font-bold text-[#5E7A6A]">
-              Conformal Prediction Set &amp; Statistical Coverage
+          {/* Statistical Uncertainty & Conformal Prediction */}
+          <div className="border border-[#15803D]/30 bg-[#F0FDF4] dark:bg-[#0B132B] p-5 space-y-2">
+            <span className="text-xs uppercase font-bold text-[#15803D]">
+              Split Conformal Prediction Set &amp; Statistical Bounds
             </span>
-            <div className="text-xs text-[#111111] dark:text-[#EDEDEA] space-y-1">
-              <div>Coverage Guarantee: <strong>95.0% Validated</strong></div>
-              <div>Prediction Set: <code>&#123;&quot;INTERFACE_SATURATION_QUEUE_OVERFLOW&quot;, &quot;ECMP_HASH_IMBALANCE&quot;&#125;</code></div>
-              <div className="text-[11px] text-[#6B6B66] dark:text-[#888884]">
-                Rigorous conformal prediction non-empty set guarantee prevents ungrounded hallucinations.
+            <div className="text-sm text-[#0F172A] dark:text-[#EDEDEA] space-y-1">
+              <div>Coverage Guarantee: <strong>95.0% Validated (alpha = 0.05)</strong></div>
+              <div>
+                Prediction Set: <code className="font-mono text-xs bg-[#FFFFFF] px-2 py-0.5 border border-[#15803D]/30 font-bold">&#123;&quot;INTERFACE_SATURATION_QUEUE_OVERFLOW&quot;, &quot;ECMP_HASH_IMBALANCE&quot;&#125;</code>
+              </div>
+              <div className="text-xs text-[#475569] dark:text-[#94A3B8] leading-relaxed">
+                The non-empty conformal prediction set provides exact multi-label coverage under exchangeability, guaranteeing that the true network fault is included within the predicted set with 95% statistical confidence.
               </div>
             </div>
           </div>
@@ -525,60 +625,76 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
       )}
 
       {/* ----------------------------------------------------------------- */}
-      {/* LEVEL 4: Action & Remediation Controls                           */}
+      {/* LEVEL 4: Recommended Actions — What should happen next?           */}
       {/* ----------------------------------------------------------------- */}
       {activeTab === "action" && (
         <div className="space-y-6">
-          <div className="border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E5E5E3] dark:border-[#2A2A2D]">
+          <div className="border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-6 space-y-5">
+            <div className="flex items-center justify-between pb-4 border-b border-[#E2E8F0] dark:border-[#2A2A2D]">
               <div>
-                <span className="text-[10px] uppercase font-bold text-[#5E7A6A]">Level 4 Action Proposal</span>
-                <h3 className="text-base font-bold font-mono">act-rebalance-ecmp-01</h3>
+                <span className="text-xs uppercase font-bold text-[#15803D]">Recommended Action Proposal</span>
+                <h3 className="text-lg font-bold font-mono text-[#0B2545] dark:text-[#F1F5F9]">
+                  act-rebalance-ecmp-01
+                </h3>
               </div>
-              <span className="px-2 py-0.5 border border-[#5E7A6A] text-[#5E7A6A] text-[10px] uppercase font-bold">
+              <span className="px-3 py-1 border border-[#15803D] bg-[#F0FDF4] text-[#15803D] text-xs font-bold uppercase tracking-wider">
                 SIMULATION SAFEGUARD ACTIVE
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div className="p-3 border border-[#E5E5E3] dark:border-[#2A2A2D] space-y-1">
-                <span className="text-[10px] text-[#6B6B66] dark:text-[#888884] uppercase">Target Device</span>
-                <div className="font-bold">spine-01 (port et-0/0/1)</div>
-                <div className="text-[11px] text-[#6B6B66] dark:text-[#888884]">Risk Level: LOW (Traffic reroute)</div>
+              <div className="p-4 border border-[#E2E8F0] dark:border-[#2A2A2D] space-y-1 bg-[#F8FAFC] dark:bg-[#0F0F10]">
+                <span className="text-xs text-[#475569] uppercase font-bold">Target Device</span>
+                <div className="text-sm font-bold text-[#0F172A] dark:text-[#EDEDEA]">spine-01 (port et-0/0/1)</div>
+                <div className="text-xs text-[#475569]">Operational Risk: LOW (Traffic load diversion)</div>
               </div>
-              <div className="p-3 border border-[#E5E5E3] dark:border-[#2A2A2D] space-y-1">
-                <span className="text-[10px] text-[#6B6B66] dark:text-[#888884] uppercase">Required Authorization</span>
-                <div className="font-bold">Human-in-the-Loop (HITL)</div>
-                <div className="text-[11px] text-[#6B6B66] dark:text-[#888884]">Zero production mutation guarantee</div>
+              <div className="p-4 border border-[#E2E8F0] dark:border-[#2A2A2D] space-y-1 bg-[#F8FAFC] dark:bg-[#0F0F10]">
+                <span className="text-xs text-[#475569] uppercase font-bold">Required Authorization</span>
+                <div className="text-sm font-bold text-[#0F172A] dark:text-[#EDEDEA]">Human-in-the-Loop (HITL)</div>
+                <div className="text-xs text-[#475569]">Zero production mutation guarantee &bull; Dry-run sandbox</div>
               </div>
             </div>
 
             <div className="space-y-2">
-              <span className="text-[10px] uppercase font-bold text-[#6B6B66] dark:text-[#888884]">
-                Proposed Remediation Commands (Simulated Dry-Run)
+              <span className="text-xs uppercase font-bold text-[#0B2545] dark:text-[#94A3B8]">
+                Proposed Remediation Syntax (Simulated Dry-Run)
               </span>
-              <div className="p-3 bg-[#FAFAF9] dark:bg-[#0F0F10] border border-[#E5E5E3] dark:border-[#2A2A2D] font-mono text-xs">
-                <code>configure terminal<br />router bgp 65001<br />address-family ipv4 unicast<br />maximum-paths 2<br />load-balance flow hash-seed 42<br />commit</code>
+              <div className="p-4 bg-[#F8FAFC] dark:bg-[#0B132B] border border-[#E2E8F0] dark:border-[#2A2A2D] font-mono text-xs">
+                <code>
+                  configure terminal<br />
+                  router bgp 65001<br />
+                  address-family ipv4 unicast<br />
+                  maximum-paths 2<br />
+                  load-balance flow hash-seed 42<br />
+                  commit
+                </code>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 pt-2">
+            <div className="space-y-1 text-xs text-[#475569]">
+              <strong>Rollback Procedure:</strong> Reverting to previous configuration via <code className="font-mono">rollback configuration 1</code> restores default ECMP hash-seeds with zero configuration drift.
+            </div>
+
+            {/* Renamed Actions: Test Recommended Fix (Simulation) & Review Pending Approvals */}
+            <div className="flex flex-wrap items-center gap-3 pt-3">
               <button
                 onClick={onLaunchSimulation}
-                className="px-4 py-2 bg-[#475569] hover:bg-[#334155] text-white font-bold uppercase text-xs tracking-wider transition-colors"
+                className="px-5 py-2.5 bg-[#0B2545] hover:bg-[#133E87] text-white font-bold text-xs uppercase tracking-wider transition-colors shadow-sm"
               >
-                Launch Remediation Sandbox
+                Test Recommended Fix (Simulation)
               </button>
+
               <button
                 onClick={onOpenHitlQueue}
-                className="px-4 py-2 border border-[#475569] text-[#475569] dark:text-[#94A3B8] hover:bg-[#475569]/10 font-bold uppercase text-xs tracking-wider transition-colors"
+                className="px-5 py-2.5 border border-[#133E87] text-[#133E87] dark:text-[#3A86FF] hover:bg-[#EEF4FB] font-bold text-xs uppercase tracking-wider transition-colors"
               >
-                Review HITL Approval Queue
+                Review Pending Approvals
               </button>
+
               {onNavigate && (
                 <button
                   onClick={() => onNavigate("topology")}
-                  className="px-4 py-2 border border-[#E5E5E3] dark:border-[#2A2A2D] hover:bg-[#FAFAF9] dark:hover:bg-[#0F0F10] text-[#111111] dark:text-[#EDEDEA] font-bold uppercase text-xs tracking-wider transition-colors"
+                  className="px-5 py-2.5 border border-[#E2E8F0] hover:bg-[#F8FAFC] text-[#0F172A] dark:text-[#EDEDEA] font-semibold text-xs uppercase tracking-wider transition-colors"
                 >
                   Inspect Topology
                 </button>
@@ -593,83 +709,74 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
       {/* ----------------------------------------------------------------- */}
       {activeTab === "tickets" && (
         <div className="space-y-6">
-          <div className="border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5">
-            <h3 className="text-sm font-bold uppercase tracking-wider mb-2">
+          <div className="border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5">
+            <h3 className="text-base font-bold text-[#0B2545] dark:text-[#F1F5F9] mb-1">
               Support Tickets Linked to {selectedIncidentId}
             </h3>
-            <p className="text-xs text-[#6B6B66] dark:text-[#888884] mb-4">
-              Helpdesk end-user reports corroborated by this network incident.
+            <p className="text-xs text-[#475569] dark:text-[#888884] mb-4">
+              Real-world customer tickets mapped directly to this root-cause diagnostic investigation.
             </p>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#FAFAF9] dark:bg-[#0F0F10] border-b border-[#E5E5E3] dark:border-[#2A2A2D] text-[10px] uppercase text-[#6B6B66] dark:text-[#888884]">
-                  <tr>
-                    <th className="p-3">Ticket ID</th>
-                    <th className="p-3">Title</th>
-                    <th className="p-3">Location</th>
-                    <th className="p-3">Priority</th>
-                    <th className="p-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E5E5E3] dark:divide-[#2A2A2D]">
-                  {linkedTickets.map((t) => (
-                    <tr key={t.ticket_id} className="hover:bg-[#FAFAF9] dark:hover:bg-[#0F0F10]">
-                      <td className="p-3 font-bold font-mono">{t.ticket_id}</td>
-                      <td className="p-3">{t.title}</td>
-                      <td className="p-3">{t.location}</td>
-                      <td className="p-3">
-                        <span className={`px-1.5 py-0.5 border text-[9px] uppercase font-semibold ${
-                          t.priority === "critical" ? "border-[#9A5B5B] text-[#9A5B5B]" : "border-[#A08A5B] text-[#A08A5B]"
-                        }`}>
-                          {t.priority}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <span className="px-1.5 py-0.5 border border-[#475569] text-[9px] uppercase font-semibold">
-                          {t.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {linkedTickets.length === 0 && (
+            {linkedTickets.length === 0 ? (
+              <div className="p-6 text-center text-xs text-[#475569] border border-dashed border-[#E2E8F0]">
+                No support tickets currently linked to this incident.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#F8FAFC] dark:bg-[#0F0F10] border-b border-[#E2E8F0] dark:border-[#2A2A2D] text-[#475569] uppercase font-bold text-[11px]">
                     <tr>
-                      <td colSpan={5} className="p-4 text-center text-[#6B6B66] dark:text-[#888884]">
-                        No user support tickets currently associated with this incident.
-                      </td>
+                      <th className="p-3">Ticket ID</th>
+                      <th className="p-3">Title</th>
+                      <th className="p-3">Location</th>
+                      <th className="p-3">Priority</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Created</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Associate an unlinked ticket */}
-            {unlinkedTickets.length > 0 && (
-              <div className="mt-6 pt-4 border-t border-[#E5E5E3] dark:border-[#2A2A2D]">
-                <h4 className="text-xs font-bold uppercase tracking-wider mb-2">Associate Open Ticket</h4>
-                <div className="flex flex-col sm:flex-row items-center gap-2">
-                  <select
-                    value={linkTicketId}
-                    onChange={(e) => setLinkTicketId(e.target.value)}
-                    className="w-full sm:w-80 p-2 text-xs border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FAFAF9] dark:bg-[#0F0F10] outline-none"
-                  >
-                    <option value="">Select ticket to link...</option>
-                    {unlinkedTickets.map((ut) => (
-                      <option key={ut.ticket_id} value={ut.ticket_id}>
-                        {ut.ticket_id}: {ut.title} ({ut.location})
-                      </option>
+                  </thead>
+                  <tbody className="divide-y divide-[#E2E8F0] dark:divide-[#2A2A2D]">
+                    {linkedTickets.map((t) => (
+                      <tr key={t.ticket_id}>
+                        <td className="p-3 font-mono font-bold text-[#0B2545]">{t.ticket_id}</td>
+                        <td className="p-3 font-semibold">{t.title}</td>
+                        <td className="p-3 text-[#475569]">{t.location}</td>
+                        <td className="p-3 uppercase font-semibold text-[11px]">{t.priority}</td>
+                        <td className="p-3">
+                          <span className="px-2 py-0.5 border border-[#15803D]/30 bg-[#F0FDF4] text-[#15803D] font-bold text-[11px]">
+                            {t.status}
+                          </span>
+                        </td>
+                        <td className="p-3 text-[#475569] font-mono text-[11px]">
+                          {new Date(t.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
                     ))}
-                  </select>
-                  <button
-                    disabled={!linkTicketId}
-                    onClick={handleLinkTicket}
-                    className="w-full sm:w-auto px-4 py-2 bg-[#475569] hover:bg-[#334155] disabled:opacity-40 text-white font-bold uppercase text-xs tracking-wider transition-colors"
-                  >
-                    Link to Incident
-                  </button>
-                </div>
+                  </tbody>
+                </table>
               </div>
             )}
+          </div>
+
+          {/* Associate Support Ticket Form */}
+          <div className="border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5">
+            <h4 className="text-sm font-bold uppercase tracking-wider mb-2">
+              Associate Campus Support Ticket to Incident
+            </h4>
+            <form onSubmit={handleLinkTicket} className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                placeholder="Enter Ticket ID (e.g. TICK-2026-0001)"
+                value={linkTicketId}
+                onChange={(e) => setLinkTicketId(e.target.value)}
+                className="flex-1 px-3 py-2 text-xs border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#F8FAFC] dark:bg-[#0F0F10] focus:border-[#133E87] outline-none font-mono"
+              />
+              <button
+                type="submit"
+                className="px-5 py-2 bg-[#0B2545] hover:bg-[#133E87] text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-sm"
+              >
+                Link to Incident
+              </button>
+            </form>
           </div>
         </div>
       )}

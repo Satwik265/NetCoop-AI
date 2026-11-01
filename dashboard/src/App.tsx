@@ -34,6 +34,7 @@ import { AuditorView } from "./components/views/AuditorView";
 import { HelpdeskView } from "./components/views/HelpdeskView";
 import { useAuth, apiFetch } from "./auth/AuthContext";
 import { LoginModal } from "./components/LoginModal";
+import { CompareRunsModal, RunComparisonData } from "./components/CompareRunsModal";
 
 export interface HistoryItem {
   nav: string;
@@ -194,10 +195,23 @@ export const App: React.FC = () => {
 
   // Chaos & Data Quality state
   const [isChaosActive, setIsChaosActive] = useState<boolean>(false);
-  const [qualityScore] = useState<number>(1.0);
-  const [detectedFormat] = useState<string>("canonical");
-  const [validationErrors] = useState<TypedValidationErrorItem[]>([]);
-  const [transformationsCount] = useState<number>(11);
+  const [qualityScore, setQualityScore] = useState<number>(1.0);
+  const [detectedFormat, setDetectedFormat] = useState<string>("canonical");
+  const [validationErrors, setValidationErrors] = useState<TypedValidationErrorItem[]>([]);
+  const [transformationsCount, setTransformationsCount] = useState<number>(0);
+  const [recordsCount, setRecordsCount] = useState<number>(0);
+  const [isValidated, setIsValidated] = useState<boolean>(false);
+  const [validatingInput, setValidatingInput] = useState<boolean>(false);
+
+  // Diagnosis Run Provenance & Comparison state
+  const [lastRunId, setLastRunId] = useState<string | null>(null);
+  const [lastRunTimestamp, setLastRunTimestamp] = useState<string | null>(null);
+  const [previousRunId, setPreviousRunId] = useState<string | null>(null);
+  const [executionStatus, setExecutionStatus] = useState<"idle" | "running" | "completed" | "failed">("idle");
+  const [runErrorMessage, setRunErrorMessage] = useState<string | null>(null);
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState<boolean>(false);
+  const [comparisonData, setComparisonData] = useState<RunComparisonData | null>(null);
+  const [loadingComparison, setLoadingComparison] = useState<boolean>(false);
 
   // Sync currentRole and primary view when authenticated user changes
   useEffect(() => {
@@ -445,10 +459,38 @@ export const App: React.FC = () => {
     };
   }, [token]);
 
-  // Handler for running full diagnosis on demand
+  const handleValidateScenario = async (filename?: string) => {
+    const target = filename || selectedScenario;
+    if (!target) return;
+    setValidatingInput(true);
+    try {
+      const res = await apiFetch(`/api/scenarios/${target}/validate`);
+      if (res.ok) {
+        const data = await res.json();
+        setQualityScore(data.quality_score ?? 1.0);
+        setDetectedFormat(data.detected_format ?? "canonical");
+        setValidationErrors(data.validation_errors ?? []);
+        setTransformationsCount(data.transformations_count ?? 0);
+        setRecordsCount(data.records_count ?? 0);
+        setIsValidated(true);
+      }
+    } catch {}
+    finally {
+      setValidatingInput(false);
+    }
+  };
+
+  const handleSelectScenario = (filename: string) => {
+    setSelectedScenario(filename);
+    handleValidateScenario(filename);
+  };
+
+  // Handler for running full diagnosis on demand with run ID provenance and state
   const handleRunDiagnosis = async () => {
     if (!selectedScenario) return;
     setLoading(true);
+    setExecutionStatus("running");
+    setRunErrorMessage(null);
     try {
       const res = await apiFetch(`/api/scenarios/${selectedScenario}/run`, {
         method: "POST",
@@ -462,10 +504,36 @@ export const App: React.FC = () => {
           setEnvelopes(data.envelopes);
           setCurrentIndex(data.envelopes.length - 1);
         }
+        setLastRunId(data.run_id);
+        setLastRunTimestamp(data.timestamp_utc || new Date().toISOString());
+        setPreviousRunId(data.previous_run_id || null);
+        setExecutionStatus("completed");
+      } else {
+        const err = await res.json().catch(() => ({ detail: "Diagnostic execution failed" }));
+        setExecutionStatus("failed");
+        setRunErrorMessage(err.detail || "Diagnostic execution failed.");
+      }
+    } catch (e: any) {
+      setExecutionStatus("failed");
+      setRunErrorMessage(e?.message || "Network error connecting to diagnostic service.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCompareRuns = async () => {
+    if (!lastRunId || !previousRunId) return;
+    setIsCompareModalOpen(true);
+    setLoadingComparison(true);
+    try {
+      const res = await apiFetch(`/api/runs/${lastRunId}/compare/${previousRunId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setComparisonData(data);
       }
     } catch {}
     finally {
-      setLoading(false);
+      setLoadingComparison(false);
     }
   };
 
@@ -476,7 +544,7 @@ export const App: React.FC = () => {
   const isNavAuthorized = isAuthorizedForNav(activeNav, user?.role);
 
   return (
-    <div className="flex h-screen bg-[#F4F4F0] dark:bg-[#0A0A0B] text-[#111111] dark:text-[#EDEDEA] overflow-hidden font-mono antialiased">
+    <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0B132B] text-[#0F172A] dark:text-[#F1F5F9] overflow-hidden font-sans antialiased">
       {/* Role-isolated Sidebar */}
       <Sidebar
         currentRole={currentRole}
@@ -514,95 +582,57 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* Top Application Header */}
-        <header className="bg-[#FFFFFF] dark:bg-[#161618] border-b border-[#E5E5E3] dark:border-[#2A2A2D] px-6 py-3 flex flex-wrap items-center justify-between gap-4 font-mono sticky top-0 z-30">
-          <div className="flex items-center gap-3">
+        {/* Top Institutional Header (IIT Bhubaneswar Academic Theme) */}
+        <header className="bg-[#FFFFFF] dark:bg-[#161618] border-b border-[#E2E8F0] dark:border-[#2A2A2D] px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 font-sans sticky top-0 z-30 shadow-sm">
+          <div className="flex items-center gap-3.5">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden p-1 border border-[#E5E5E3] dark:border-[#2A2A2D] text-xs"
+              className="lg:hidden p-1.5 border border-[#E2E8F0] dark:border-[#2A2A2D] text-xs font-semibold"
             >
               Menu
             </button>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-sm font-semibold tracking-wider uppercase text-[#111111] dark:text-[#EDEDEA]">
-                  NetCoop AI
-                </h1>
-                <span className={`px-2 py-0.5 border text-[10px] uppercase font-semibold ${roleDef.badgeClass}`}>
-                  {roleDef.title}
-                </span>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-sm bg-[#0B2545] dark:bg-[#133E87] flex items-center justify-center text-white font-bold text-xs tracking-wider">
+                IIT
               </div>
-              <div className="text-[10px] text-[#6B6B66] dark:text-[#888884]">
-                Enterprise Multi-Agent Network Diagnosis &bull; IIT-Bhubaneswar
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base font-bold tracking-tight text-[#0B2545] dark:text-[#F1F5F9]">
+                    NetCoop AI
+                  </h1>
+                  <span className={`px-2 py-0.5 border text-xs font-semibold ${roleDef.badgeClass}`}>
+                    {roleDef.title}
+                  </span>
+                </div>
+                <div className="text-xs text-[#475569] dark:text-[#94A3B8]">
+                  Autonomous Campus Network Diagnostic Platform &bull; IIT Bhubaneswar
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Flags (Only for platform_admin or network_engineer) */}
-            {(currentRole === "platform_admin" || currentRole === "network_engineer") && (
-              <div className="hidden sm:flex items-center gap-1.5 border border-[#E5E5E3] dark:border-[#2A2A2D] px-2.5 py-1 text-[10px]">
-                <span className="text-[#6B6B66] dark:text-[#888884] uppercase">Flags:</span>
-                <button
-                  onClick={() => setFeatures((p) => ({ ...p, FEATURE_HITL: !p.FEATURE_HITL }))}
-                  title="Toggle FEATURE_HITL"
-                  className={`px-1.5 py-0.5 border ${
-                    features.FEATURE_HITL
-                      ? "border-[#5E7A6A] text-[#5E7A6A]"
-                      : "border-[#6B6B66] text-[#6B6B66] opacity-50"
-                  }`}
-                >
-                  HITL
-                </button>
-                <button
-                  onClick={() =>
-                    setFeatures((p) => ({ ...p, FEATURE_REMEDIATION_SIM: !p.FEATURE_REMEDIATION_SIM }))
-                  }
-                  title="Toggle FEATURE_REMEDIATION_SIM"
-                  className={`px-1.5 py-0.5 border ${
-                    features.FEATURE_REMEDIATION_SIM
-                      ? "border-[#5E7A6A] text-[#5E7A6A]"
-                      : "border-[#6B6B66] text-[#6B6B66] opacity-50"
-                  }`}
-                >
-                  SIM
-                </button>
-                <button
-                  onClick={() => setFeatures((p) => ({ ...p, FEATURE_RESUME: !p.FEATURE_RESUME }))}
-                  title="Toggle FEATURE_RESUME"
-                  className={`px-1.5 py-0.5 border ${
-                    features.FEATURE_RESUME
-                      ? "border-[#5E7A6A] text-[#5E7A6A]"
-                      : "border-[#6B6B66] text-[#6B6B66] opacity-50"
-                  }`}
-                >
-                  RESUME
-                </button>
-              </div>
-            )}
-
-            {/* Authenticated User Badge & Safe Controls */}
-            <div className="flex items-center gap-2 border border-[#E5E5E3] dark:border-[#2A2A2D] px-2.5 py-1 text-[11px]">
-              <span className="text-[#6B6B66] dark:text-[#888884] uppercase">User:</span>
-              <span className="font-semibold text-[#111111] dark:text-[#EDEDEA]">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            {/* Authenticated User Badge */}
+            <div className="flex items-center gap-2 border border-[#E2E8F0] dark:border-[#2A2A2D] px-3 py-1.5 text-xs bg-[#F8FAFC] dark:bg-[#0F0F10]">
+              <span className="text-[#475569] dark:text-[#94A3B8] font-medium">Logged in as:</span>
+              <span className="font-bold text-[#0F172A] dark:text-[#EDEDEA]">
                 {user ? `${user.username} (${user.role})` : "Unauthenticated"}
               </span>
 
-              {/* Only Platform Admin may use Switch Account */}
               {user?.role === "platform_admin" && (
                 <button
                   onClick={openLoginModal}
-                  className="ml-1 px-1.5 py-0.5 border border-[#111111] dark:border-[#EDEDEA] hover:bg-[#111111]/5 dark:hover:bg-[#EDEDEA]/10 text-[10px] uppercase font-medium"
+                  className="ml-1 px-2 py-0.5 border border-[#0B2545] dark:border-[#3A86FF] hover:bg-[#0B2545]/10 text-[11px] font-bold uppercase transition-colors"
                   title="Administrative Account Management"
                 >
-                  Switch
+                  Switch User
                 </button>
               )}
 
               {user && (
                 <button
                   onClick={logout}
-                  className="px-1.5 py-0.5 border border-[#9A5B5B] text-[#9A5B5B] hover:bg-[#9A5B5B]/10 text-[10px] uppercase font-medium"
+                  className="px-2 py-0.5 border border-[#DC2626] text-[#DC2626] hover:bg-[#FEF2F2] text-[11px] font-bold uppercase transition-colors"
                   title="Log out"
                 >
                   Logout
@@ -685,15 +715,23 @@ export const App: React.FC = () => {
             <ScenarioPicker
               scenarios={scenarios}
               selectedScenario={selectedScenario}
-              onSelectScenario={setSelectedScenario}
+              onSelectScenario={handleSelectScenario}
               onRunDiagnosis={handleRunDiagnosis}
               loading={loading}
               qualityScore={qualityScore}
               detectedFormat={detectedFormat}
               validationErrors={validationErrors}
               transformationsCount={transformationsCount}
-              isChaosActive={isChaosActive}
-              onToggleChaos={() => setIsChaosActive((prev) => !prev)}
+              isValidated={isValidated}
+              recordsCount={recordsCount}
+              onRunValidation={() => handleValidateScenario(selectedScenario)}
+              validating={validatingInput}
+              lastRunId={lastRunId}
+              lastRunTimestamp={lastRunTimestamp}
+              previousRunId={previousRunId}
+              onCompareRuns={handleCompareRuns}
+              executionStatus={executionStatus}
+              errorMessage={runErrorMessage}
             />
           )}
 
@@ -748,7 +786,7 @@ export const App: React.FC = () => {
 
               {/* 6. ROLE VIEW: Platform Administrator */}
               {activeNav === "role_platform_admin" && (
-                <PlatformAdminView onNavigate={(nav) => navigateTo(nav)} />
+                <PlatformAdminView onNavigate={(nav) => navigateTo(nav)} isChaosActive={isChaosActive} onToggleChaos={() => setIsChaosActive((p) => !p)} features={features} />
               )}
 
               {/* 7. ROLE VIEW: Auditor / Compliance */}
@@ -906,6 +944,12 @@ export const App: React.FC = () => {
           <div>NetCoop AI &bull; Autonomous Multi-Agent Network Diagnosis</div>
         </footer>
       </div>
+            <CompareRunsModal
+        isOpen={isCompareModalOpen}
+        onClose={() => setIsCompareModalOpen(false)}
+        data={comparisonData}
+        loading={loadingComparison}
+      />
       <LoginModal />
     </div>
   );

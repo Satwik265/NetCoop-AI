@@ -14,4 +14,5 @@ from netcoop.storage.models import (
     RevokedToken,
     WsTicketRecord,
     TicketRecord,
+    DiagnosisRunRecord,
 )

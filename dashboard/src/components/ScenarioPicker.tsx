@@ -12,8 +12,16 @@ interface ScenarioPickerProps {
   detectedFormat: string;
   validationErrors: TypedValidationErrorItem[];
   transformationsCount: number;
-  isChaosActive: boolean;
-  onToggleChaos: () => void;
+  isValidated?: boolean;
+  recordsCount?: number;
+  onRunValidation?: () => void;
+  validating?: boolean;
+  lastRunId?: string | null;
+  lastRunTimestamp?: string | null;
+  previousRunId?: string | null;
+  onCompareRuns?: () => void;
+  executionStatus?: "idle" | "running" | "completed" | "failed";
+  errorMessage?: string | null;
 }
 
 export const ScenarioPicker: React.FC<ScenarioPickerProps> = ({
@@ -26,41 +34,72 @@ export const ScenarioPicker: React.FC<ScenarioPickerProps> = ({
   detectedFormat,
   validationErrors,
   transformationsCount,
-  isChaosActive,
-  onToggleChaos,
+  isValidated = true,
+  recordsCount,
+  onRunValidation,
+  validating = false,
+  lastRunId,
+  lastRunTimestamp,
+  previousRunId,
+  onCompareRuns,
+  executionStatus = "idle",
+  errorMessage,
 }) => {
-  // Separate standard benchmark scenarios and organizer samples
   const standardScenarios = scenarios.filter((s) => !s.filename.includes("organizer"));
   const organizerScenarios = scenarios.filter((s) => s.filename.includes("organizer"));
-
   const currentScenario = scenarios.find((s) => s.filename === selectedScenario);
 
   return (
-    <div className="bg-[#FFFFFF] dark:bg-[#161618] border border-[#E5E5E3] dark:border-[#2A2A2D] p-5 space-y-4 font-mono">
-      {/* Top Selector & Run Action */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex-1 space-y-1">
-          <label className="text-[10px] text-[#6B6B66] dark:text-[#888884] uppercase tracking-wider font-semibold">
-            Select Network Scenario or Ingestion Dataset
-          </label>
+    <div className="bg-[#FFFFFF] dark:bg-[#161618] border border-[#E2E8F0] dark:border-[#2A2A2D] p-5 space-y-4 font-sans">
+      {/* Top Selector & Primary Actions */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex-1 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold uppercase tracking-wider text-[#0B2545] dark:text-[#94A3B8]">
+              Target Network Diagnostic Scenario / Dataset
+            </label>
+            {/* Execution status indicator */}
+            <div className="flex items-center gap-2">
+              <span
+                className={`px-2 py-0.5 border text-xs font-semibold ${
+                  executionStatus === "running"
+                    ? "border-[#133E87] bg-[#EEF4FB] text-[#133E87] animate-pulse"
+                    : executionStatus === "completed"
+                    ? "border-[#15803D] bg-[#F0FDF4] text-[#15803D]"
+                    : executionStatus === "failed"
+                    ? "border-[#DC2626] bg-[#FEF2F2] text-[#DC2626]"
+                    : "border-[#E2E8F0] bg-[#F8FAFC] text-[#475569]"
+                }`}
+              >
+                {executionStatus === "running"
+                  ? "Diagnosis Running..."
+                  : executionStatus === "completed"
+                  ? "Diagnosis Completed"
+                  : executionStatus === "failed"
+                  ? "Diagnosis Failed"
+                  : "Ready to Diagnose"}
+              </span>
+            </div>
+          </div>
+
           <div className="relative">
             <select
               value={selectedScenario}
               onChange={(e) => onSelectScenario(e.target.value)}
-              className="w-full bg-[#FAFAF9] dark:bg-[#0F0F10] border border-[#E5E5E3] dark:border-[#2A2A2D] text-[#111111] dark:text-[#EDEDEA] px-3 py-2 text-xs font-mono outline-none focus:border-[#475569] transition-colors"
+              className="w-full bg-[#F8FAFC] dark:bg-[#0F0F10] border border-[#E2E8F0] dark:border-[#2A2A2D] text-[#0F172A] dark:text-[#EDEDEA] px-3.5 py-2.5 text-sm font-sans outline-none focus:border-[#133E87] transition-colors"
             >
-              <optgroup label="Organizer Colab Samples (JSONL Telemetry)">
-                {organizerScenarios.map((s) => (
+              <optgroup label="Multi-Domain Campus Scenarios (IIT Bhubaneswar)">
+                {standardScenarios.map((s) => (
                   <option key={s.filename} value={s.filename}>
-                    {s.description || s.filename.replace(".jsonl", "")}
+                    {s.filename.replace(".json", "")} {s.description ? `— ${s.description}` : ""}
                   </option>
                 ))}
               </optgroup>
 
-              <optgroup label="Standard Multi-Domain Scenarios (JSON)">
-                {standardScenarios.map((s) => (
+              <optgroup label="Organizer Challenge Samples (JSONL Telemetry)">
+                {organizerScenarios.map((s) => (
                   <option key={s.filename} value={s.filename}>
-                    {s.filename.replace(".json", "")} {s.description ? `- ${s.description}` : ""}
+                    {s.description || s.filename.replace(".jsonl", "")}
                   </option>
                 ))}
               </optgroup>
@@ -68,37 +107,65 @@ export const ScenarioPicker: React.FC<ScenarioPickerProps> = ({
           </div>
         </div>
 
-        <div className="shrink-0 flex items-end">
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2.5 self-end lg:self-center pt-2 lg:pt-5">
+          {previousRunId && onCompareRuns && (
+            <button
+              onClick={onCompareRuns}
+              disabled={loading}
+              className="px-4 py-2.5 text-xs font-semibold border border-[#133E87] text-[#133E87] dark:text-[#3A86FF] hover:bg-[#EEF4FB] transition-colors"
+              title="Compare current findings with previous diagnostic execution"
+            >
+              Compare with Previous Run
+            </button>
+          )}
+
           <button
             onClick={onRunDiagnosis}
             disabled={loading || !selectedScenario}
-            className={`w-full md:w-auto px-6 py-2.5 text-[#FFFFFF] dark:text-[#111111] text-xs uppercase tracking-wider font-semibold transition-all disabled:opacity-40 ${
-              isChaosActive
-                ? "bg-[#9A5B5B] hover:bg-[#854B4B]"
-                : "bg-[#111111] dark:bg-[#EDEDEA] hover:opacity-90"
-            }`}
+            className="px-6 py-2.5 bg-[#0B2545] hover:bg-[#133E87] text-white text-sm font-bold tracking-wide transition-all shadow-sm disabled:opacity-50"
           >
-            {loading
-              ? "Diagnosing Consensus..."
-              : isChaosActive
-              ? "Run Diagnosis (Chaos Active)"
-              : "Run Diagnosis"}
+            {loading ? "Executing Agents..." : "Run Network Diagnosis"}
           </button>
         </div>
       </div>
 
-      {/* Embedded Data Quality Banner & Live Chaos Controls */}
+      {/* Active Run Provenance Information */}
+      {lastRunId && (
+        <div className="p-3 bg-[#EEF4FB] dark:bg-[#0B132B] border border-[#133E87]/20 flex flex-wrap items-center justify-between text-xs text-[#0B2545] dark:text-[#94A3B8]">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold uppercase text-[11px]">Active Execution ID:</span>
+            <span className="font-mono font-bold">{lastRunId}</span>
+          </div>
+          {lastRunTimestamp && (
+            <div className="flex items-center gap-2">
+              <span className="font-semibold uppercase text-[11px]">Timestamp (UTC):</span>
+              <span className="font-mono">{new Date(lastRunTimestamp).toUTCString()}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="p-3 bg-[#FEF2F2] border border-[#DC2626]/30 text-[#DC2626] text-xs">
+          <strong>Execution Error:</strong> {errorMessage}
+        </div>
+      )}
+
+      {/* Input Quality Audit & Validation */}
       <DataQualityBanner
         score={qualityScore}
         detectedFormat={detectedFormat}
         validationErrors={validationErrors}
         transformationsCount={transformationsCount}
-        isChaosActive={isChaosActive}
-        onToggleChaos={onToggleChaos}
+        isValidated={isValidated}
+        recordsCount={recordsCount}
+        onRunValidation={onRunValidation}
+        validating={validating}
       />
 
-      <div className="text-[10px] text-[#6B6B66] dark:text-[#888884]">
-        {currentScenario?.description || "Select a scenario to execute multi-agent diagnostic consensus."}
+      <div className="text-xs text-[#475569] dark:text-[#888884]">
+        {currentScenario?.description || "Select a network scenario to execute autonomous multi-agent diagnostic consensus."}
       </div>
     </div>
   );

@@ -19,6 +19,7 @@ from netcoop.storage.models import (
     RevokedToken,
     WsTicketRecord,
     TicketRecord,
+    DiagnosisRunRecord,
 )
 
 connect_args = {"timeout": 60.0} if "sqlite" in settings.database_url else {}
@@ -944,3 +945,165 @@ def link_ticket_incident(ticket_id: str, incident_id: str, actor_username: str) 
         session.refresh(ticket)
         return ticket
 
+
+
+def save_diagnosis_run(
+    run_id: str,
+    execution_id: str,
+    scenario_filename: str,
+    status: str,
+    report_json: str,
+    probable_cause: Optional[str] = None,
+    confidence: float = 0.0,
+    uncertainty_score: float = 0.0,
+    conformal_prediction_set: Optional[List[str]] = None,
+    previous_run_id: Optional[str] = None,
+    triggered_by: Optional[str] = None,
+) -> DiagnosisRunRecord:
+    """Persist a diagnostic execution run record for audit, tracking, and comparison."""
+    with Session(engine) as session:
+        rec = DiagnosisRunRecord(
+            run_id=run_id,
+            execution_id=execution_id,
+            scenario_filename=scenario_filename,
+            status=status,
+            report_json=report_json,
+            probable_cause=probable_cause,
+            confidence=confidence,
+            uncertainty_score=uncertainty_score,
+            conformal_prediction_set_json=json.dumps(conformal_prediction_set or []),
+            previous_run_id=previous_run_id,
+            triggered_by=triggered_by,
+            created_at=datetime.now(timezone.utc).isoformat(),
+        )
+        session.add(rec)
+        session.commit()
+        session.refresh(rec)
+        return rec
+
+
+def get_diagnosis_run(run_id: str) -> Optional[DiagnosisRunRecord]:
+    """Retrieve a specific diagnostic run by run_id or execution_id."""
+    with Session(engine) as session:
+        return session.exec(
+            select(DiagnosisRunRecord).where(
+                (DiagnosisRunRecord.run_id == run_id) | (DiagnosisRunRecord.execution_id == run_id)
+            )
+        ).first()
+
+
+def get_latest_diagnosis_run_for_scenario(scenario_filename: str) -> Optional[DiagnosisRunRecord]:
+    """Retrieve the most recent diagnostic execution run for a given scenario."""
+    with Session(engine) as session:
+        return session.exec(
+            select(DiagnosisRunRecord)
+            .where(DiagnosisRunRecord.scenario_filename == scenario_filename)
+            .order_by(DiagnosisRunRecord.id.desc())
+        ).first()
+
+
+def list_diagnosis_runs_for_scenario(scenario_filename: str, limit: int = 20) -> List[DiagnosisRunRecord]:
+    """List chronological diagnostic runs recorded for a scenario."""
+    with Session(engine) as session:
+        return list(
+            session.exec(
+                select(DiagnosisRunRecord)
+                .where(DiagnosisRunRecord.scenario_filename == scenario_filename)
+                .order_by(DiagnosisRunRecord.id.desc())
+                .limit(limit)
+            ).all()
+        )
+
+
+def compare_diagnosis_runs(current_run_id: str, previous_run_id: str) -> Dict[str, Any]:
+    """Compare two diagnostic runs for differences across causes, probabilities, devices, and metrics."""
+    curr = get_diagnosis_run(current_run_id)
+    prev = get_diagnosis_run(previous_run_id)
+    if not curr or not prev:
+        return {"error": "One or both runs not found"}
+
+    curr_rep = json.loads(curr.report_json) if curr.report_json else {}
+    prev_rep = json.loads(prev.report_json) if prev.report_json else {}
+
+    c_cause = curr.probable_cause or curr_rep.get("probable_cause", "UNKNOWN")
+    p_cause = prev.probable_cause or prev_rep.get("probable_cause", "UNKNOWN")
+    cause_diff = {
+        "current": c_cause,
+        "previous": p_cause,
+        "changed": c_cause != p_cause,
+    }
+
+    c_conf = round(float(curr.confidence or curr_rep.get("confidence", 0.0)), 4)
+    p_conf = round(float(prev.confidence or prev_rep.get("confidence", 0.0)), 4)
+    conf_delta = round(c_conf - p_conf, 4)
+    conf_diff = {
+        "current": c_conf,
+        "previous": p_conf,
+        "delta": conf_delta,
+        "status": "increased" if conf_delta > 0.001 else ("decreased" if conf_delta < -0.001 else "unchanged"),
+    }
+
+    c_unc = round(float(curr.uncertainty_score or curr_rep.get("uncertainty", {}).get("score", 0.0)), 4)
+    p_unc = round(float(prev.uncertainty_score or prev_rep.get("uncertainty", {}).get("score", 0.0)), 4)
+    unc_delta = round(c_unc - p_unc, 4)
+    unc_diff = {
+        "current": c_unc,
+        "previous": p_unc,
+        "delta": unc_delta,
+        "status": "increased" if unc_delta > 0.001 else ("decreased" if unc_delta < -0.001 else "unchanged"),
+    }
+
+    c_devs = set(curr_rep.get("affected_devices", []))
+    p_devs = set(prev_rep.get("affected_devices", []))
+    devs_diff = {
+        "current": sorted(list(c_devs)),
+        "previous": sorted(list(p_devs)),
+        "added": sorted(list(c_devs - p_devs)),
+        "removed": sorted(list(p_devs - c_devs)),
+        "unchanged": sorted(list(c_devs & p_devs)),
+        "changed": c_devs != p_devs,
+    }
+
+    c_set = set(curr_rep.get("conformal_prediction_set", []))
+    p_set = set(prev_rep.get("conformal_prediction_set", []))
+    set_diff = {
+        "current": sorted(list(c_set)),
+        "previous": sorted(list(p_set)),
+        "changed": c_set != p_set,
+    }
+
+    c_probs = curr_rep.get("confidence_breakdown") or {}
+    p_probs = prev_rep.get("confidence_breakdown") or {}
+    all_classes = sorted(list(set(c_probs.keys()) | set(p_probs.keys())))
+    probs_diff = {}
+    for cls_name in all_classes:
+        c_val = round(float(c_probs.get(cls_name, 0.0)), 4)
+        p_val = round(float(p_probs.get(cls_name, 0.0)), 4)
+        d_val = round(c_val - p_val, 4)
+        probs_diff[cls_name] = {
+            "current": c_val,
+            "previous": p_val,
+            "delta": d_val,
+            "status": "increased" if d_val > 0.001 else ("decreased" if d_val < -0.001 else "unchanged"),
+        }
+
+    c_acts = [a.get("action_type") or a.get("title") for a in curr_rep.get("remediation_actions", [])]
+    p_acts = [a.get("action_type") or a.get("title") for a in prev_rep.get("remediation_actions", [])]
+    actions_diff = {
+        "current": c_acts,
+        "previous": p_acts,
+        "changed": c_acts != p_acts,
+    }
+
+    return {
+        "current_run_id": current_run_id,
+        "previous_run_id": previous_run_id,
+        "scenario_filename": curr.scenario_filename,
+        "probable_cause": cause_diff,
+        "confidence": conf_diff,
+        "uncertainty": unc_diff,
+        "affected_devices": devs_diff,
+        "conformal_prediction_set": set_diff,
+        "classification_probabilities": probs_diff,
+        "remediation_actions": actions_diff,
+    }
