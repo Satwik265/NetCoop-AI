@@ -104,6 +104,8 @@ from netcoop.core.envelope import AgentEnvelope
 
 from netcoop.core.report import RemediationActionItem, UnifiedDiagnosticReport
 
+from netcoop.reporting import export_hackathon_report_json
+
 from gateway.adapters.organizer_adapter import OrganizerAdapter
 
 from netcoop.orchestrator.graph import pause_diagnosis, resume_diagnosis, run_diagnosis
@@ -189,11 +191,22 @@ app = FastAPI(
 )
 
 
+# NOTE: Duplicate entrypoint between netcoop/main.py and api/main.py.
+# Keep CORS origins and /api/diagnose/export in sync across both files.
+_DEFAULT_CORS_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+_cors_env = os.environ.get("CORS_ORIGINS") or os.environ.get("ALLOWED_ORIGINS") or ""
+_cors_origins = [o.strip() for o in _cors_env.split(",") if o.strip()] if _cors_env else _DEFAULT_CORS_ORIGINS
+
 app.add_middleware(
 
     CORSMiddleware,
 
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
 
     allow_credentials=True,
 
@@ -1138,6 +1151,48 @@ def run_diagnosis_endpoint(
         else:
             report = run_diagnosis(incident_data)
         return report
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Diagnostic error: {str(e)}")
+
+
+@app.post("/api/diagnose/export")
+def run_diagnosis_export_endpoint(
+    incident_data: Dict[str, Any],
+    current_user: UserRecord = Depends(require_permissions([PERM_EXECUTE_DIAGNOSIS])),
+) -> Dict[str, Any]:
+    """Execute end-to-end multi-agent network fault diagnosis and export hackathon JSON format.
+
+    NOTE: Duplicate endpoint definition between netcoop/main.py and api/main.py.
+    Keep both in sync.
+    """
+    try:
+        format_detected = OrganizerAdapter.detect_format(incident_data)
+        if format_detected == "organizer":
+            gateway_url = settings.get_gateway_url()
+            try:
+                with httpx.Client(timeout=10.0) as client:
+                    resp = client.post(gateway_url, json=incident_data)
+                    if resp.status_code == 200:
+                        canonical_data = resp.json()
+                    elif resp.status_code == 422:
+                        detail = resp.json().get("detail", "Gateway normalization failure")
+                        raise HTTPException(status_code=422, detail=detail)
+                    else:
+                        raise HTTPException(
+                            status_code=resp.status_code,
+                            detail=f"Gateway normalization failed: {resp.text}",
+                        )
+            except (httpx.ConnectError, httpx.TimeoutException) as exc:
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Gateway service on port {settings.gateway_port} unavailable over HTTP: {str(exc)}",
+                )
+            report = run_diagnosis(canonical_data)
+        else:
+            report = run_diagnosis(incident_data)
+        return export_hackathon_report_json(report)
     except HTTPException:
         raise
     except Exception as e:

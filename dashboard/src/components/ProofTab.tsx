@@ -103,12 +103,13 @@ export const ProofTab: React.FC = () => {
     <div className="space-y-8 font-mono">
       {/* Benchmark Data Provenance Banner */}
       {dataSource === "offline_mock" && (
-        <div className="bg-[#9A5B5B]/10 border border-[#9A5B5B]/30 p-3 text-[11px] text-[#EDEDEA] flex flex-wrap items-center justify-between font-mono gap-2">
+        <div className="bg-amber-500/10 border border-amber-500/30 p-3 text-[11px] text-amber-600 dark:text-amber-400 flex flex-wrap items-center justify-between font-mono gap-2">
           <div className="flex items-center gap-2">
-            <span className="bg-[#9A5B5B] text-white px-2 py-0.5 text-[9px] uppercase tracking-wider font-bold">
-              [OFFLINE BENCHMARK - SIMULATED]
+            <span className="bg-amber-500 text-black px-2 py-0.5 text-[9px] uppercase tracking-wider font-bold">
+              [SAMPLE DATA]
             </span>
-            <span>Displaying cached static benchmark results from /results/mock.json. Live evaluator API is unreachable.</span>
+            <span className="font-semibold">Backend unreachable: showing sample data</span>
+            <span className="text-[#888884] text-[10px] ml-2">(Displaying cached static benchmark results from /results/mock.json)</span>
           </div>
           {fetchedAt && (
             <span className="text-[#888884] text-[10px]">Loaded: {new Date(fetchedAt).toLocaleTimeString()}</span>
