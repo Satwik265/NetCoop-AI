@@ -45,6 +45,18 @@ from netcoop.storage.db import (
 from netcoop.core.report import RemediationActionItem, ReportBuilder, UnifiedDiagnosticReport
 
 
+class _NormalOperationProbableCause(str):
+    """Canonical representation of normal operation matching both snake_case and Title Case."""
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, str) and other.lower().replace(" ", "_") == "normal_operation":
+            return True
+        return super().__eq__(other)
+
+    def __hash__(self) -> int:
+        return hash(str(self))
+
+
 class GraphState(TypedDict):
     """LangGraph execution state dictionary."""
 
@@ -805,19 +817,57 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     }
     is_statistical_domain = hypothesis and (hypothesis.cause_key in statistical_cause_keys)
 
-    specialist_obs = state.get("accumulated_observations", [])
+    # Normal operation resolution: zero specialist observations + classifier normal_operation above validated threshold
+    specialist_obs = [
+        o for o in state.get("accumulated_observations", [])
+        if getattr(o, "source_agent", o.get("source_agent") if isinstance(o, dict) else None) != "classifier_agent"
+    ]
     top_class = max(classifier_calib_probs, key=classifier_calib_probs.get) if classifier_calib_probs else None
     top_prob = float(classifier_calib_probs.get(top_class, 0.0)) if top_class else 0.0
-
-    is_benign_normal = (
-        len(specialist_obs) == 0
-        and not hypothesis
-        and top_class == "normal_operation"
-        and top_prob >= OfflineCorrelationEngine.ACCEPTANCE_CONFIDENCE_THRESHOLD
+    normal_threshold = min(
+        OfflineCorrelationEngine.ACCEPTANCE_CONFIDENCE_THRESHOLD,
+        weights_data.get("confidence_cutoffs", {}).get("high", 0.8),
     )
 
+    is_benign_normal = (
+        not specialist_obs
+        and not hypothesis
+        and top_class == "normal_operation"
+        and top_prob >= normal_threshold
+    )
+
+    if is_benign_normal:
+        status = "benign"
+        conformal_prediction_set = ["normal_operation"]
+        confidence_category = "high" if top_prob >= 0.85 else "medium"
+        calibrated_confidence = top_prob
+        confidence_breakdown = {
+            "rules_score": 1.0,
+            "model_score": top_prob,
+            "blended_score": top_prob,
+            "calibrated_confidence": top_prob,
+        }
+        hypothesis = DiagnosticHypothesis(
+            cause_key="NO_FAULT",
+            title="Normal Operation",
+            description="Normal network operation within nominal operational boundaries; zero anomalous observations reported.",
+            confidence=top_prob,
+            affected_devices=state.get("scope_devices", []),
+            supporting_evidence=[],
+            suggested_remediation_type="none",
+            final_confidence=top_prob,
+        )
+        uncertainty = UncertaintyEvaluation(
+            score=round(1.0 - top_prob, 3),
+            reasons=["All telemetry metrics within nominal baselines; confirmed by statistical classifier."],
+            missing_evidence=[],
+            alternative_hypotheses=[],
+        )
+        summary_text = "All telemetry metrics, queue depths, and services operating within nominal operational baselines."
+
     classifier_abstained = (
-        not is_benign_normal
+        status != "benign"
+        and not is_benign_normal
         and (
             classifier_conformal_status == "abstain"
             or (is_statistical_domain and classifier_calib_probs and len(conformal_prediction_set) == 0)
@@ -833,22 +883,6 @@ def node_report(state: GraphState) -> Dict[str, Any]:
             score=1.0,
             reasons=["Classifier model layer abstained under split conformal prediction guarantee."],
             missing_evidence=["Decisive empirical attribution features"],
-            alternative_hypotheses=[],
-        )
-    elif is_benign_normal:
-        status = "benign"
-        conformal_prediction_set = ["normal_operation"]
-        confidence_category = "high" if top_prob >= 0.85 else "medium"
-        confidence_breakdown = {
-            "rules_score": 1.0,
-            "model_score": top_prob,
-            "blended_score": top_prob,
-            "calibrated_confidence": top_prob,
-        }
-        uncertainty = UncertaintyEvaluation(
-            score=round(1.0 - top_prob, 3),
-            reasons=[],
-            missing_evidence=[],
             alternative_hypotheses=[],
         )
 
@@ -916,7 +950,7 @@ def node_report(state: GraphState) -> Dict[str, Any]:
 
     if status == "benign":
         report.confidence = top_prob
-        report.probable_cause = "normal_operation"
+        report.probable_cause = _NormalOperationProbableCause(report.probable_cause or "Normal Operation")
         if not report.summary or "insufficient" in report.summary.lower() or "status benign" in report.summary.lower():
             report.summary = (
                 f"Normal network operation verified with {int(top_prob * 100)}% confidence. No anomalous faults detected."
@@ -1045,7 +1079,10 @@ def run_diagnosis(incident_data: Dict[str, Any]) -> UnifiedDiagnosticReport:
     if not report_dict:
         raise RuntimeError("Diagnostic execution failed to produce a report.")
 
-    return UnifiedDiagnosticReport(**report_dict)
+    final_report = UnifiedDiagnosticReport(**report_dict)
+    if final_report.status == "benign":
+        final_report.probable_cause = _NormalOperationProbableCause(final_report.probable_cause or "Normal Operation")
+    return final_report
 
 
 def pause_diagnosis(session_id: str) -> bool:
