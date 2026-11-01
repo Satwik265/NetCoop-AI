@@ -12,9 +12,9 @@ import os
 
 from pathlib import Path
 
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Union
 
-from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
+from fastapi import Body, Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -1121,35 +1121,31 @@ def get_incident_envelopes_alias(
 
 @app.post("/api/diagnose", response_model=UnifiedDiagnosticReport)
 def run_diagnosis_endpoint(
-    incident_data: Dict[str, Any],
+    incident_data: Union[Dict[str, Any], List[Any]] = Body(...),
     current_user: UserRecord = Depends(require_permissions([PERM_EXECUTE_DIAGNOSIS])),
 ) -> UnifiedDiagnosticReport:
     """Execute end-to-end multi-agent network fault diagnosis."""
     try:
-        format_detected = OrganizerAdapter.detect_format(incident_data)
-        if format_detected == "organizer":
-            gateway_url = settings.get_gateway_url()
-            try:
-                with httpx.Client(timeout=10.0) as client:
-                    resp = client.post(gateway_url, json=incident_data)
-                    if resp.status_code == 200:
-                        canonical_data = resp.json()
-                    elif resp.status_code == 422:
-                        detail = resp.json().get("detail", "Gateway normalization failure")
-                        raise HTTPException(status_code=422, detail=detail)
-                    else:
-                        raise HTTPException(
-                            status_code=resp.status_code,
-                            detail=f"Gateway normalization failed: {resp.text}",
-                        )
-            except (httpx.ConnectError, httpx.TimeoutException) as exc:
-                raise HTTPException(
-                    status_code=503,
-                    detail=f"Gateway service on port {settings.gateway_port} unavailable over HTTP: {str(exc)}",
-                )
-            report = run_diagnosis(canonical_data)
-        else:
-            report = run_diagnosis(incident_data)
+        gateway_url = settings.get_gateway_url()
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.post(gateway_url, json=incident_data)
+                if resp.status_code == 200:
+                    canonical_data = resp.json()
+                elif resp.status_code == 422:
+                    detail = resp.json().get("detail", "Gateway normalization failure")
+                    raise HTTPException(status_code=422, detail=detail)
+                else:
+                    raise HTTPException(
+                        status_code=resp.status_code,
+                        detail=f"Gateway normalization failed: {resp.text}",
+                    )
+        except (httpx.ConnectError, httpx.TimeoutException) as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Gateway service on port {settings.gateway_port} unavailable over HTTP: {str(exc)}",
+            )
+        report = run_diagnosis(canonical_data)
         return report
     except HTTPException:
         raise
@@ -1159,7 +1155,7 @@ def run_diagnosis_endpoint(
 
 @app.post("/api/diagnose/export")
 def run_diagnosis_export_endpoint(
-    incident_data: Dict[str, Any],
+    incident_data: Union[Dict[str, Any], List[Any]] = Body(...),
     current_user: UserRecord = Depends(require_permissions([PERM_EXECUTE_DIAGNOSIS])),
 ) -> Dict[str, Any]:
     """Execute end-to-end multi-agent network fault diagnosis and export hackathon JSON format.
@@ -1168,30 +1164,26 @@ def run_diagnosis_export_endpoint(
     Keep both in sync.
     """
     try:
-        format_detected = OrganizerAdapter.detect_format(incident_data)
-        if format_detected == "organizer":
-            gateway_url = settings.get_gateway_url()
-            try:
-                with httpx.Client(timeout=10.0) as client:
-                    resp = client.post(gateway_url, json=incident_data)
-                    if resp.status_code == 200:
-                        canonical_data = resp.json()
-                    elif resp.status_code == 422:
-                        detail = resp.json().get("detail", "Gateway normalization failure")
-                        raise HTTPException(status_code=422, detail=detail)
-                    else:
-                        raise HTTPException(
-                            status_code=resp.status_code,
-                            detail=f"Gateway normalization failed: {resp.text}",
-                        )
-            except (httpx.ConnectError, httpx.TimeoutException) as exc:
-                raise HTTPException(
-                    status_code=503,
-                    detail=f"Gateway service on port {settings.gateway_port} unavailable over HTTP: {str(exc)}",
-                )
-            report = run_diagnosis(canonical_data)
-        else:
-            report = run_diagnosis(incident_data)
+        gateway_url = settings.get_gateway_url()
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.post(gateway_url, json=incident_data)
+                if resp.status_code == 200:
+                    canonical_data = resp.json()
+                elif resp.status_code == 422:
+                    detail = resp.json().get("detail", "Gateway normalization failure")
+                    raise HTTPException(status_code=422, detail=detail)
+                else:
+                    raise HTTPException(
+                        status_code=resp.status_code,
+                        detail=f"Gateway normalization failed: {resp.text}",
+                    )
+        except (httpx.ConnectError, httpx.TimeoutException) as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Gateway service on port {settings.gateway_port} unavailable over HTTP: {str(exc)}",
+            )
+        report = run_diagnosis(canonical_data)
         return export_hackathon_report_json(report)
     except HTTPException:
         raise

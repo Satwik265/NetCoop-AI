@@ -793,17 +793,17 @@ python scripts/run_agents.py --daemon
 > - **Full Action Coverage on Diagnosed Causes**: Following the remediation cause normalization and catalog expansion (`netcoop/remediation/engine.py:32-118`, commit `a7ee939`), every single diagnosed scenario successfully generates between 1 and 2 targeted, simulated remediation actions (e.g. ECMP traffic rebalancing, priority QoS queues, interface failovers, RF power increases, and daemon restarts).
 > - **Zero Actions on Benign & Abstentions**: Scenarios returning exactly 0 remediation actions are strictly:
 >   1. `normal_operation.json`: Resolves to `benign` (`NO_FAULT`) with 100% confidence. Remediation plans are suppressed by design on healthy networks (`RemediationEngine.generate_plan` returns `[]`).
->   2. Abstention Scenarios (`ambiguous_multi_fault`, `insufficient_data`, `compound_*`, `interop_renamed_fields`, `interop_null_nan`): Because diagnostic status is `insufficient_evidence`, uncertainty scores exceed safe execution thresholds and no automated actions are generated.
+>   2. Abstention Scenarios (`ambiguous_multi_fault`, `insufficient_data`, `compound_*`): Because diagnostic status is `insufficient_evidence`, uncertainty scores exceed safe execution thresholds and no automated actions are generated.
 
 #### Known Interoperability Failures
 
-Comparing empirical results across the three invocation paths (Local CLI, Product API `/api/diagnose`, and Ingestion Gateway `/ingest`):
+Comparing empirical results across the three invocation paths (Local CLI, Product API `/api/diagnose`, and Ingestion Gateway `/ingest`) before and after gateway routing and telemetry normalizer fixes:
 
-| Scenario File | Expected (Manifest) | Local CLI (`netcoop diagnose --file`) | Product API (`POST /api/diagnose`) | Ingestion Gateway (`POST :8006/ingest`) | Observed Behavior & Root Cause |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `interop_renamed_fields.json` | `diagnosed` | `insufficient_evidence` (Conf: 0%, Ev: 0, Act: 0) | **HTTP 200** (`status: insufficient_evidence`, Conf: 0.0) | **HTTP 200 OK** (`record_count: 8`, applied: `alias_mapping`) | CLI and API direct paths fail to diagnose because `/api/diagnose` only invokes the Gateway if `detect_format() == "organizer"`, whereas this file uses canonical structure with unmapped aliases (`cpu_load_pct`, `packet_loss_rate`). Direct Gateway ingestion succeeds (HTTP 200). |
-| `interop_null_nan.json` | `diagnosed` | `insufficient_evidence` (Conf: 0%, Ev: 0, Act: 0) | **HTTP 200** (`status: insufficient_evidence`, Conf: 0.0) | **HTTP 200 OK** (`record_count: 8`, applied: `dirty_string_sanitization`) | CLI and API direct paths fail validation on string `'NaN'` and `'null'` tokens in float telemetry. Direct Gateway ingestion succeeds (HTTP 200) via dirty string sanitization. |
-| `interop_malformed_json.json` | `diagnosed` | **CRASH** (`JSONDecodeError: line 2 col 3`) | **HTTP 422 Unprocessable Entity** (`JSON decode error`) | **HTTP 200 OK** (`record_count: 1`, repair: `ERR_MALFORMED_JSON`) | Raw file uses single quotes (`'incident_id'`). CLI crashes on Python `json.load()`; API rejects before handler with HTTP 422; direct Ingestion Gateway endpoint succeeds (HTTP 200) via raw text fallback and tolerant single-quote repair. |
+| Scenario File | Expected (Manifest) | Local CLI (`netcoop diagnose --file`) | Product API (`POST /api/diagnose`) [Before] | Product API (`POST /api/diagnose`) [After Fix] | Ingestion Gateway (`POST :8006/ingest`) | Resolution & Root Cause |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `interop_renamed_fields.json` | `diagnosed` | `insufficient_evidence` (Conf: 0%, Ev: 0, Act: 0) | **HTTP 200** (`status: insufficient_evidence`, cause: `None`, Conf: 0.0, Act: 0) | **HTTP 200 OK** (`status: diagnosed`, cause: `LINK_CONGESTION`, Conf: 0.956, Act: 2) | **HTTP 200 OK** (`record_count: 8`, applied: `alias_mapping`) | **RESOLVED**: `/api/diagnose` now routes all dict/list payloads through Ingestion Gateway (`:8006/ingest`), ensuring field aliases (`dev_id` -> `device_id`, `delay` -> `latency_ms`, `loss` -> `packet_loss_pct`, `util` -> `link_utilization_pct`) are normalized prior to multi-agent dispatch. |
+| `interop_null_nan.json` | `diagnosed` | `insufficient_evidence` (Conf: 0%, Ev: 0, Act: 0) | **HTTP 200** (`status: insufficient_evidence`, cause: `None`, Conf: 0.0, Act: 0) | **HTTP 200 OK** (`status: diagnosed`, cause: `LINK_CONGESTION`, Conf: 0.956, Act: 2) | **HTTP 200 OK** (`record_count: 8`, applied: `dirty_string_sanitization`) | **RESOLVED**: Payload routed through Gateway sanitizes string `'NaN'` and `'null'` tokens. `TelemetryNormalizer.normalize_metric` now treats non-numeric/null values as missing rather than fabricating measured `0.0`, allowing valid metrics to diagnose correctly. |
+| `interop_malformed_json.json` | `diagnosed` | **Error: Malformed JSON** (one-line error, exit code 1; no traceback) | **HTTP 422 Unprocessable Entity** (`JSON decode error`) | **HTTP 422 Unprocessable Entity** (maintained; invalid JSON rejected before handler) | **HTTP 200 OK** (`record_count: 1`, repair: `ERR_MALFORMED_JSON`) | Raw file uses single quotes (`'incident_id'`). CLI catches `json.JSONDecodeError` and prints a one-line error with non-zero exit; API rejects invalid JSON as HTTP 422; direct Ingestion Gateway endpoint succeeds (HTTP 200) via raw text fallback and tolerant single-quote repair. |
 
 #### Automated Pytest Suite Results
 
@@ -811,13 +811,13 @@ Executed across the entire codebase:
 ```powershell
 pytest -o pythonpath=. --collect-only -q
 ```
-**Collection Result**: **355 tests collected across 32 test files** (duration: 4.85s).
+**Collection Result**: **357 tests collected across 32 test files** (duration: 4.85s).
 
 Executed in `in_process` mode:
 ```powershell
 $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
 ```
-**Execution Result**: **355 passed, 4 warnings in 101.32s (0:01:41)** (100% pass rate; zero failures across all 355 unit, property, security, contract, and remediation tests).
+**Execution Result**: **357 passed, 4 warnings** (100% pass rate; zero failures across all 357 unit, property, security, contract, and remediation tests).
 
 > **Test Fix Verification**: The previous failure in `tests/test_phase4_security.py::test_logout_and_token_invalidation` (which submitted a mismatched password `"<your-password>"` against the seeded `"<your-password>"`) was resolved in commit `0027d88` by referencing `os.getenv("NETCOOP_DEV_PASSWORD", "<your-password>")`. Together with the 28 tests in `tests/test_remediation_coverage.py` from commit `a7ee939`, all 355 tests pass cleanly.
 
@@ -827,7 +827,7 @@ $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
 | :--- | :--- | :---: |
 | `test_agent_http.py` | Unit and integration tests for isolated agent FastAPI servers and mediator dispatch. | 29 |
 | `test_agents.py` | Unit tests for the five domain specialist agents. | 5 |
-| `test_api_endpoints.py` | Tests for FastAPI backend REST and WebSocket endpoints. | 5 |
+| `test_api_endpoints.py` | Tests for FastAPI backend REST and WebSocket endpoints. | 7 |
 | `test_b1_gateway_robustness.py` | Comprehensive validation tests for B1 deliverables (Gateway, Normalizer, Error handling). | 28 |
 | `test_b2_learned_layer.py` | Unit and property tests for B2 learned layer (Feature extraction, Calibrated classifier). | 15 |
 | `test_chaos.py` | Chaos, circuit-breaker, and degraded-mode resilience testing. | 19 |

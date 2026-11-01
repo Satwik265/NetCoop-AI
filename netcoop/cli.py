@@ -128,8 +128,12 @@ def diagnose_cmd(
 ) -> None:
     """Run full multi-agent diagnostic pipeline on network incident input."""
     init_db()
-    with open(file_path, "r", encoding="utf-8") as f:
-        incident_data = json.load(f)
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            incident_data = json.load(f)
+    except json.JSONDecodeError as exc:
+        console.print(f"[bold red]Error: Malformed JSON in {file_path}: {exc}[/bold red]")
+        raise typer.Exit(code=1)
 
     console.print(
         Panel(
