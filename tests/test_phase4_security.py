@@ -458,7 +458,7 @@ def test_logout_and_token_invalidation(client: TestClient):
     """16. POST /api/auth/logout revokes token jti; subsequent token usage returns 401."""
     login_res = client.post(
         "/api/auth/login",
-        json={"username": "engineer", "password": "NetCoopEng!2026"},
+        json={"username": "engineer", "password": os.getenv("NETCOOP_DEV_PASSWORD", "NetCoopDev!2026")},
     )
     assert login_res.status_code == 200
     token = login_res.json()["access_token"]

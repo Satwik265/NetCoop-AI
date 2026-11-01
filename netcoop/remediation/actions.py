@@ -116,27 +116,27 @@ class RemediationCatalog:
 
     @classmethod
     def create_rebalance_traffic_action(
-        cls, device: str, interface: str = "et-0/0/1"
+        cls, device: str, interface: Optional[str] = None
     ) -> RemediationActionItem:
         """Generate simulated command to dynamically rebalance traffic across parallel links."""
+        iface_str = f" {interface}" if interface else ""
+        cmds = ["configure terminal"]
+        if interface:
+            cmds.append(f"interface {interface}")
+        cmds.extend(["load-interval 30", "traffic-policy REBALANCE_ECMP", "commit and-quit"])
+
+        rollback = ["configure terminal"]
+        if interface:
+            rollback.append(f"interface {interface}")
+        rollback.extend(["no traffic-policy REBALANCE_ECMP", "commit and-quit"])
+
         return RemediationActionItem(
             action_id=f"act-rebalance-{device}",
-            title=f"Rebalance traffic across ECMP next-hops from {device} {interface}",
+            title=f"Rebalance traffic across ECMP next-hops from {device}{iface_str}",
             description="Re-weight hash buckets to steer egress flows across parallel paths and relieve congestion.",
             device=device,
-            commands=[
-                f"configure terminal",
-                f"interface {interface}",
-                f"load-interval 30",
-                f"traffic-policy REBALANCE_ECMP",
-                f"commit and-quit",
-            ],
-            rollback_commands=[
-                f"configure terminal",
-                f"interface {interface}",
-                f"no traffic-policy REBALANCE_ECMP",
-                f"commit and-quit",
-            ],
+            commands=cmds,
+            rollback_commands=rollback,
             risk_level="low",
             blast_radius_devices=[device],
             is_simulated=True,
@@ -145,18 +145,21 @@ class RemediationCatalog:
 
     @classmethod
     def create_clear_counters_action(
-        cls, device: str, interface: str = "et-0/0/1"
+        cls, device: str, interface: Optional[str] = None
     ) -> RemediationActionItem:
         """Generate simulated command to clear interface CRC and drop counters."""
+        iface_str = f" {interface}" if interface else ""
+        if interface:
+            cmds = [f"clear counters {interface}", f"clear interface {interface} queue-drops"]
+        else:
+            cmds = ["clear counters", "clear queue-drops"]
+
         return RemediationActionItem(
             action_id=f"act-clear-counters-{device}",
-            title=f"Clear interface counters and queue drops on {device} {interface}",
+            title=f"Clear interface counters and queue drops on {device}{iface_str}",
             description="Reset transient CRC and buffer overflow metrics to verify remediation efficacy.",
             device=device,
-            commands=[
-                f"clear counters {interface}",
-                f"clear interface {interface} queue-drops",
-            ],
+            commands=cmds,
             rollback_commands=[],
             risk_level="low",
             blast_radius_devices=[device],
@@ -166,26 +169,27 @@ class RemediationCatalog:
 
     @classmethod
     def create_raise_qos_action(
-        cls, device: str, interface: str = "et-0/0/1"
+        cls, device: str, interface: Optional[str] = None
     ) -> RemediationActionItem:
         """Generate simulated command to raise QoS priority for latency-sensitive traffic."""
+        iface_str = f" {interface}" if interface else ""
+        cmds = ["configure terminal"]
+        if interface:
+            cmds.append(f"interface {interface}")
+        cmds.extend(["service-policy type qos output EXPEDITE_VOICE_VIDEO", "commit and-quit"])
+
+        rollback = ["configure terminal"]
+        if interface:
+            rollback.append(f"interface {interface}")
+        rollback.extend(["no service-policy type qos output EXPEDITE_VOICE_VIDEO", "commit and-quit"])
+
         return RemediationActionItem(
             action_id=f"act-qos-{device}",
-            title=f"Raise QoS priority and buffer reserve on {device} {interface}",
+            title=f"Raise QoS priority and buffer reserve on {device}{iface_str}",
             description="Prioritize delay-sensitive flows and allocate strict priority queue bandwidth.",
             device=device,
-            commands=[
-                f"configure terminal",
-                f"interface {interface}",
-                f"service-policy type qos output EXPEDITE_VOICE_VIDEO",
-                f"commit and-quit",
-            ],
-            rollback_commands=[
-                f"configure terminal",
-                f"interface {interface}",
-                f"no service-policy type qos output EXPEDITE_VOICE_VIDEO",
-                f"commit and-quit",
-            ],
+            commands=cmds,
+            rollback_commands=rollback,
             risk_level="low",
             blast_radius_devices=[device],
             is_simulated=True,
@@ -194,31 +198,102 @@ class RemediationCatalog:
 
     @classmethod
     def create_failover_link_action(
-        cls, device: str, interface: str = "et-0/0/1", peer_device: Optional[str] = None
+        cls, device: str, interface: Optional[str] = None, peer_device: Optional[str] = None
     ) -> RemediationActionItem:
         """Generate simulated command to administratively fail over a degraded link."""
         blast = [device]
         if peer_device:
             blast.append(peer_device)
+        if interface:
+            title = f"Fail over link {device}:{interface} to redundant secondary circuit"
+            cmds = ["configure terminal", f"interface {interface}", "shutdown", "commit and-quit"]
+            rollback = ["configure terminal", f"interface {interface}", "no shutdown", "commit and-quit"]
+        else:
+            title = f"Fail over active transit link on {device} to redundant secondary path"
+            cmds = ["configure terminal", "redundancy force-switchover", "commit and-quit"]
+            rollback = ["configure terminal", "no redundancy force-switchover", "commit and-quit"]
+
         return RemediationActionItem(
             action_id=f"act-failover-{device}",
-            title=f"Fail over link {device}:{interface} to redundant secondary circuit",
+            title=title,
             description="Isolate degraded link to trigger instantaneous failover to secondary path.",
             device=device,
-            commands=[
-                f"configure terminal",
-                f"interface {interface}",
-                f"shutdown",
-                f"commit and-quit",
-            ],
-            rollback_commands=[
-                f"configure terminal",
-                f"interface {interface}",
-                f"no shutdown",
-                f"commit and-quit",
-            ],
+            commands=cmds,
+            rollback_commands=rollback,
             risk_level="medium",
             blast_radius_devices=blast,
+            is_simulated=True,
+            status="pending_approval",
+        )
+
+    @classmethod
+    def create_adjust_ap_power_action(
+        cls, device: str, target_power_dbm: int = 20
+    ) -> RemediationActionItem:
+        """Generate simulated command to adjust AP transmit power for weak Wi-Fi coverage."""
+        return RemediationActionItem(
+            action_id=f"act-wifi-power-{device}",
+            title=f"Adjust wireless radio transmit power to {target_power_dbm} dBm on {device}",
+            description="Increase access point radio transmit power to mitigate RF path attenuation and packet loss.",
+            device=device,
+            commands=[
+                "configure terminal",
+                f"radio 2.4ghz transmit-power {target_power_dbm}",
+                f"radio 5ghz transmit-power {target_power_dbm}",
+                "commit and-quit",
+            ],
+            rollback_commands=[
+                "configure terminal",
+                "radio 2.4ghz transmit-power default",
+                "radio 5ghz transmit-power default",
+                "commit and-quit",
+            ],
+            risk_level="low",
+            blast_radius_devices=[device],
+            is_simulated=True,
+            status="pending_approval",
+        )
+
+    @classmethod
+    def create_restart_dns_cache_action(
+        cls, device: str
+    ) -> RemediationActionItem:
+        """Generate simulated command to flush DNS resolver cache and restart daemon."""
+        return RemediationActionItem(
+            action_id=f"act-dns-restart-{device}",
+            title=f"Flush resolver cache and restart recursive DNS forwarder on {device}",
+            description="Clear corrupted DNS cache entries and restart local lookup daemon to restore resolution.",
+            device=device,
+            commands=[
+                "systemctl restart named-resolver",
+                "rndc flush",
+            ],
+            rollback_commands=[
+                "systemctl restart named-resolver",
+            ],
+            risk_level="low",
+            blast_radius_devices=[device],
+            is_simulated=True,
+            status="pending_approval",
+        )
+
+    @classmethod
+    def create_clear_dhcp_bindings_action(
+        cls, device: str
+    ) -> RemediationActionItem:
+        """Generate simulated command to clear exhausted DHCP bindings and renew lease pool."""
+        return RemediationActionItem(
+            action_id=f"act-dhcp-clear-{device}",
+            title=f"Clear exhausted DHCP lease bindings and renew relay pool on {device}",
+            description="Flush expired and stale DHCP leases to free up pool allocation for requesting campus hosts.",
+            device=device,
+            commands=[
+                "clear ip dhcp binding *",
+                "clear ip dhcp server statistics",
+            ],
+            rollback_commands=[],
+            risk_level="low",
+            blast_radius_devices=[device],
             is_simulated=True,
             status="pending_approval",
         )
