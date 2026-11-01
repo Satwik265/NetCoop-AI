@@ -135,43 +135,7 @@ The platform is designed around strict process isolation. Six specialist agents 
 
 ## 5. Wire Protocol & Interoperability
 
-All agent communication strictly adheres to the versioned wire envelope specification in [`schemas/envelope.json`](schemas/envelope.json). Agents accept and emit strongly-typed JSON envelopes over HTTP REST `POST` endpoints:
-
-```json
-{
-  "schema_version": "1.0.0",
-  "message_id": "msg-019283aa-b930-745a-8219-c19b938091ab",
-  "correlation_id": "inc-link-congestion-42",
-  "timestamp_utc": "2026-10-31T12:00:00.000Z",
-  "sender": "telemetry_agent",
-  "recipient": "synthesizer_agent",
-  "message_type": "finding_submission",
-  "priority": "normal",
-  "payload": {
-    "observations": [
-      {
-        "observation_id": "obs-e4c19a02",
-        "category": "metric_anomaly",
-        "entity": "core-rtr-01",
-        "finding": "Egress queue saturation detected on interface et-0/0/1",
-        "severity": "critical",
-        "metrics": {
-          "queue_drop_rate": 4500.0,
-          "link_utilization_pct": 94.2
-        },
-        "timestamp_utc": "2026-10-31T12:00:00.000Z"
-      }
-    ],
-    "hypotheses": [],
-    "inquiries": []
-  },
-  "context": {
-    "incident_id": "inc-link-congestion-42",
-    "network_id": "iit-bbs-campus-fabric",
-    "turn_number": 1
-  }
-}
-```
+All agent communication strictly adheres to the versioned wire envelope specification in [`schemas/envelope.json`](schemas/envelope.json). Agents accept and emit strongly-typed JSON envelopes over HTTP REST `POST` endpoints. No raw strings, untyped dictionaries, or hidden states are permitted across agent boundaries.
 
 ### 5.1 Ingestion Gateway Normalization
 
@@ -184,6 +148,106 @@ The Ingestion Gateway (`gateway/api.py`, port 8006) ingests multi-vendor and thi
    - Signal strength: Raw RF power milliwatts coerced to `dBm`.
 2. **Schema Migration**: When receiving older schema versions, the Ingestion Gateway applies structural migration transformations to ensure zero protocol errors reach specialist agents.
 3. **Dirty Data Sanitization**: Sanitizes string `'NaN'` and `'null'` tokens into structured null attributes; trims and synchronizes timestamps exceeding operational skew boundaries (600s boundary).
+
+### 5.2 Standard Envelope Structure
+
+```json
+{
+  "header": {
+    "message_id": "c1f72b22-86ee-4eb3-8182-3d712f5581ea",
+    "correlation_id": "inc-link-congestion-42",
+    "timestamp_utc": "2026-10-31T12:00:00.000000+00:00",
+    "sender": "telemetry_agent",
+    "recipient": "orchestrator",
+    "schema_version": "1.0.0",
+    "message_type": "finding_submission",
+    "priority": "normal"
+  },
+  "payload": {
+    "scope": {
+      "network_id": "iit-bbs-campus-fabric",
+      "devices": ["dist-sw-core", "core-rtr-01"],
+      "interfaces": ["et-0/0/1"]
+    },
+    "observations": [
+      {
+        "observation_id": "obs-e4c19a02",
+        "category": "metric_anomaly",
+        "entity": "core-rtr-01:et-0/0/1",
+        "metric_name": "link_utilization_pct",
+        "observed_value": 97.65,
+        "baseline_value": 45.0,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp_start": "2026-10-31T12:00:00Z",
+        "timestamp_end": "2026-10-31T12:05:00Z",
+        "context": { "queue_drops": 1019 }
+      }
+    ],
+    "hypotheses": [
+      {
+        "hypothesis_id": "hyp-82b3a104",
+        "probable_cause": "LINK_CONGESTION",
+        "confidence": 0.956,
+        "supporting_observation_ids": ["obs-e4c19a02"],
+        "refuting_observation_ids": [],
+        "required_corroboration": ["LOG_INTERFACE_DROP_MESSAGES"]
+      }
+    ],
+    "inquiries": [
+      {
+        "inquiry_id": "inq-91f82c31",
+        "target_agent": "log_agent",
+        "question": "Are there queue drop syslog messages on interface et-0/0/1?",
+        "target_entity": "core-rtr-01:et-0/0/1",
+        "parameters": { "window_minutes": 15 },
+        "answer": null
+      }
+    ],
+    "raw_data": null,
+    "error": null
+  },
+  "context": {
+    "iteration": 0,
+    "environment": "simulation"
+  }
+}
+```
+
+### 5.3 Canonical Metric Keys and SI Units
+
+The Ingestion Gateway and normalizers enforce standard metric names and units across all data sources:
+
+| Canonical Key | Description | SI Unit | Supported Raw Aliases | Normalization Action |
+| :--- | :--- | :--- | :--- | :--- |
+| `latency_ms` | Round-trip packet latency | `ms` | `latency`, `rtt`, `ping_ms`, `delay_ms` | Seconds converted via 1000x multiplier |
+| `jitter_ms` | Packet delay variation | `ms` | `jitter`, `delay_variation` | Microseconds converted via 0.001x multiplier |
+| `packet_loss_pct` | Dropped packet proportion | `percent` | `loss`, `packet_loss`, `drop_rate` | Floats in range [0, 1] scaled to [0, 100] |
+| `throughput_mbps` | Observed bit rate | `mbps` | `throughput`, `traffic_rate`, `tx_rate` | bps/kbps/gbps scaled to megabits/sec |
+| `link_utilization_pct` | Relative bandwidth load | `percent` | `util`, `utilization`, `load_pct` | Ratios scaled to percentage |
+| `cpu_pct` | CPU processor utilization | `percent` | `cpu`, `cpu_usage`, `processor_pct`, `cpu_utilization_pct` | Clamped to [0.0, 100.0] |
+| `queue_drops` | Egress buffer tail-drops | `count` | `drops`, `buffer_drops`, `queue_overflows` | Non-negative integer cast |
+| `interface_errors` | CRC, alignment, frame errors | `count` | `crc_errors`, `input_errors`, `phy_errors` | Non-negative integer cast |
+| `wifi_rssi_dbm` | Wireless signal strength | `dbm` | `rssi`, `signal_strength_dbm`, `wifi_signal` | Validated in range [-100, 0] dBm |
+
+### 5.4 Version Negotiation & Protocol Incompatibility Handling
+
+1. **Semantic Version Check**: Every envelope specifies `header.schema_version`. Agents accept any version matching `1.x.x`. Minor versions are backward-compatible.
+2. **Schema Migration**: When receiving older schema versions, the Ingestion Gateway runs structural transforms (e.g. nested metric flattening, field promotion).
+3. **Invalid Envelopes**: If an envelope fails Pydantic validation:
+   - The malformed message is quarantined in the SQLite `event_log`.
+   - A structured `protocol_error` envelope is returned with error details.
+   - The orchestrator isolates the sender without halting the diagnostic graph.
+
+### 5.5 Output in the Hackathon JSON Format
+
+To export any diagnostic run directly into the hackathon required 10-key contract (`incident_id`, `status`, `suspected_root_cause`, `confidence`, `affected_devices`, `supporting_evidence`, `alternative_causes`, `recommended_actions`, `evidence_sources`, `limitations`), use the `export_hackathon_report_json` adapter:
+
+```powershell
+python -c "import json; from netcoop.data.generator import SyntheticNetworkGenerator; from netcoop.orchestrator.graph import run_diagnosis; from netcoop.reporting.builder import export_hackathon_report_json; inc = SyntheticNetworkGenerator.generate(scenario='link_congestion', seed=42); rep = run_diagnosis(inc); print(json.dumps(export_hackathon_report_json(rep), indent=2))"
+```
+
+For the complete, verified 10-key output example, see [Section 9.4 Real 10-Key Hackathon JSON Contract](#4-real-10-key-hackathon-json-contract-for-link_congestion).
 
 ---
 
@@ -438,13 +502,14 @@ The platform enforces least-privilege role-based access control with audited imp
 #### 3. Obtaining a JWT Token for API Calls
 Issue a `POST` request to `/api/auth/login`:
 ```powershell
-$body = @{ username = "admin"; password = "NetCoopDev!2026" } | ConvertTo-Json
+$body = '{"username": "admin", "password": "NetCoopDev!2026"}'
 $response = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/auth/login" -Method Post -Body $body -ContentType "application/json"
 $token = $response.access_token
 ```
 For all subsequent HTTP requests, pass the bearer token in the `Authorization` header:
 ```powershell
-$headers = @{ Authorization = "Bearer $token" }
+$headers = [System.Collections.Generic.Dictionary[string,string]]::new()
+$headers["Authorization"] = "Bearer $token"
 Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/diagnose/results" -Headers $headers
 ```
 
@@ -482,11 +547,11 @@ python scripts/run_agents.py --status
 
 # Step 4: Run Scenario 1 - Normal Operation (Benign resolution)
 .\.venv\Scripts\netcoop.exe diagnose --file data/scenarios/normal_operation.json
-# Expected: Status: benign | Probable Cause: Normal Operation | Confidence: 100% | Evidence: 0
+# Expected: Status: benign | Probable Cause: Normal Operation | Confidence: 100% | Evidence: 0 | Remediation Actions: 0
 
 # Step 5: Run Scenario 2 - Link Congestion (Fault diagnosis)
 .\.venv\Scripts\netcoop.exe diagnose --file data/scenarios/link_congestion.json
-# Expected: Status: diagnosed | Probable Cause: LINK_CONGESTION | Confidence: 96% | Evidence: 8 | Remediation Actions: 2
+# Expected: Status: diagnosed | Probable Cause: Link utilization saturation causing buffer queue drops and latency spikes | Confidence: 95% | Evidence: 8 | Remediation Actions: 2
 
 # Step 6: Run Scenario 3 - Interoperability with unmapped aliases (KNOWN FAILURE)
 .\.venv\Scripts\netcoop.exe diagnose --file data/scenarios/interop_renamed_fields.json
@@ -703,7 +768,7 @@ python scripts/run_agents.py --daemon
 | Scenario File | Expected Status | Actual Status | Actual Top Cause Key | Confidence | Evidence Count | Remediation Actions | Match? |
 | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: |
 | `normal_operation.json` | `benign` | `benign` | `NO_FAULT` | 100% | 0 | 0 | **YES** |
-| `link_congestion.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 8 | 2 | **YES** |
+| `link_congestion.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 95% | 8 | 2 | **YES** |
 | `weak_wifi_signal.json` | `diagnosed` | `diagnosed` | `WEAK_WIFI_SIGNAL` | 94% | 4 | 1 | **YES** |
 | `ethernet_interface_fault.json` | `diagnosed` | `diagnosed` | `ETHERNET_INTERFACE_FAULT` | 97% | 2 | 2 | **YES** |
 | `dns_failure.json` | `diagnosed` | `diagnosed` | `DNS_FAILURE` | 97% | 16 | 1 | **YES** |
@@ -726,6 +791,8 @@ python scripts/run_agents.py --daemon
 
 *Source: Measured live over HTTP with all 8 specialist agents and gateway active on ports 8001–8008 (`INTERNAL_SERVICE_TOKEN` set, `AGENTS_MODE` unset).*
 
+> **Note on Confidence Display**: The CLI truncates floating-point confidence to a whole percent (`int(conf * 100) = 95%`) while the benchmark summary rounds uncalibrated values (`0.956` to `96%`). Both refer to the identical underlying model prediction.
+
 > **Remediation Action Coverage & Zero-Action Explanations**:
 > - **Full Action Coverage on Diagnosed Causes**: Following the remediation cause normalization and catalog expansion (`netcoop/remediation/engine.py:32-118`, commit `a7ee939`), every single diagnosed scenario successfully generates between 1 and 2 targeted, simulated remediation actions (e.g. ECMP traffic rebalancing, priority QoS queues, interface failovers, RF power increases, and daemon restarts).
 > - **Zero Actions on Benign & Abstentions**: Scenarios returning exactly 0 remediation actions are strictly:
@@ -734,13 +801,13 @@ python scripts/run_agents.py --daemon
 
 #### Known Interoperability Failures
 
-While the Ingestion Gateway (`gateway/api.py:31` on port 8006) successfully repairs and canonicalizes all three schemas when submitted via HTTP, running them directly through the local CLI (`netcoop diagnose --file`) bypasses the gateway and reveals the following failure modes:
+Comparing empirical results across the three invocation paths (Local CLI, Product API `/api/diagnose`, and Ingestion Gateway `/ingest`):
 
-| Scenario File | Expected Status | Direct CLI Result (`netcoop diagnose --file`) | Direct Gateway Ingestion (`POST :8006/ingest`) | Root Cause of CLI Failure |
-| :--- | :--- | :--- | :--- | :--- |
-| `interop_renamed_fields.json` | `diagnosed` | `insufficient_evidence` (Conf: 0%, Ev: 0, Act: 0) | **HTTP 200 OK** (`record_count: 8`, applied: `alias_mapping`) | Unmapped telemetry aliases (`cpu_load_pct`, `packet_loss_rate`) fail direct orchestrator Pydantic validation without the Gateway normalizer. |
-| `interop_null_nan.json` | `diagnosed` | `insufficient_evidence` (Conf: 0%, Ev: 0, Act: 0) | **HTTP 200 OK** (`record_count: 8`, applied: `dirty_string_sanitization`) | String `'NaN'` and `'null'` tokens fail direct float schema parsing without the Gateway sanitization filter. |
-| `interop_malformed_json.json` | `diagnosed` | `CRASH (JSONDecodeError)` | **HTTP 200 OK** (`record_count: 1`, repair: `ERR_MALFORMED_JSON`) | Raw file uses single quotes (`'incident_id'`). Python `json.load()` in `netcoop/cli.py:132` crashes before reaching the Gateway. Gateway HTTP endpoint succeeds because it falls back to raw text parsing and tolerant single-quote repair. |
+| Scenario File | Expected (Manifest) | Local CLI (`netcoop diagnose --file`) | Product API (`POST /api/diagnose`) | Ingestion Gateway (`POST :8006/ingest`) | Observed Behavior & Root Cause |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `interop_renamed_fields.json` | `diagnosed` | `insufficient_evidence` (Conf: 0%, Ev: 0, Act: 0) | **HTTP 200** (`status: insufficient_evidence`, Conf: 0.0) | **HTTP 200 OK** (`record_count: 8`, applied: `alias_mapping`) | CLI and API direct paths fail to diagnose because `/api/diagnose` only invokes the Gateway if `detect_format() == "organizer"`, whereas this file uses canonical structure with unmapped aliases (`cpu_load_pct`, `packet_loss_rate`). Direct Gateway ingestion succeeds (HTTP 200). |
+| `interop_null_nan.json` | `diagnosed` | `insufficient_evidence` (Conf: 0%, Ev: 0, Act: 0) | **HTTP 200** (`status: insufficient_evidence`, Conf: 0.0) | **HTTP 200 OK** (`record_count: 8`, applied: `dirty_string_sanitization`) | CLI and API direct paths fail validation on string `'NaN'` and `'null'` tokens in float telemetry. Direct Gateway ingestion succeeds (HTTP 200) via dirty string sanitization. |
+| `interop_malformed_json.json` | `diagnosed` | **CRASH** (`JSONDecodeError: line 2 col 3`) | **HTTP 422 Unprocessable Entity** (`JSON decode error`) | **HTTP 200 OK** (`record_count: 1`, repair: `ERR_MALFORMED_JSON`) | Raw file uses single quotes (`'incident_id'`). CLI crashes on Python `json.load()`; API rejects before handler with HTTP 422; direct Ingestion Gateway endpoint succeeds (HTTP 200) via raw text fallback and tolerant single-quote repair. |
 
 #### Automated Pytest Suite Results
 
@@ -1036,18 +1103,28 @@ NetCoop-AI/
 
 ## 11. Compliance Matrix
 
-| Requirement | Implementation Module | Verification Status |
-| :--- | :--- | :---: |
-| Shared-Nothing Microservices | `agents/`, `netcoop/orchestrator/mediator.py` | Verified (8 independent processes, ports 8001–8008) |
-| Strongly Typed Wire Envelopes | `schemas/envelope.json`, `netcoop/core/envelope.py` | Verified (`tests/test_protocol_envelope.py`) |
-| Consensus State Graph | `netcoop/orchestrator/graph.py` | Verified (LangGraph cyclic supervisor workflow) |
-| Ingestion Gateway & Normalizer | `gateway/api.py`, `gateway/adapters/` | Verified (Port 8006, 12 typed validation error handlers) |
-| Isotonic Calibration | `netcoop/models/calibration.py` | Verified (`eval/results/benchmark_latest.json`) |
-| Simulated Remediation Sandbox | `netcoop/remediation/engine.py` | Verified (`tests/test_remediation_safety.py`) |
-| Model Context Protocol (MCP) | `netcoop/mcp/server.py` | Verified (stdio JSON-RPC 2.0 interface) |
-| Human-in-the-Loop Approval | `netcoop/storage/models.py`, `api/main.py` | Verified (`tests/test_resume_hitl.py`) |
-| Checkpoint Pause / Resume | `netcoop/storage/db.py`, `netcoop/orchestrator/graph.py` | Verified (`tests/test_resume_hitl.py`) |
-| Hackathon Report Contract Export | `netcoop/reporting/builder.py`, `POST /api/diagnose/export` | Verified (`tests/test_reporting_hackathon_shape.py`) |
+| Requirement | Implementation Module | Verification Status & Test Evidence |
+| :--- | :--- | :--- |
+| **Shared-Nothing Microservices** | gents/, 
+etcoop/orchestrator/mediator.py | Verified: 8 independent FastAPI processes on ports 8001-8008 (scripts/run_agents.py, 	ests/test_agent_http.py) |
+| **Strongly Typed Wire Envelopes** | schemas/envelope.json, 
+etcoop/core/envelope.py | Verified: Pydantic v2 schemas validated against JSON Schema specification (	ests/test_protocol_envelope.py) |
+| **Consensus State Graph** | 
+etcoop/orchestrator/graph.py | Verified: LangGraph cyclic supervisor workflow with arbitration (	ests/test_signatures_and_conflicts.py) |
+| **Ingestion Gateway & Normalizer** | gateway/api.py, gateway/adapters/ | Verified: Port 8006 microservice with alias mapping and unit coercion (	ests/test_b1_gateway_robustness.py) |
+| **Isotonic Calibration** | 
+etcoop/models/calibration.py | Verified: CalibratedClassifierCV reliability mapping (	ests/test_b2_learned_layer.py) |
+| **Simulated Remediation Sandbox** | 
+etcoop/remediation/engine.py | Verified: Non-destructive action generation and rollback planning (	ests/test_remediation_safety.py, 	ests/test_remediation_coverage.py) |
+| **Model Context Protocol (MCP)** | 
+etcoop/mcp/server.py | Verified: Standard JSON-RPC 2.0 stdio server providing 5 network tools (	ests/test_mcp_server.py) |
+| **Human-in-the-Loop Approval** | 
+etcoop/storage/models.py, pi/main.py | Verified: Operator approval queue, status transitions, and audit logs (	ests/test_resume_hitl.py) |
+| **Checkpoint Pause / Resume** | 
+etcoop/storage/db.py, 
+etcoop/orchestrator/graph.py | Verified: SQLite state snapshots enabling multi-turn pause/resume (	ests/test_resume_hitl.py) |
+| **Hackathon Report Contract Export** | 
+etcoop/reporting/builder.py, POST /api/diagnose/export | Verified: Exact 10-key report shape (	ests/test_reporting_hackathon_shape.py) |
 
 ---
 
@@ -1067,6 +1144,6 @@ NetCoop-AI/
 
 ## 13. Team & License
 
-- **Authors**: Team inSANE MITRA (`satwikj9@gmail.com`), as specified in `pyproject.toml` (`authors = [{ name = "Team inSANE MITRA", email = "satwikj9@gmail.com" }]`).
+- **Authors**: Team inSANE MITRA, as specified in `pyproject.toml`.
 - **Repository**: [Satwik265/NetCoop-AI](https://github.com/Satwik265/NetCoop-AI)
-- **License**: Built and released for hackathon evaluation under the project terms defined by Team inSANE MITRA (see package metadata in `pyproject.toml`).
+- **License**: No license file is included in this repository; all rights reserved by the authors.
