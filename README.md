@@ -230,14 +230,12 @@ The Ingestion Gateway and normalizers enforce standard metric names and units ac
 | `interface_errors` | CRC, alignment, frame errors | `count` | `crc_errors`, `input_errors`, `phy_errors` | Non-negative integer cast |
 | `wifi_rssi_dbm` | Wireless signal strength | `dbm` | `rssi`, `signal_strength_dbm`, `wifi_signal` | Validated in range [-100, 0] dBm |
 
-### 5.4 Version Negotiation & Protocol Incompatibility Handling
+### 5.4 Protocol Version Enforcement and Schema Compatibility
 
-1. **Semantic Version Check**: Every envelope specifies `header.schema_version`. Agents accept any version matching `1.x.x`. Minor versions are backward-compatible.
-2. **Schema Migration**: When receiving older schema versions, the Ingestion Gateway runs structural transforms (e.g. nested metric flattening, field promotion).
-3. **Invalid Envelopes**: If an envelope fails Pydantic validation:
-   - The malformed message is quarantined in the SQLite `event_log`.
-   - A structured `protocol_error` envelope is returned with error details.
-   - The orchestrator isolates the sender without halting the diagnostic graph.
+1. **Semantic Version Enforcement**: Every wire envelope specifies `header.schema_version`. The envelope header validator (`validate_schema_version` in `netcoop/core/envelope.py`) strictly rejects any `schema_version` not starting with `1.` by raising a `ValueError`.
+2. **Ingestion Format Checking**: The Ingestion Gateway (`gateway/adapters/organizer_adapter.py`) validates incoming container schema versions; versions diverging from `1.x.x` are flagged with `ERR_UNSUPPORTED_SCHEMA_VERSION`.
+3. **Telemetry and Report Migration**: Legacy record structures (e.g. `data/scenarios/interop_schema_v1_vs_v2.json`) are converted by `OrganizerAdapter.adapt_record` in `gateway/adapters/organizer_adapter.py`. Diagnostic report schema migration from V1 contracts to V2 contracts is performed by `DiagnosticReportBuilder.from_v1_report` in `netcoop/reporting/builder.py` (verified in `tests/test_reporting_v1_to_v2_adapter.py`).
+4. **Invalid Envelope Handling**: If an envelope fails Pydantic validation at an agent microservice, the FastAPI endpoint returns an HTTP 422 Unprocessable Entity error with validation failure details.
 
 ### 5.5 Output in the Hackathon JSON Format
 
@@ -260,8 +258,6 @@ Reliable network automation requires knowing when not to trust a model. NetCoop 
 | *Confusion matrix over primary benchmark samples (overall accuracy 55.2%)* | *Reliability diagram demonstrating ECE of 0.180 (18.0%)* |
 
 *Source: `eval/results/benchmark_latest.json` (generated_at: 2026-10-31T18:58:30Z)*
-
-### Conformal Prediction & Calibration Caveat
 
 > [!WARNING]
 > **Conformal Calibration Caveat** (from [`docs/eval_report.md`](docs/eval_report.md)):
@@ -406,7 +402,7 @@ NetCoop AI operates as a set of decoupled operating system processes communicati
 $env:INTERNAL_SERVICE_TOKEN = [guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N")
 Remove-Item Env:AGENTS_MODE -ErrorAction SilentlyContinue
 
-# 2. Launch the 8 specialist agent and gateway processes in the background
+# 2. Launch seven agent processes (six specialists plus a synthesizer) plus the gateway on 8001-8008
 python scripts/run_agents.py --daemon
 
 # 3. Check health status of all 8 microservices (ports 8001-8008)
@@ -420,7 +416,7 @@ uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
 python scripts/run_agents.py --stop
 ```
 
-> **Process Architecture Note**: `python scripts/run_agents.py --daemon` spawns exactly 8 processes across ports 8001–8008 (`telemetry_agent:8001`, `topology_agent:8002`, `config_agent:8003`, `log_agent:8004`, `synthesizer_agent:8005`, `gateway:8006`, `classifier_agent:8007`, `wifi_services_agent:8008`). The Orchestrator API (`uvicorn api.main:app`) is executed separately on port 8000.
+> **Process Architecture Note**: `python scripts/run_agents.py --daemon` spawns seven agent processes (six specialists plus a synthesizer) plus the gateway on 8001-8008 (`telemetry_agent:8001`, `topology_agent:8002`, `config_agent:8003`, `log_agent:8004`, `synthesizer_agent:8005`, `gateway:8006`, `classifier_agent:8007`, `wifi_services_agent:8008`). The Orchestrator API (`uvicorn api.main:app`) is executed separately on port 8000.
 
 #### Docker Compose Deployment Path (Optional)
 
@@ -491,18 +487,18 @@ The platform enforces least-privilege role-based access control with audited imp
   - `security` (`security_analyst`): Audit inspection and security event triage.
   - `it_manager` (`it_manager`): High-level operational oversight and alert acknowledgement.
   - `auditor` (`auditor`): Compliance review and read-only audit log export.
-- **Initial Password**: Read directly from `$env:NETCOOP_DEV_PASSWORD` (defaults in code to `NetCoopDev!2026`). Never use hardcoded secrets in production.
+- **Initial Password**: Read directly from `$env:NETCOOP_DEV_PASSWORD` (defaults in code to `<your-password>`). Never use hardcoded secrets in production.
 - **Production Admin Provisioning**: When `NETCOOP_ENV=production`, default accounts are not automatically seeded. The first administrative account must be provisioned via `provision_admin_user(username, password, full_name)` in `netcoop/storage/db.py`.
 
 #### 2. Logging in at the Web Dashboard
 1. Open the dashboard at `http://localhost:5173/`.
-2. On the login screen, enter username `admin` and password `NetCoopDev!2026`.
+2. On the login screen, enter username `admin` and password `<your-password>`.
 3. In development / demo environments (`is_demo_mode_allowed() == True`), the dashboard role switcher allows one-click authentication via `POST /api/auth/demo-login` (`{"username": "admin"}`).
 
 #### 3. Obtaining a JWT Token for API Calls
 Issue a `POST` request to `/api/auth/login`:
 ```powershell
-$body = '{"username": "admin", "password": "NetCoopDev!2026"}'
+$body = '{"username": "admin", "password": "<your-password>"}'
 $response = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/auth/login" -Method Post -Body $body -ContentType "application/json"
 $token = $response.access_token
 ```
@@ -577,7 +573,7 @@ npm run dev
 # Step 10: Clean teardown of microservices
 cd ..
 python scripts/run_agents.py --stop
-# Expected: Clean termination of all 8 agent process PIDs.
+# Expected: Clean termination of seven agent processes plus gateway.
 ```
 
 ### 8.6 Troubleshooting ("If something fails")
@@ -757,7 +753,7 @@ Nine specialized scenarios evaluating ingestion resilience:
 
 #### Live Scenario Evaluation (All 21 Manifest Scenarios)
 
-Executed live over HTTP with all 8 specialist agents running in background daemon mode:
+Executed live over HTTP with seven agent processes (six specialists plus a synthesizer) plus the gateway running on ports 8001-8008:
 ```powershell
 $env:INTERNAL_SERVICE_TOKEN = [guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N")
 Remove-Item Env:AGENTS_MODE -ErrorAction SilentlyContinue
@@ -789,7 +785,7 @@ python scripts/run_agents.py --daemon
 | `compound_cpu_and_link.json` | `insufficient_evidence` | `insufficient_evidence` | `None` | 0% | 0 | 0 | **YES** |
 | `compound_wifi_and_dns.json` | `insufficient_evidence` | `insufficient_evidence` | `None` | 0% | 0 | 0 | **YES** |
 
-*Source: Measured live over HTTP with all 8 specialist agents and gateway active on ports 8001–8008 (`INTERNAL_SERVICE_TOKEN` set, `AGENTS_MODE` unset).*
+*Source: Measured live over HTTP with seven agent processes (six specialists plus a synthesizer) plus the gateway active on ports 8001-8008 (`INTERNAL_SERVICE_TOKEN` set, `AGENTS_MODE` unset).*
 
 > **Note on Confidence Display**: The CLI truncates floating-point confidence to a whole percent (`int(conf * 100) = 95%`) while the benchmark summary rounds uncalibrated values (`0.956` to `96%`). Both refer to the identical underlying model prediction.
 
@@ -823,7 +819,7 @@ $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
 ```
 **Execution Result**: **355 passed, 4 warnings in 101.32s (0:01:41)** (100% pass rate; zero failures across all 355 unit, property, security, contract, and remediation tests).
 
-> **Test Fix Verification**: The previous failure in `tests/test_phase4_security.py::test_logout_and_token_invalidation` (which submitted a mismatched password `"NetCoopEng!2026"` against the seeded `"NetCoopDev!2026"`) was resolved in commit `0027d88` by referencing `os.getenv("NETCOOP_DEV_PASSWORD", "NetCoopDev!2026")`. Together with the 28 tests in `tests/test_remediation_coverage.py` from commit `a7ee939`, all 355 tests pass cleanly.
+> **Test Fix Verification**: The previous failure in `tests/test_phase4_security.py::test_logout_and_token_invalidation` (which submitted a mismatched password `"<your-password>"` against the seeded `"<your-password>"`) was resolved in commit `0027d88` by referencing `os.getenv("NETCOOP_DEV_PASSWORD", "<your-password>")`. Together with the 28 tests in `tests/test_remediation_coverage.py` from commit `a7ee939`, all 355 tests pass cleanly.
 
 #### Inventory of All 32 Test Files
 
@@ -1105,26 +1101,16 @@ NetCoop-AI/
 
 | Requirement | Implementation Module | Verification Status & Test Evidence |
 | :--- | :--- | :--- |
-| **Shared-Nothing Microservices** | gents/, 
-etcoop/orchestrator/mediator.py | Verified: 8 independent FastAPI processes on ports 8001-8008 (scripts/run_agents.py, 	ests/test_agent_http.py) |
-| **Strongly Typed Wire Envelopes** | schemas/envelope.json, 
-etcoop/core/envelope.py | Verified: Pydantic v2 schemas validated against JSON Schema specification (	ests/test_protocol_envelope.py) |
-| **Consensus State Graph** | 
-etcoop/orchestrator/graph.py | Verified: LangGraph cyclic supervisor workflow with arbitration (	ests/test_signatures_and_conflicts.py) |
-| **Ingestion Gateway & Normalizer** | gateway/api.py, gateway/adapters/ | Verified: Port 8006 microservice with alias mapping and unit coercion (	ests/test_b1_gateway_robustness.py) |
-| **Isotonic Calibration** | 
-etcoop/models/calibration.py | Verified: CalibratedClassifierCV reliability mapping (	ests/test_b2_learned_layer.py) |
-| **Simulated Remediation Sandbox** | 
-etcoop/remediation/engine.py | Verified: Non-destructive action generation and rollback planning (	ests/test_remediation_safety.py, 	ests/test_remediation_coverage.py) |
-| **Model Context Protocol (MCP)** | 
-etcoop/mcp/server.py | Verified: Standard JSON-RPC 2.0 stdio server providing 5 network tools (	ests/test_mcp_server.py) |
-| **Human-in-the-Loop Approval** | 
-etcoop/storage/models.py, pi/main.py | Verified: Operator approval queue, status transitions, and audit logs (	ests/test_resume_hitl.py) |
-| **Checkpoint Pause / Resume** | 
-etcoop/storage/db.py, 
-etcoop/orchestrator/graph.py | Verified: SQLite state snapshots enabling multi-turn pause/resume (	ests/test_resume_hitl.py) |
-| **Hackathon Report Contract Export** | 
-etcoop/reporting/builder.py, POST /api/diagnose/export | Verified: Exact 10-key report shape (	ests/test_reporting_hackathon_shape.py) |
+| **Shared-Nothing Microservices** | `agents/`, `netcoop/orchestrator/mediator.py` | Verified: seven agent processes (six specialists plus a synthesizer) plus the gateway on 8001-8008 (`scripts/run_agents.py`, `tests/test_agent_http.py`) |
+| **Strongly Typed Wire Envelopes** | `schemas/envelope.json`, `netcoop/core/envelope.py` | Verified: Pydantic v2 schemas validated against JSON Schema specification (`tests/test_protocol_envelope.py`) |
+| **Consensus State Graph** | `netcoop/orchestrator/graph.py` | Verified: LangGraph cyclic supervisor workflow with arbitration (`tests/test_signatures_and_conflicts.py`) |
+| **Ingestion Gateway & Normalizer** | `gateway/api.py`, `gateway/adapters/` | Verified: Port 8006 microservice with alias mapping and unit coercion (`tests/test_b1_gateway_robustness.py`) |
+| **Isotonic Calibration** | `netcoop/models/calibration.py` | Verified: per-class IsotonicRegression in ProbabilityCalibrator (`tests/test_b2_learned_layer.py`) |
+| **Simulated Remediation Sandbox** | `netcoop/remediation/engine.py` | Verified: Non-destructive action generation and rollback planning (`tests/test_remediation_safety.py`, `tests/test_remediation_coverage.py`) |
+| **Model Context Protocol (MCP)** | `netcoop/mcp/server.py` | Verified: Standard JSON-RPC 2.0 stdio server providing 5 network tools (`tests/test_mcp_server.py`) |
+| **Human-in-the-Loop Approval** | `netcoop/storage/models.py`, `api/main.py` | Verified: Operator approval queue, status transitions, and audit logs (`tests/test_resume_hitl.py`) |
+| **Checkpoint Pause / Resume** | `netcoop/storage/db.py`, `netcoop/orchestrator/graph.py` | Verified: SQLite state snapshots enabling multi-turn pause/resume (`tests/test_resume_hitl.py`) |
+| **Hackathon Report Contract Export** | `netcoop/reporting/builder.py`, `POST /api/diagnose/export` | Verified: builder function tested in `tests/test_reporting_hackathon_shape.py`; route exercised manually |
 
 ---
 
