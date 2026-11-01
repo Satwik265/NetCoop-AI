@@ -47,16 +47,25 @@ Under identical seed initialization, two consecutive runs of link_congestion see
 
 ### 3.1 Benchmark Dataset Splits
 
-| Evaluation Split | Sample Count | Accuracy | Macro F1 | Expected Calibration Error (ECE) | Brier Score |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **In-Distribution Evaluation (Synthetic)** | 250 | **64.4%** | 0.593 | 0.180 | 0.201 |
-| **Held-Out Evaluation (Synthetic Non-Gaussian)** | 150 | **40.0%** | - | - | - |
-| **Organizer Colab Telemetry (Set Match)** | 900 | **66.7%** | - | - | - |
-| **Selective Classification (Coverage 40%)** | 160 | **93.8%** | - | - | - |
+| Evaluation Split | Sample Count | Accuracy | Macro F1 | Expected Calibration Error (ECE) | Brier Score | Source JSON Field |
+| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| **Combined Primary Benchmark** | 400 | **55.2%** | 0.593 | 0.180 | 0.201 | `summary["combined_primary_accuracy"]` (or `summary["overall_accuracy"]`) |
+| **In-Distribution Evaluation (Synthetic)** | 250 | **64.4%** | - | - | - | `dataset_splits["in_distribution_accuracy"]` |
+| **Held-Out Evaluation (Synthetic Non-Gaussian)** | 150 | **40.0%** | - | - | - | `dataset_splits["held_out_accuracy"]` |
+| **Organizer Colab Telemetry (Set Match)** | 900 | **66.7%** | - | - | - | `dataset_splits["organizer_accuracy"]` (or `summary["organizer_set_match_accuracy"]`) |
+| **Organizer Colab Telemetry (Exact Match)** | 900 | **0.0%** | - | - | - | `summary["organizer_exact_match_accuracy"]` |
+| **Selective Classification (Coverage 40%)** | 160 | **93.8%** | - | - | - | `summary["selective_accuracy"]` |
 
 *Source: `eval/results/benchmark_latest.json` (generated_at: 2026-10-31T18:58:30Z)*
 
-> Note on Organizer Dataset: Set-match counts an abstention on 'normal' organizer samples as correct, and is lenient on fault classes; exact-match is 0.0% (source: `eval/results/benchmark_latest.json`). The organizer evaluation dataset consists of narrow single-device campus distribution telemetry snapshots (`data/organizer/`) rather than full multi-tier backbone fabric traces.
+> **Exact JSON Field Derivation & Macro F1 Definition**:
+> - **Headline Combined Primary Accuracy (55.2%)**: Read directly from `summary["combined_primary_accuracy"]` (identical to `summary["overall_accuracy"]` over the 400 primary in-distribution and held-out benchmark samples).
+> - **Macro F1 (0.593)**: Read directly from `summary["macro_f1"]`. This value is exactly the unweighted arithmetic mean of the 8 per-class F1 values in `per_class_metrics`:
+>   $$\text{Macro F1} = \frac{0.000 + 0.892 + 0.621 + 0.519 + 0.769 + 0.689 + 0.824 + 0.431}{8} = 0.593125 \approx 0.593$$
+> - **Expected Calibration Error (0.180)**: Read directly from `summary["expected_calibration_error"]` (population: `in_distribution_and_heldout_primary_samples`).
+> - **Brier Score (0.201)**: Read directly from `summary["brier_score"]` (population: `in_distribution_and_heldout_primary_samples`).
+> - **Selective Accuracy (93.8%)**: Read directly from `summary["selective_accuracy"]` at coverage `summary["coverage"] = 0.400` (selective risk: `summary["selective_risk"] = 0.062`).
+> - **Organizer Set-Match vs Exact-Match**: Set-match accuracy (66.7%, `dataset_splits["organizer_accuracy"]`) counts an abstention on 'normal' organizer samples as correct, and is lenient on fault classes; exact-match is strictly 0.0% (`summary["organizer_exact_match_accuracy"]`). The organizer evaluation dataset consists of narrow single-device campus distribution telemetry snapshots (`data/organizer/`) rather than full multi-tier backbone fabric traces.
 
 ### 3.2 Pipeline Ablation Analysis
 
@@ -398,7 +407,57 @@ DEBUG=false
 GEMINI_API_KEY=
 ```
 
-### 8.4 5-Minute Judge Demo Script
+### 8.4 Authentication and Role-Based Access Control (RBAC)
+
+The platform enforces least-privilege role-based access control with audited impersonation, token revocation (`jti`), and endpoint permission guards (`PERM_*`):
+
+#### 1. First User & Admin Account Seeding
+- **Development & Testing Seeding**: On API startup (`init_db()` in `netcoop/main.py`), `init_default_users()` (`netcoop/storage/db.py`) seeds 8 default demonstration accounts whenever `NETCOOP_ENV != "production"`:
+  - `admin` (`network_admin`): Full network operations, remediation approval, diagnostic execution.
+  - `platform_admin` (`platform_admin`): Platform settings, user management, and audit export.
+  - `engineer` (`network_engineer`): Diagnostic execution and command review.
+  - `noc` (`noc_operator`): Alert triage and health monitoring.
+  - `helpdesk` (`helpdesk`): Campus ticket management and incident routing.
+  - `security` (`security_analyst`): Audit inspection and security event triage.
+  - `it_manager` (`it_manager`): High-level operational oversight and alert acknowledgement.
+  - `auditor` (`auditor`): Compliance review and read-only audit log export.
+- **Initial Password**: Read directly from `$env:NETCOOP_DEV_PASSWORD` (defaults in code to `NetCoopDev!2026`). Never use hardcoded secrets in production.
+- **Production Admin Provisioning**: When `NETCOOP_ENV=production`, default accounts are not automatically seeded. The first administrative account must be provisioned via `provision_admin_user(username, password, full_name)` in `netcoop/storage/db.py`.
+
+#### 2. Logging in at the Web Dashboard
+1. Open the dashboard at `http://localhost:5173/`.
+2. On the login screen, enter username `admin` and password `NetCoopDev!2026`.
+3. In development / demo environments (`is_demo_mode_allowed() == True`), the dashboard role switcher allows one-click authentication via `POST /api/auth/demo-login` (`{"username": "admin"}`).
+
+#### 3. Obtaining a JWT Token for API Calls
+Issue a `POST` request to `/api/auth/login`:
+```powershell
+$body = @{ username = "admin"; password = "NetCoopDev!2026" } | ConvertTo-Json
+$response = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/auth/login" -Method Post -Body $body -ContentType "application/json"
+$token = $response.access_token
+```
+For all subsequent HTTP requests, pass the bearer token in the `Authorization` header:
+```powershell
+$headers = @{ Authorization = "Bearer $token" }
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/diagnose/results" -Headers $headers
+```
+
+#### 4. Protected vs. Public Endpoints
+- **Public Endpoints (No Token Required)**:
+  - Health & Readiness: `GET /health`, `GET /ready`
+  - Authentication: `POST /api/auth/login`, `POST /api/auth/demo-login`
+  - Documentation: `GET /docs`, `GET /openapi.json`
+- **Protected Endpoints (Require `Authorization: Bearer <token>`)**:
+  - **Fabric Health & Monitoring** (`PERM_VIEW_FABRIC_HEALTH`): `GET /api/network/health`, `GET /api/network/topology`, `GET /api/network/nodes`, `GET /api/metrics`, `POST /api/auth/ws-ticket`
+  - **Diagnostics & Inquiries** (`PERM_EXECUTE_DIAGNOSIS`): `POST /api/diagnose`, `POST /api/diagnose/file`, `POST /api/diagnose/export`, `POST /api/orchestrator/inquire`, `GET /api/diagnose/results`, `GET /api/incidents/{id}`, `GET /api/checkpoints`
+  - **Remediation & Simulation** (`PERM_APPROVE_REMEDIATION`, `PERM_SIMULATE_REMEDIATION`, `PERM_EXECUTE_REMEDIATION`): `POST /api/remediation/plan`, `POST /api/remediation/approve`, `POST /api/remediation/execute`, `POST /api/remediation/dry-run`
+  - **Incident Assignment** (`PERM_ASSIGN_INCIDENT`): `POST /api/incidents/{id}/assign`
+  - **User & Role Administration** (`PERM_MANAGE_USERS`): `POST /api/auth/users`, `GET /api/auth/users`, `PATCH /api/auth/users/{username}/status`
+  - **Audit Logs** (`PERM_EXPORT_AUDIT_LOGS`): `GET /api/auth/logs`
+  - **Device & Settings Administration** (`PERM_MANAGE_DEVICES`, `PERM_CONFIGURE_SETTINGS`): `POST /api/network/devices`, `POST /api/settings/config`
+  - **Profile & Revocation**: `GET /api/auth/me`, `POST /api/auth/logout`
+
+### 8.5 5-Minute Judge Demo Script
 
 A complete, self-contained walkthrough verifiable from PowerShell in under 5 minutes:
 
@@ -450,15 +509,19 @@ python scripts/run_agents.py --stop
 # Expected: Clean termination of all 8 agent process PIDs.
 ```
 
-### 8.5 Troubleshooting ("If something fails")
+### 8.6 Troubleshooting ("If something fails")
 
 Failures observed during live testing:
 1. `Circuit breaker TRIPPED for agent ... after 2 consecutive failures`:
    - **Cause**: Occurs when running CLI diagnosis in `AGENTS_MODE=http` without having started the background agents daemon first.
    - **Resolution**: Run `python scripts/run_agents.py --daemon` or temporarily set `$env:AGENTS_MODE="in_process"`.
 2. `JSONDecodeError: Expecting property name enclosed in double quotes` on `interop_malformed_json.json`:
-   - **Cause**: `data/scenarios/interop_malformed_json.json` is formatted with single quotes (`'incident_id'`) rather than valid JSON double quotes. Standard Python `json.load()` rejects this by design.
-   - **Resolution**: Expected test fixture designed to verify that raw malformed JSON must pass through the Ingestion Gateway (`gateway/api.py`), which performs lenient quoting repair.
+   - **Limitation Status**: Running `netcoop diagnose --file data/scenarios/interop_malformed_json.json` crashes the CLI with:
+     ```text
+     json.decoder.JSONDecodeError: Expecting property name enclosed in double quotes: line 2 column 3 (char 4)
+     ```
+   - **Cause**: `data/scenarios/interop_malformed_json.json` is formatted with single quotes (`'incident_id'`) rather than standard RFC 8259 JSON double quotes. Because the CLI entrypoint (`netcoop/cli.py:132`) parses input via standard `json.load()`, it crashes before the payload can reach the Ingestion Gateway.
+   - **Resolution**: Pass raw malformed JSON to the HTTP Ingestion Gateway endpoint (`POST /ingest` on port 8006), which contains lenient quoting repair filters.
 3. `INTERNAL_SERVICE_TOKEN length less than required minimum of 16 characters`:
    - **Cause**: Setting a short token or using a default keyword like `changeme` or `admin`.
    - **Resolution**: Generate a 32+ character GUID token with `[guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N")`.
@@ -633,35 +696,42 @@ python scripts/run_agents.py --daemon
 
 | Scenario File | Expected Status | Actual Status | Actual Top Cause Key | Confidence | Evidence Count | Remediation Actions | Match? |
 | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: |
-| `normal_operation.json` | `benign` | `benign` | `Normal Operation` | 100% | 0 | 0 | **YES** |
-| `link_congestion.json` | `diagnosed` | `diagnosed` | `Link utilization saturation causing buffer queue drops and` | 95% | 0 | 0 | **YES** |
-| `weak_wifi_signal.json` | `diagnosed` | `diagnosed` | `Hostel access point RF attenuation causing high` | 94% | 0 | 0 | **YES** |
-| `ethernet_interface_fault.json` | `diagnosed` | `insufficient_evidence` | `N/A` | 0% | 0 | 0 | **NO** |
-| `dns_failure.json` | `diagnosed` | `insufficient_evidence` | `N/A` | 0% | 0 | 0 | **NO** |
-| `dhcp_failure.json` | `diagnosed` | `insufficient_evidence` | `N/A` | 0% | 0 | 0 | **NO** |
-| `device_cpu_overload.json` | `diagnosed` | `insufficient_evidence` | `N/A` | 0% | 0 | 0 | **NO** |
-| `upstream_failure_cascade.json` | `diagnosed` | `insufficient_evidence` | `N/A` | 0% | 0 | 0 | **NO** |
-| `ambiguous_multi_fault.json` | `insufficient_evidence` | `insufficient_evidence` | `N/A` | 0% | 0 | 0 | **YES** |
-| `insufficient_data.json` | `insufficient_evidence` | `insufficient_evidence` | `N/A` | 0% | 0 | 0 | **YES** |
-| `interop_renamed_fields.json` | `diagnosed` | `insufficient_evidence` | `N/A` | 0% | 0 | 0 | **NO** |
-| `interop_seconds_vs_ms.json` | `diagnosed` | `insufficient_evidence` | `N/A` | 0% | 0 | 0 | **NO** |
-| `interop_kbps_vs_mbps.json` | `diagnosed` | `insufficient_evidence` | `N/A` | 0% | 0 | 0 | **NO** |
-| `interop_schema_v1_vs_v2.json` | `diagnosed` | `insufficient_evidence` | `N/A` | 0% | 0 | 0 | **NO** |
-| `interop_missing_fields.json` | `diagnosed` | `insufficient_evidence` | `N/A` | 0% | 0 | 0 | **NO** |
-| `interop_null_nan.json` | `diagnosed` | `insufficient_evidence` | `N/A` | 0% | 0 | 0 | **NO** |
-| `interop_duplicate_out_of_order.json` | `diagnosed` | `insufficient_evidence` | `N/A` | 0% | 0 | 0 | **NO** |
-| `interop_clock_skew.json` | `diagnosed` | `insufficient_evidence` | `N/A` | 0% | 0 | 0 | **NO** |
-| `interop_malformed_json.json` | `diagnosed` | `CRASH (JSONDecodeError)` | `N/A` | N/A | 0 | 0 | **NO** |
-| `compound_cpu_and_link.json` | `insufficient_evidence` | `insufficient_evidence` | `N/A` | 0% | 0 | 0 | **YES** |
-| `compound_wifi_and_dns.json` | `insufficient_evidence` | `insufficient_evidence` | `N/A` | 0% | 0 | 0 | **YES** |
+| `normal_operation.json` | `benign` | `benign` | `NO_FAULT` | 100% | 0 | 0 | **YES** |
+| `link_congestion.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 8 | 0 | **YES** |
+| `weak_wifi_signal.json` | `diagnosed` | `diagnosed` | `WEAK_WIFI_SIGNAL` | 94% | 4 | 0 | **YES** |
+| `ethernet_interface_fault.json` | `diagnosed` | `diagnosed` | `ETHERNET_INTERFACE_FAULT` | 97% | 2 | 0 | **YES** |
+| `dns_failure.json` | `diagnosed` | `diagnosed` | `DNS_FAILURE` | 97% | 16 | 0 | **YES** |
+| `dhcp_failure.json` | `diagnosed` | `diagnosed` | `DHCP_FAILURE` | 96% | 2 | 0 | **YES** |
+| `device_cpu_overload.json` | `diagnosed` | `diagnosed` | `DEVICE_CPU_OVERLOAD` | 97% | 1 | 0 | **YES** |
+| `upstream_failure_cascade.json` | `diagnosed` | `diagnosed` | `UPSTREAM_FAILURE_CASCADE` | 98% | 3 | 0 | **YES** |
+| `ambiguous_multi_fault.json` | `insufficient_evidence` | `insufficient_evidence` | `None` | 0% | 0 | 0 | **YES** |
+| `insufficient_data.json` | `insufficient_evidence` | `insufficient_evidence` | `None` | 0% | 0 | 0 | **YES** |
+| `interop_renamed_fields.json` | `diagnosed` | `insufficient_evidence` | `None` | 0% | 0 | 0 | **NO** |
+| `interop_seconds_vs_ms.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 6 | 0 | **YES** |
+| `interop_kbps_vs_mbps.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 8 | 0 | **YES** |
+| `interop_schema_v1_vs_v2.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 8 | 0 | **YES** |
+| `interop_missing_fields.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 6 | 0 | **YES** |
+| `interop_null_nan.json` | `diagnosed` | `insufficient_evidence` | `None` | 0% | 0 | 0 | **NO** |
+| `interop_duplicate_out_of_order.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 8 | 0 | **YES** |
+| `interop_clock_skew.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 96% | 8 | 0 | **YES** |
+| `interop_malformed_json.json` | `diagnosed` | `CRASH (JSONDecodeError)` | `None` | 0% | 0 | 0 | **NO** |
+| `compound_cpu_and_link.json` | `insufficient_evidence` | `insufficient_evidence` | `None` | 0% | 0 | 0 | **YES** |
+| `compound_wifi_and_dns.json` | `insufficient_evidence` | `insufficient_evidence` | `None` | 0% | 0 | 0 | **YES** |
 
-*Source: Live execution of `netcoop diagnose --file` across all 21 manifest scenarios (HTTP daemon mode with all 8 agent services operational).*
+*Source: Measured live over HTTP with all 8 specialist agents and gateway active on ports 8001–8008 (`INTERNAL_SERVICE_TOKEN` set, `AGENTS_MODE` unset).*
 
-> **Honest Mismatch Notes**:
-> - Scenarios `ethernet_interface_fault`, `dns_failure`, `dhcp_failure`, `device_cpu_overload`, and `upstream_failure_cascade` returned `insufficient_evidence` when fed directly to the CLI parser because their specialized telemetry signatures require multi-point corroboration rules or gateway alias normalization.
-> - `interop_malformed_json.json` terminated with exit code 1 due to `json.decoder.JSONDecodeError` because it uses single quotes (`'incident_id'`).
-> - Compound scenarios (`compound_cpu_and_link`, `compound_wifi_and_dns`) and ambiguous scenarios (`ambiguous_multi_fault`, `insufficient_data`) correctly abstained with `insufficient_evidence`.
-> - `normal_operation.json` successfully resolved to `benign` with 100% confidence.
+> **Detailed Analysis & Remediation Action Explanations**:
+> 1. **Why Diagnosed Scenarios Return 0 Remediation Actions**:
+>    In the orchestrator pipeline, the learned classifier and cross-domain synthesizer output uppercase cause keys (e.g., `LINK_CONGESTION`, `WEAK_WIFI_SIGNAL`, `ETHERNET_INTERFACE_FAULT`, `DNS_FAILURE`, `DHCP_FAILURE`, `DEVICE_CPU_OVERLOAD`, `UPSTREAM_FAILURE_CASCADE`).
+>    In `netcoop/remediation/engine.py`, `RemediationEngine.generate_plan` performs exact string matching without case normalization (`cause in ("INTERFACE_SATURATION_QUEUE_OVERFLOW", "link_congestion")`). Consequently, uppercase `LINK_CONGESTION` does not match lowercase `link_congestion`. In addition, dedicated catalog creators for causes such as `WEAK_WIFI_SIGNAL`, `DNS_FAILURE`, and `DHCP_FAILURE` are absent from `generate_plan` on this branch. Thus, exactly 0 remediation actions are generated across all diagnosed scenarios.
+> 2. **Abstentions & Controlled Rejections**:
+>    - `normal_operation.json` resolves cleanly to `benign` with `NO_FAULT` and 100% confidence.
+>    - `ambiguous_multi_fault.json`, `insufficient_data.json`, `compound_cpu_and_link.json`, and `compound_wifi_and_dns.json` correctly abstain with `insufficient_evidence` (0% confidence) due to conflicting or insufficient cross-agent evidence.
+>    - `interop_renamed_fields.json` and `interop_null_nan.json` abstain with `insufficient_evidence` when fed directly to the orchestrator because unmapped field aliases and NaN telemetry fail validation thresholds.
+> 3. **CLI Parser Crash on Malformed JSON**:
+>    - `interop_malformed_json.json` crashes the CLI with:
+>      `json.decoder.JSONDecodeError: Expecting property name enclosed in double quotes: line 2 column 3 (char 4)`
+>      This crash occurs because the CLI entry point (`netcoop/cli.py:132`) executes standard Python `json.load()` directly on the file path before passing data to the Ingestion Gateway (`gateway/api.py`). The Ingestion Gateway possesses lenient repair capabilities, but direct file invocations through the CLI bypass the gateway and fail at standard JSON parsing.
 
 #### Automated Pytest Suite Results
 
@@ -675,8 +745,17 @@ Executed in `in_process` mode:
 ```powershell
 $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. -q
 ```
-**Execution Result**: **326 passed, 1 failed, 4 warnings in 82.52s (0:01:22)**.
-*(The single failure was `test_logout_and_token_invalidation` in `tests/test_phase4_security.py` caused by an authentication brute-force rate-limit lockout during sequential credential evaluation).*
+**Execution Result**: **326 passed, 1 failed, 4 warnings in 97.93s (0:01:37)**.
+
+#### Failing Test Analysis & Repro
+- **Failing Test**: `tests/test_phase4_security.py::test_logout_and_token_invalidation`
+- **Standalone Execution Result**: 1 failed, 4 warnings in 5.19s (`AssertionError: assert 401 == 200`).
+- **Full Suite Execution Result**: 326 passed, 1 failed, 4 warnings in 97.93s (`AssertionError: assert 401 == 200`).
+- **Root Cause**: In `tests/test_phase4_security.py:461`, the test attempts to log in with `json={"username": "engineer", "password": "NetCoopEng!2026"}`. However, `init_default_users()` in `netcoop/storage/db.py` hashes and seeds all initial development accounts with the password from `$env:NETCOOP_DEV_PASSWORD` (which defaults to `"NetCoopDev!2026"`). Because `"NetCoopEng!2026"` does not match `"NetCoopDev!2026"`, the authentication endpoint `/api/auth/login` rejects the request with HTTP 401 Unauthorized, failing `assert login_res.status_code == 200` at line 463.
+- **One-Line Repro**:
+  ```powershell
+  pytest -o pythonpath=. tests/test_phase4_security.py::test_logout_and_token_invalidation
+  ```
 
 #### Inventory of All 31 Test Files
 
