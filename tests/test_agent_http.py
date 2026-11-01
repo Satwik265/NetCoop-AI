@@ -1157,8 +1157,11 @@ def test_regression_stubbed_failing_agent_recorded_in_limitations():
 
         agent_exec = rep.provenance.get("agent_execution", {})
         assert "log_agent" in agent_exec, "log_agent must be recorded in agent_execution"
-        assert agent_exec["log_agent"]["status"] == "failed", (
-            f"Expected status 'failed' (not 'no findings'), got {agent_exec['log_agent'].get('status')}"
+        assert agent_exec["log_agent"]["execution_status"] in (
+            AgentExecutionStatus.PROTOCOL_ERROR.value,
+            AgentExecutionStatus.INTERNAL_ERROR.value,
+        ), (
+            f"Expected execution_status protocol_error or internal_error (not 'no findings'), got {agent_exec['log_agent'].get('execution_status')}"
         )
         assert agent_exec["log_agent"]["error_code"] == "SERVICE_UNAVAILABLE"
         assert agent_exec["log_agent"]["correlation_id"] == "inc-stub-test-corr-456"

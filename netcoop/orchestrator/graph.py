@@ -424,16 +424,26 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
             err_code = err.error_code if err else "INTERNAL_ERROR"
             err_msg = err.message if err else "Agent error"
             corr_id = response_env.header.correlation_id or incident_id
+            is_protocol_err = (
+                response_env.header.message_type == MessageType.PROTOCOL_ERROR
+                or (err and "PROTOCOL" in str(err_code).upper())
+            )
+            exec_status = (
+                AgentExecutionStatus.PROTOCOL_ERROR.value
+                if is_protocol_err
+                else AgentExecutionStatus.INTERNAL_ERROR.value
+            )
             rec_dict = dict(exec_rec) if exec_rec else {}
             rec_dict.update({
                 "agent_id": role.value,
-                "status": "failed",
-                "execution_status": "failed",
+                "status": exec_status,
+                "execution_status": exec_status,
                 "error_code": err_code,
                 "correlation_id": corr_id,
                 "message": err_msg,
             })
             agent_execution[role.value] = rec_dict
+            mediator.dead_agents.add(role.value)
             lim_msg = f"agent_failed: {role.value} ({err_code}): {err_msg}"
             if lim_msg not in limitations:
                 limitations.append(lim_msg)
