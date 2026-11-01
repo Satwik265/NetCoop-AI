@@ -4,7 +4,7 @@
 [![Architecture](https://img.shields.io/badge/Architecture-Shared--Nothing%20Microservices-2A2A2D?style=flat-square&labelColor=161618)](docs/contract.md)
 [![Orchestration](https://img.shields.io/badge/Orchestration-LangGraph-2A2A2D?style=flat-square&labelColor=161618)](netcoop/orchestrator/graph.py)
 [![Wire Protocol](https://img.shields.io/badge/Wire%20Protocol-JSON%20Schema%20v1.0-2A2A2D?style=flat-square&labelColor=161618)](schemas/envelope.json)
-[![Offline Engine](https://img.shields.io/badge/Offline%20Engine-100%25%20Deterministic-2A2A2D?style=flat-square&labelColor=161618)](netcoop/core/)
+[![Offline Engine](https://img.shields.io/badge/Offline%20Engine-Deterministic-2A2A2D?style=flat-square&labelColor=161618)](netcoop/core/)
 [![License](https://img.shields.io/badge/License-MIT-2A2A2D?style=flat-square&labelColor=161618)](LICENSE)
 
 A modular, shared-nothing multi-agent platform for enterprise and campus network fault diagnosis, cross-domain evidence corroboration, and safe simulated remediation planning.
@@ -34,21 +34,23 @@ Network diagnosis is fundamentally a multi-perspective consensus problem. NetCoo
 | **Orchestration & Conflict Resolution** | 15% | LangGraph state graph with supervisory mediation, message bus pub/sub, targeted peer inquiry passes, dynamic hypothesis ranking, and deterministic conflict arbitration matrix (`orchestrator/`, `core/bus.py`). |
 | **Robustness to Missing / Incompatible Data** | 15% | Clock skew normalization, unit converter layer (bps/Kbps/Mbps/Gbps, ms/us), fuzzy device alias mapping, and Hypothesis property-based fuzzing (`core/normalizer.py`, `gateway/adapters/organizer_adapter.py`, `tests/test_robustness_hypothesis.py`, `tests/test_chaos.py`). |
 | **Innovation, Usability, Extensibility** | 10% | Model Context Protocol (MCP) server for external AI tools, Human-in-the-Loop (HITL) approval gates, pause/resume persistence via SQLite, simulated remediation sandbox, twin UI (Web Dashboard + Typer CLI), seeded generator with chaos knobs (`data/generator.py`, `mcp_server/`, `dashboard/`, `cli/`). |
-| **Code Quality, Docs, and Demo** | 5% | 100% typed codebase, docstrings, structured logging, zero emojis, unified JSON output report, comprehensive setup scripts, 125 reproducible tests, Makefile, Docker Compose. |
+| **Code Quality, Docs, and Demo** | 5% | Typed codebase, docstrings, structured logging, zero emojis, unified JSON output report, comprehensive setup scripts, 125 reproducible tests, Makefile, Docker Compose. |
 | Evaluation Dimension | Weight | Our Implementation & Architectural Advantage | Verifiable Benchmark Result |
 | :--- | :---: | :--- | :---: |
-| **Interoperability & Protocol Design** | **30%** | Dedicated HTTP REST microservices with zero shared memory. Fully documented wire schema (`schemas/envelope.json`), semantic versioning (`1.0.0`), strict SI unit conversions, and Ingestion Gateway with 12 typed validation error handlers for multi-vendor and organizer Colab telemetry. | **100% Schema Validation**<br/>Zero Protocol Leaks |
+| **Interoperability & Protocol Design** | **30%** | Dedicated HTTP REST microservices with zero shared memory. Fully documented wire schema (`schemas/envelope.json`), semantic versioning (`1.0.0`), strict SI unit conversions, and Ingestion Gateway with 12 typed validation error handlers for multi-vendor and organizer Colab telemetry. | **Automated Schema Validation**<br/>Zero Protocol Leaks |
 | **Diagnostic Accuracy & Evidence Quality** | **25%** | Two-layer finding architecture: empirical facts (`Observation`) separate from inferred causes (`Hypothesis`). Complete corroboration matrix with calibrated confidence scoring and mathematical abstention bounds. | **64.4% In-Distribution Accuracy** (synthetic)<br/>**93.8% Selective Accuracy** at 40% coverage |
 | **Orchestration & Conflict Resolution** | **15%** | LangGraph cyclical state graph. The Mediator agent evaluates hypothesis overlap, triggers cross-inquiry turns, and applies a strict domain precedence hierarchy (physical optics > buffer drops > routing flaps > ping latency). | **+8.3% F1 gain** over unmediated pipelines |
-| **Robustness to Missing & Corrupted Data** | **15%** | Evaluated on independently generated non-Gaussian held-out data (Pareto/log-normal noise, bursty dropouts) and organizer Colab telemetry. Degrades gracefully to `insufficient_evidence` rather than hallucinating root causes. | **40.0% Held-Out Accuracy** (synthetic)<br/>**66.7% Organizer Set Match** |
+| **Robustness to Missing & Corrupted Data** | **15%** | Evaluated on independently generated non-Gaussian held-out data (Pareto/log-normal noise, bursty dropouts) and organizer Colab telemetry. Degrades gracefully to `insufficient_evidence` rather than hallucinating root causes. | **40.0% Held-Out Accuracy** (synthetic)<br/>**66.7% Organizer Set Match** (Set-match counts an abstention on 'normal' organizer samples as correct, and is lenient on fault classes; exact-match is 0.0%) |
 | **Usability, Extensibility & Innovation** | **10%** | Stdio Model Context Protocol (MCP) server for IDE/agent tooling; blast-radius bounded simulated remediation engine with rollback automation; Rich monochrome CLI (`netcoop`); and real-time React web dashboard. | **Sub-120ms P95 Latency**<br/>Zero Real Device Impact |
-| **Code Quality, Docs & Demo** | **5%** | Clean-room architectural separation, 105 passing automated tests, automated dynamic README generation, Playwright visual tests, and deterministic offline replay. | **105 Passing Tests**<br/>100% Offline Core |
+| **Code Quality, Docs & Demo** | **5%** | Clean-room architectural separation, 105 passing automated tests, automated dynamic README generation, Playwright visual tests, and deterministic offline replay. | **105 Passing Tests**<br/>Offline Core Engine |
 
 ---
 
 ## 3. Results at a Glance
 
 > Note: Benchmark evaluations were executed in in-process fallback mode (zero external microservice dependency). Synthetic benchmark performance reflects measured metrics from `eval/results/benchmark_latest.json`: in-distribution 64.4%, held-out 40.0%, selective accuracy 93.8% at 40% coverage.
+>
+> The committed benchmark was generated before the normal-operation benign fix and has not been regenerated.
 
 ### 3.1 Benchmark Dataset Splits
 
@@ -59,49 +61,44 @@ Network diagnosis is fundamentally a multi-perspective consensus problem. NetCoo
 | **Organizer Colab Telemetry (Set Match)** | 900 | **66.7%** | - | - | - |
 | **Selective Classification (Coverage 40%)** | 160 | **93.8%** | - | - | - |
 
-> Note on Organizer Dataset: The organizer evaluation dataset consists of narrow single-device campus distribution telemetry snapshots (`data/organizer/`) rather than full multi-tier backbone fabric traces.
+> Note on Organizer Dataset: Set-match counts an abstention on 'normal' organizer samples as correct, and is lenient on fault classes; exact-match is 0.0% (source: `eval/results/benchmark_latest.json`). The organizer evaluation dataset consists of narrow single-device campus distribution telemetry snapshots (`data/organizer/`) rather than full multi-tier backbone fabric traces.
 
 ### 3.2 Pipeline Ablation Analysis
 
-Evaluating the necessity of each architectural component confirms that multi-agent cross-inquiry and gateway normalization provide critical accuracy and calibration improvements:
+Ablation evaluation results from `eval/results/benchmark_latest.json`:
 
 | Pipeline Configuration | Accuracy | Macro F1 | ECE | Latency (ms) | Insufficient Evidence Rate |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Full Multi-Agent Pipeline** | 95.8% | 0.952 | 0.042 | 115.4 ms | 13.3% |
-| Without Cross-Inquiry Corroboration | 87.5% | 0.862 | 0.089 | 78.2 ms | 21.0% |
-| Without Topology Context | 81.7% | 0.805 | 0.114 | 72.0 ms | 25.0% |
-| Without Gateway Canonical Normalization | 58.3% | 0.540 | 0.210 | 45.1 ms | 42.0% |
-| Single Heuristic Classifier Baseline | 71.7% | 0.690 | 0.185 | 12.3 ms | 5.0% |
+| **Full Multi-Agent Pipeline** | 100.0% | 1.000 | 0.073 | 175.6 ms | 0.0% |
+| Rules-Only Core (Without Learned Layer) | 100.0% | 1.000 | 0.073 | 0.5 ms | 0.0% |
+| Model-Only (Learned Classifier Alone) | 100.0% | 1.000 | 0.000 | 22.6 ms | 0.0% |
+| Single-Agent Heuristic Baseline | 25.0% | 0.250 | 0.195 | 0.2 ms | 50.0% |
 
 ### 3.3 Per-Class Diagnostic Performance
 
-Performance breakdown across the 10 canonical incident categories:
+Performance breakdown from `eval/results/benchmark_latest.json` across evaluated incident classes:
 
 | Fault Category | Precision | Recall | F1-Score | Support |
 | :--- | :---: | :---: | :---: | :---: |
-| `Normal Operation` | 100.0% | 100.0% | 1.000 | 15 |
-| `Link Congestion` | 94.1% | 94.1% | 0.941 | 17 |
-| `Weak Wifi Signal` | 92.3% | 100.0% | 0.960 | 12 |
-| `Ethernet Interface Fault` | 100.0% | 92.3% | 0.960 | 13 |
-| `Dns Failure` | 92.3% | 100.0% | 0.960 | 12 |
-| `Dhcp Failure` | 100.0% | 90.9% | 0.952 | 11 |
-| `Device Cpu Overload` | 92.3% | 92.3% | 0.923 | 13 |
-| `Upstream Failure Cascade` | 90.9% | 90.9% | 0.909 | 11 |
-| `Ambiguous Multi Fault` | 100.0% | 87.5% | 0.933 | 8 |
-| `Insufficient Data` | 100.0% | 100.0% | 1.000 | 8 |
+| `Normal Operation` | 0.0% | 0.0% | 0.000 | 40 |
+| `Link Congestion` | 97.1% | 82.5% | 0.892 | 40 |
+| `Weak Wifi Signal` | 100.0% | 45.0% | 0.621 | 40 |
+| `Ethernet Interface Fault` | 100.0% | 35.0% | 0.519 | 40 |
+| `Dns Failure` | 100.0% | 62.5% | 0.769 | 40 |
+| `Dhcp Failure` | 100.0% | 52.5% | 0.689 | 40 |
+| `Device Cpu Overload` | 100.0% | 70.0% | 0.824 | 40 |
+| `Upstream Failure Cascade` | 100.0% | 27.5% | 0.431 | 40 |
 
 ### 3.4 Selective Classification (Risk-Coverage)
 
-NetCoop AI enables operators to trade coverage for zero diagnostic risk by configuring confidence thresholds:
+Operating points derived from `eval/results/benchmark_latest.json` (selective accuracy: 93.8% at 40.0% coverage across confidence thresholds 0.40-0.90):
 
-| Selective Coverage | Diagnostic Risk (Error Rate) | Minimum Confidence Threshold | Operational Decision |
-| :---: | :---: | :---: | :--- |
-| 100% | 4.2% | 0% | Escalate to human review if threshold unmet |
-| 95% | 2.6% | 60% | Escalate to human review if threshold unmet |
-| 90% | 1.8% | 75% | Escalate to human review if threshold unmet |
-| 85% | 1.0% | 82% | Escalate to human review if threshold unmet |
-| 80% | 0.0% | 88% | Zero error; fully autonomous execution |
-| 70% | 0.0% | 92% | Zero error; fully autonomous execution |
+| Confidence Threshold | Selective Coverage | Selective Risk (Error Rate) | Accepted Samples | Operational Decision |
+| :---: | :---: | :---: | :---: | :--- |
+| >= 0.40 | 40.0% | 6.2% | 160 / 400 | Autonomous diagnosis with 93.8% selective accuracy |
+| >= 0.60 | 40.0% | 6.2% | 160 / 400 | Autonomous diagnosis with 93.8% selective accuracy |
+| >= 0.80 | 40.0% | 6.2% | 160 / 400 | Autonomous diagnosis with 93.8% selective accuracy |
+| >= 0.90 | 40.0% | 6.2% | 160 / 400 | Autonomous diagnosis with 93.8% selective accuracy |
 
 ---
 
@@ -221,6 +218,33 @@ The Ingestion Gateway and normalizers enforce standard metric names and units ac
    - A structured `protocol_error` envelope is returned with details.
    - The orchestrator isolates the sender without halting the diagnostic graph.
 
+### 5.4 Output in the Hackathon JSON Format
+
+To export any diagnostic run directly into the hackathon required 10-key contract (`incident_id`, `status`, `suspected_root_cause`, `confidence`, `affected_devices`, `supporting_evidence`, `alternative_causes`, `recommended_actions`, `evidence_sources`, `limitations`), use the `export_hackathon_report_json` adapter:
+
+```powershell
+python -c "import json; from netcoop.data.generator import SyntheticNetworkGenerator; from netcoop.orchestrator.graph import run_diagnosis; from netcoop.reporting.builder import export_hackathon_report_json; inc = SyntheticNetworkGenerator.generate(scenario='link_congestion', seed=42); rep = run_diagnosis(inc); print(json.dumps(export_hackathon_report_json(rep), indent=2))"
+```
+
+First 15 lines of output:
+```json
+{
+  "incident_id": "inc-link-congestion-42",
+  "status": "diagnosed",
+  "suspected_root_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
+  "confidence": 0.956,
+  "affected_devices": [
+    "dist-sw-core",
+    "core-rtr-01"
+  ],
+  "supporting_evidence": [
+    {
+      "metric": "latency_ms",
+      "value": 131.1,
+      "interpretation": "core-rtr-01 latency_ms: observed 131.1 ms"
+    },
+```
+
 ---
 
 ## 6. Calibration and Conformal Prediction Caveat
@@ -230,7 +254,7 @@ Reliable network automation requires knowing when not to trust a model. NetCoop 
 | Confusion Matrix | Reliability Diagram |
 | :---: | :---: |
 | ![Confusion Matrix](docs/assets/confusion_matrix.svg) | ![Reliability Curve](docs/assets/reliability_curve.svg) |
-| *10-class confusion matrix showing 95.8% overall accuracy* | *Reliability diagram demonstrating ECE of 0.042 (4.2%)* |
+| *Confusion matrix over primary benchmark samples (overall accuracy 55.2%)* | *Reliability diagram demonstrating ECE of 0.180 (18.0%)* |
 
 ### Conformal Prediction & Calibration Caveat
 
@@ -499,7 +523,7 @@ NetCoop-AI/
 | Six Specialist Agents Plus a Synthesizer | `netcoop/agents/*.py` (ports 8001–8005) | **Complete** (All tests passing) |
 | Authoritative Wire Envelope Schema | `schemas/envelope.json`, `docs/contract.md` | **Complete** |
 | LangGraph Orchestration & Mediation | `netcoop/orchestrator/graph.py`, `mediator.py` | **Complete** |
-| Zero-LLM Deterministic Engine | `netcoop/core/correlation.py`, `evidence.py` | **Complete** (100% offline) |
+| Zero-LLM Deterministic Engine | `netcoop/core/correlation.py`, `evidence.py` | **Complete** (Offline Core) |
 | Optional LLM Bridge with Offline Fallback | `netcoop/llm/client.py` | **Complete** |
 | Organizer Colab Format Adaptation | `gateway/adapters/organizer_adapter.py` | **Complete** |
 | Safe Simulated Remediation & Rollback | `netcoop/remediation/engine.py` | **Complete** |
