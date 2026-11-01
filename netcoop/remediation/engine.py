@@ -110,9 +110,28 @@ class RemediationEngine:
     ) -> List[RemediationActionItem]:
         """Generate appropriate simulated actions based on diagnosed root cause."""
         actions: List[RemediationActionItem] = []
-        cause = hypothesis.cause_key
+        cause = str(hypothesis.cause_key).strip().upper()
+
+        # Legacy datacenter / backbone defaults
         dev = hypothesis.affected_devices[0] if hypothesis.affected_devices else "spine-01"
         peer = hypothesis.affected_devices[1] if len(hypothesis.affected_devices) > 1 else "spine-02"
+
+        # Campus device / interface resolution: never default to "spine-01" or "et-0/0/1"
+        campus_dev = (
+            hypothesis.affected_devices[0]
+            if hypothesis.affected_devices
+            else (network_devices[0] if network_devices else "campus-device")
+        )
+        campus_peer = (
+            hypothesis.affected_devices[1]
+            if len(hypothesis.affected_devices) > 1
+            else None
+        )
+        campus_iface = (
+            hypothesis.affected_interfaces[0]
+            if hypothesis.affected_interfaces
+            else None
+        )
 
         if cause == "MTU_MISMATCH_BLACKHOLE":
             actions.append(
@@ -138,7 +157,7 @@ class RemediationEngine:
                     device=dev, interface="GigabitEthernet1/0/24"
                 )
             )
-        elif cause in ("INTERFACE_SATURATION_QUEUE_OVERFLOW", "link_congestion"):
+        elif cause in ("INTERFACE_SATURATION_QUEUE_OVERFLOW", "LINK_CONGESTION"):
             actions.append(
                 RemediationCatalog.create_rebalance_traffic_action(
                     device=dev, interface="et-0/0/1"
@@ -149,7 +168,7 @@ class RemediationEngine:
                     device=dev, interface="et-0/0/1"
                 )
             )
-        elif cause in ("PHYSICAL_LAYER_CRC_DEGRADATION", "hardware_failure", "ethernet_interface_fault"):
+        elif cause in ("PHYSICAL_LAYER_CRC_DEGRADATION", "HARDWARE_FAILURE", "ETHERNET_INTERFACE_FAULT"):
             actions.append(
                 RemediationCatalog.create_clear_counters_action(
                     device=dev, interface="et-0/0/1"
@@ -160,7 +179,7 @@ class RemediationEngine:
                     device=dev, interface="et-0/0/1", peer_device=peer
                 )
             )
-        elif cause in ("latency_spike", "upstream_congestion"):
+        elif cause in ("LATENCY_SPIKE", "UPSTREAM_CONGESTION"):
             actions.append(
                 RemediationCatalog.create_raise_qos_action(
                     device=dev, interface="et-0/0/1"
@@ -171,6 +190,59 @@ class RemediationEngine:
                     device=dev, interface="et-0/0/1"
                 )
             )
+        elif cause == "DEVICE_CPU_OVERLOAD":
+            actions.append(
+                RemediationCatalog.create_raise_qos_action(
+                    device=campus_dev, interface=campus_iface
+                )
+            )
+            actions.append(
+                RemediationCatalog.create_rebalance_traffic_action(
+                    device=campus_dev, interface=campus_iface
+                )
+            )
+        elif cause == "DEVICE_HARDWARE_FAILURE":
+            actions.append(
+                RemediationCatalog.create_clear_counters_action(
+                    device=campus_dev, interface=campus_iface
+                )
+            )
+            actions.append(
+                RemediationCatalog.create_failover_link_action(
+                    device=campus_dev, interface=campus_iface, peer_device=campus_peer
+                )
+            )
+        elif cause == "UPSTREAM_FAILURE_CASCADE":
+            actions.append(
+                RemediationCatalog.create_rebalance_traffic_action(
+                    device=campus_dev, interface=campus_iface
+                )
+            )
+            actions.append(
+                RemediationCatalog.create_raise_qos_action(
+                    device=campus_dev, interface=campus_iface
+                )
+            )
+        elif cause == "WEAK_WIFI_SIGNAL":
+            actions.append(
+                RemediationCatalog.create_adjust_ap_power_action(
+                    device=campus_dev
+                )
+            )
+        elif cause == "DNS_FAILURE":
+            actions.append(
+                RemediationCatalog.create_restart_dns_cache_action(
+                    device=campus_dev
+                )
+            )
+        elif cause == "DHCP_FAILURE":
+            actions.append(
+                RemediationCatalog.create_clear_dhcp_bindings_action(
+                    device=campus_dev
+                )
+            )
+        elif cause == "NO_FAULT":
+            return []
 
         return actions
 
