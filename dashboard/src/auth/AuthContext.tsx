@@ -133,7 +133,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(authUser);
     sessionStorage.setItem("netcoop_token", accessToken);
     sessionStorage.setItem("netcoop_user", JSON.stringify(authUser));
-    localStorage.setItem("netcoop_user_role", authUser.role);
     setIsLoginModalOpen(false);
     setLastForbiddenError(null);
   };

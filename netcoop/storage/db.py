@@ -467,6 +467,8 @@ def save_remediation_log(
     actor_username: Optional[str] = None,
     actor_role: Optional[str] = None,
     decision: Optional[str] = None,
+    rationale: Optional[str] = None,
+    modified_commands_json: Optional[str] = None,
 ) -> RemediationLog:
     """Save or update a remediation decision in SQLite audit log with structured actor fields."""
     ts = simulated_at or datetime.now(timezone.utc).isoformat()
@@ -486,6 +488,8 @@ def save_remediation_log(
             actor_username=actor_username,
             actor_role=actor_role,
             decision=decision or status,
+            rationale=rationale,
+            modified_commands_json=modified_commands_json,
         )
         session.add(log_entry)
         session.commit()

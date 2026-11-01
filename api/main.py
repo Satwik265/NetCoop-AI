@@ -1887,6 +1887,10 @@ def record_hitl_decision_endpoint(
 
         decision=req.decision,
 
+        rationale=req.rationale,
+
+        modified_commands_json=json.dumps(req.modified_commands) if req.modified_commands else None,
+
     )
 
     return {

@@ -37,10 +37,9 @@ import { LoginModal } from "./components/LoginModal";
 
 export const App: React.FC = () => {
   const { user, token, isDemoMode, logout, openLoginModal, lastForbiddenError, clearForbiddenError, loginAsDemoAccount } = useAuth();
-  // Role & Navigation state
+  // Role & Navigation state - authority is derived from authenticated backend JWT
   const [currentRole, setCurrentRole] = useState<UserRole>(() => {
-    const saved = localStorage.getItem("netcoop_user_role");
-    return (saved as UserRole) || "noc_operator";
+    return user?.role || "noc_operator";
   });
   const [activeNav, setActiveNav] = useState<string>("role_noc");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
@@ -89,10 +88,8 @@ export const App: React.FC = () => {
     }
   }, [user?.role]);
 
-  // Persist role change and switch demo account if requested
+  // Role switch requests authenticated session change; never relies on client storage as authority
   const handleSelectRole = (role: UserRole) => {
-    setCurrentRole(role);
-    localStorage.setItem("netcoop_user_role", role);
     const roleToUserMap: Record<UserRole, string> = {
       noc_operator: "noc",
       network_engineer: "engineer",
@@ -106,7 +103,11 @@ export const App: React.FC = () => {
     const targetUser = roleToUserMap[role];
     if (targetUser && user?.role !== role) {
       if (isDemoMode) {
-        loginAsDemoAccount(targetUser);
+        loginAsDemoAccount(targetUser).then((ok) => {
+          if (!ok) {
+            setCurrentRole(role);
+          }
+        });
       } else {
         openLoginModal();
       }

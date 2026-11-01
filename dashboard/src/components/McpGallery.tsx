@@ -47,7 +47,7 @@ export const McpGallery: React.FC = () => {
     const fetchMcpInfo = async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/mcp/info");
+        const res = await apiFetch("/api/mcp/info");
         if (res.ok) {
           const data: McpInfoResponse = await res.json();
           setMcpInfo(data);
@@ -177,7 +177,7 @@ export const McpGallery: React.FC = () => {
 
     try {
       if (toolName === "get_protocol_schema") {
-        const res = await fetch("/api/schemas/envelope");
+        const res = await apiFetch("/api/schemas/envelope");
         if (res.ok) {
           const data = await res.json();
           setTestResult(JSON.stringify({ tool: toolName, status: "success", result: { schema_id: data.$id || "envelope.json", title: data.title, fields: Object.keys(data.properties || {}) } }, null, 2));
@@ -185,7 +185,7 @@ export const McpGallery: React.FC = () => {
           return;
         }
       } else if (toolName === "get_incident_status") {
-        const res = await fetch("/api/incidents");
+        const res = await apiFetch("/api/incidents");
         if (res.ok) {
           const data = await res.json();
           const first = data[0] || { incident_id: "inc-paused-session-07", status: "diagnosed" };
