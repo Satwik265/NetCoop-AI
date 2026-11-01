@@ -4,7 +4,7 @@
 [![Architecture](https://img.shields.io/badge/Architecture-Shared--Nothing%20Microservices-2A2A2D?style=flat-square&labelColor=161618)](docs/contract.md)
 [![Orchestration](https://img.shields.io/badge/Orchestration-LangGraph-2A2A2D?style=flat-square&labelColor=161618)](netcoop/orchestrator/graph.py)
 [![Wire Protocol](https://img.shields.io/badge/Wire%20Protocol-JSON%20Schema%20v1.0-2A2A2D?style=flat-square&labelColor=161618)](schemas/envelope.json)
-[![Offline Engine](https://img.shields.io/badge/Offline%20Engine-Deterministic-2A2A2D?style=flat-square&labelColor=161618)](netcoop/core/)
+[![Offline Engine](https://img.shields.io/badge/Offline-Engine-2A2A2D?style=flat-square&labelColor=161618)](netcoop/core/)
 [![License](https://img.shields.io/badge/License-MIT-2A2A2D?style=flat-square&labelColor=161618)](LICENSE)
 
 A modular, shared-nothing multi-agent platform for enterprise and campus network fault diagnosis, cross-domain evidence corroboration, and safe simulated remediation planning.
@@ -37,12 +37,12 @@ Network diagnosis is fundamentally a multi-perspective consensus problem. NetCoo
 | **Code Quality, Docs, and Demo** | 5% | Typed codebase, docstrings, structured logging, zero emojis, unified JSON output report, comprehensive setup scripts, 125 reproducible tests, Makefile, Docker Compose. |
 | Evaluation Dimension | Weight | Our Implementation & Architectural Advantage | Verifiable Benchmark Result |
 | :--- | :---: | :--- | :---: |
-| **Interoperability & Protocol Design** | **30%** | Dedicated HTTP REST microservices with zero shared memory. Fully documented wire schema (`schemas/envelope.json`), semantic versioning (`1.0.0`), strict SI unit conversions, and Ingestion Gateway with 12 typed validation error handlers for multi-vendor and organizer Colab telemetry. | **Automated Schema Validation**<br/>Zero Protocol Leaks |
+| **Interoperability & Protocol Design** | **30%** | Dedicated HTTP REST microservices with zero shared memory. Fully documented wire schema (`schemas/envelope.json`), semantic versioning (`1.0.0`), strict SI unit conversions, and Ingestion Gateway with 12 typed validation error handlers for multi-vendor and organizer Colab telemetry. | **Automated Schema Validation** |
 | **Diagnostic Accuracy & Evidence Quality** | **25%** | Two-layer finding architecture: empirical facts (`Observation`) separate from inferred causes (`Hypothesis`). Complete corroboration matrix with calibrated confidence scoring and mathematical abstention bounds. | **64.4% In-Distribution Accuracy** (synthetic)<br/>**93.8% Selective Accuracy** at 40% coverage |
 | **Orchestration & Conflict Resolution** | **15%** | LangGraph cyclical state graph. The Mediator agent evaluates hypothesis overlap, triggers cross-inquiry turns, and applies a strict domain precedence hierarchy (physical optics > buffer drops > routing flaps > ping latency). | **+8.3% F1 gain** over unmediated pipelines |
 | **Robustness to Missing & Corrupted Data** | **15%** | Evaluated on independently generated non-Gaussian held-out data (Pareto/log-normal noise, bursty dropouts) and organizer Colab telemetry. Degrades gracefully to `insufficient_evidence` rather than hallucinating root causes. | **40.0% Held-Out Accuracy** (synthetic)<br/>**66.7% Organizer Set Match** (Set-match counts an abstention on 'normal' organizer samples as correct, and is lenient on fault classes; exact-match is 0.0%) |
 | **Usability, Extensibility & Innovation** | **10%** | Stdio Model Context Protocol (MCP) server for IDE/agent tooling; blast-radius bounded simulated remediation engine with rollback automation; Rich monochrome CLI (`netcoop`); and real-time React web dashboard. | **Sub-120ms P95 Latency**<br/>Zero Real Device Impact |
-| **Code Quality, Docs & Demo** | **5%** | Clean-room architectural separation, 105 passing automated tests, automated dynamic README generation, Playwright visual tests, and deterministic offline replay. | **105 Passing Tests**<br/>Offline Core Engine |
+| **Code Quality, Docs & Demo** | **5%** | Clean-room architectural separation, passing automated test suite, automated dynamic README generation, Playwright visual tests, and deterministic offline replay. | **Offline Core Engine** |
 
 ---
 
@@ -65,7 +65,9 @@ Network diagnosis is fundamentally a multi-perspective consensus problem. NetCoo
 
 ### 3.2 Pipeline Ablation Analysis
 
-Ablation evaluation results from `eval/results/benchmark_latest.json`:
+Smoke test: 32 cases, 4 fault types, 8 seeds. Not evidence of generalization.
+
+Ablation evaluation results from eval/results/benchmark_latest.json (source: eval/run_eval.py::run_ablations). On this smoke test, Rules-Only Core, Model-Only, and the Full Multi-Agent Pipeline all achieve identical accuracy (100.0%) and Macro F1 (1.000); neither the learned layer nor the multi-agent pipeline improves accuracy over rules-only here.
 
 | Pipeline Configuration | Accuracy | Macro F1 | ECE | Latency (ms) | Insufficient Evidence Rate |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -91,14 +93,11 @@ Performance breakdown from `eval/results/benchmark_latest.json` across evaluated
 
 ### 3.4 Selective Classification (Risk-Coverage)
 
-Operating points derived from `eval/results/benchmark_latest.json` (selective accuracy: 93.8% at 40.0% coverage across confidence thresholds 0.40-0.90):
+Operating points derived from eval/results/benchmark_latest.json (selective accuracy: 93.8% at 40.0% coverage across confidence thresholds 0.40-0.90). Calibrated probabilities are saturated, so varying the threshold does not move the operating point.
 
 | Confidence Threshold | Selective Coverage | Selective Risk (Error Rate) | Accepted Samples | Operational Decision |
 | :---: | :---: | :---: | :---: | :--- |
-| >= 0.40 | 40.0% | 6.2% | 160 / 400 | Autonomous diagnosis with 93.8% selective accuracy |
-| >= 0.60 | 40.0% | 6.2% | 160 / 400 | Autonomous diagnosis with 93.8% selective accuracy |
-| >= 0.80 | 40.0% | 6.2% | 160 / 400 | Autonomous diagnosis with 93.8% selective accuracy |
-| >= 0.90 | 40.0% | 6.2% | 160 / 400 | Autonomous diagnosis with 93.8% selective accuracy |
+| >= 0.40 to 0.90 | 40.0% | 6.2% | 160 / 400 | Autonomous diagnosis with 93.8% selective accuracy |
 
 ---
 
@@ -253,7 +252,6 @@ Reliable network automation requires knowing when not to trust a model. NetCoop 
 
 | Confusion Matrix | Reliability Diagram |
 | :---: | :---: |
-| ![Confusion Matrix](docs/assets/confusion_matrix.svg) | ![Reliability Curve](docs/assets/reliability_curve.svg) |
 | *Confusion matrix over primary benchmark samples (overall accuracy 55.2%)* | *Reliability diagram demonstrating ECE of 0.180 (18.0%)* |
 
 ### Conformal Prediction & Calibration Caveat
