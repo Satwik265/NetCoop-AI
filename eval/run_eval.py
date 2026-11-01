@@ -17,8 +17,12 @@ from rich.console import Console
 from rich.table import Table
 
 os.environ["AGENTS_MODE"] = "in_process"
+os.environ["IN_PROCESS_FALLBACK"] = "true"
+os.environ["ALLOW_DEV_IN_PROCESS_FALLBACK"] = "true"
 from netcoop.config import settings
 settings.agents_mode = "in_process"
+settings.in_process_fallback = True
+settings.allow_dev_in_process_fallback = True
 
 from netcoop.data.generator import NoiseShape, SeverityLevel, SyntheticNetworkGenerator
 from netcoop.data.heldout_generator import HeldoutNetworkGenerator
@@ -95,6 +99,8 @@ def map_cause_to_class(status: str, cause_str: Optional[str]) -> str:
     if status in ("insufficient_evidence", "ambiguous"):
         return "insufficient_evidence"
     c = (cause_str or "").lower()
+    if "hardware" in c:
+        return "device_hardware_failure"
     if "upstream" in c or "cascade" in c or "core router failure" in c:
         return "upstream_failure_cascade"
     if "link" in c or "congestion" in c:
@@ -107,7 +113,7 @@ def map_cause_to_class(status: str, cause_str: Optional[str]) -> str:
         return "dns_failure"
     if "dhcp" in c:
         return "dhcp_failure"
-    if "cpu" in c or "control-plane" in c:
+    if "cpu" in c or "control-plane" in c or "control plane" in c:
         return "device_cpu_overload"
     return "insufficient_evidence"
 
@@ -143,7 +149,23 @@ def evaluate_single_in_distribution(scenario: str, seed: int) -> Dict[str, Any]:
     rep = run_diagnosis(inc)
     lat_ms = (time.time() - t0) * 1000.0
 
-    pred_class = determine_predicted_category(rep.status, rep.probable_cause)
+    if getattr(rep, "hypothesis_key", None):
+        key_upper = str(rep.hypothesis_key).upper()
+        key_map = {
+            "DEVICE_HARDWARE_FAILURE": "device_hardware_failure",
+            "LINK_CONGESTION": "link_congestion",
+            "UPSTREAM_CONGESTION": "upstream_failure_cascade",
+            "UPSTREAM_FAILURE_CASCADE": "upstream_failure_cascade",
+            "WEAK_WIFI_SIGNAL": "weak_wifi_signal",
+            "ETHERNET_INTERFACE_FAULT": "ethernet_interface_fault",
+            "DNS_FAILURE": "dns_failure",
+            "DHCP_FAILURE": "dhcp_failure",
+            "DEVICE_CPU_OVERLOAD": "device_cpu_overload",
+            "NO_FAULT": "normal_operation",
+        }
+        pred_class = key_map.get(key_upper, determine_predicted_category(rep.status, rep.probable_cause))
+    else:
+        pred_class = determine_predicted_category(rep.status, rep.probable_cause)
 
     # Correctness evaluated against scenario ground-truth expectations:
     # 1. normal_operation: correct if explicitly diagnosed/reported as normal (benign)
@@ -218,7 +240,23 @@ def evaluate_single_organizer(
     canonical_target = cfg.get("canonical", fault_type)
     accepted_set = set(cfg.get("accepted_set", [canonical_target]))
 
-    pred_class = determine_predicted_category(rep.status, rep.probable_cause)
+    if getattr(rep, "hypothesis_key", None):
+        key_upper = str(rep.hypothesis_key).upper()
+        key_map = {
+            "DEVICE_HARDWARE_FAILURE": "device_hardware_failure",
+            "LINK_CONGESTION": "link_congestion",
+            "UPSTREAM_CONGESTION": "upstream_failure_cascade",
+            "UPSTREAM_FAILURE_CASCADE": "upstream_failure_cascade",
+            "WEAK_WIFI_SIGNAL": "weak_wifi_signal",
+            "ETHERNET_INTERFACE_FAULT": "ethernet_interface_fault",
+            "DNS_FAILURE": "dns_failure",
+            "DHCP_FAILURE": "dhcp_failure",
+            "DEVICE_CPU_OVERLOAD": "device_cpu_overload",
+            "NO_FAULT": "normal_operation",
+        }
+        pred_class = key_map.get(key_upper, determine_predicted_category(rep.status, rep.probable_cause))
+    else:
+        pred_class = determine_predicted_category(rep.status, rep.probable_cause)
 
     # 1. Exact match
     if fault_type == "normal":
@@ -742,6 +780,7 @@ def run_evaluation_benchmark(quick: bool = False, workers: int = 4) -> Dict[str,
         "generated_at": start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "reproducibility": {
             "python_version": "3.13.15",
+            "agents_execution_mode": os.environ.get("AGENTS_MODE", getattr(settings, "agents_mode", "in_process")),
             "seed_ranges": {
                 "in_distribution": f"seeds {seeds_in_dist.start}-{seeds_in_dist.stop-1} (TEST_SPEC)",
                 "held_out": f"seeds {seeds_held.start}-{seeds_held.stop-1}",
@@ -817,17 +856,17 @@ def run_evaluation_benchmark(quick: bool = False, workers: int = 4) -> Dict[str,
 
     # Save JSON results
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    latest_path = RESULTS_DIR / "benchmark_latest.json"
-    with open(latest_path, "w", encoding="utf-8") as f:
+    if quick:
+        output_path = RESULTS_DIR / "benchmark_quick.json"
+    else:
+        output_path = RESULTS_DIR / "benchmark_latest.json"
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2, cls=NpEncoder)
 
-    # Synchronize mock.json for frontend Proof / Evaluation tab
-    mock_path = RESULTS_DIR / "mock.json"
-    with open(mock_path, "w", encoding="utf-8") as f:
-        json.dump(output, f, indent=2, cls=NpEncoder)
-
-    # Save Markdown report
-    write_markdown_report(output)
+    # Protected: mock.json is never written
+    # Save Markdown report (only on full benchmark runs to protect committed report)
+    if not quick:
+        write_markdown_report(output)
 
     # Display Rich Summary
     display_rich_summary(output)
