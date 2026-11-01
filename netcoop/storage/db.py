@@ -4,7 +4,7 @@ import os
 import json
 from datetime import datetime, timezone
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from sqlmodel import Session, SQLModel, create_engine, select, update
 
 from netcoop.config import settings
@@ -18,6 +18,7 @@ from netcoop.storage.models import (
     AuthAuditLog,
     RevokedToken,
     WsTicketRecord,
+    TicketRecord,
 )
 
 connect_args = {"timeout": 60.0} if "sqlite" in settings.database_url else {}
@@ -59,6 +60,7 @@ def init_db() -> None:
         except Exception:
             pass
     init_default_users()
+    init_default_tickets()
 
 
 def log_envelope(envelope: AgentEnvelope) -> None:
@@ -743,4 +745,202 @@ def consume_db_ws_ticket(raw_ticket: str) -> tuple[bool, str, Optional[UserRecor
         if not user or not user.is_active:
             return False, "User account is inactive or not found.", None
         return True, "Ticket valid.", user
+
+
+# -----------------------------------------------------------------------------
+# Support Ticket Management & Persistent Storage
+# -----------------------------------------------------------------------------
+
+VALID_TICKET_TRANSITIONS = {
+    "New": {"Open", "Assigned", "Closed"},
+    "Open": {"Assigned", "Investigating", "Closed"},
+    "Assigned": {"Investigating", "Open", "Closed"},
+    "Investigating": {"Awaiting User", "Resolved", "Assigned", "Closed"},
+    "Awaiting User": {"Investigating", "Resolved", "Closed"},
+    "Resolved": {"Closed", "Open"},
+    "Closed": {"Open"},
+}
+
+
+def init_default_tickets() -> None:
+    """Seed initial demonstration support tickets if ticket repository is empty."""
+    with Session(engine) as session:
+        count = session.exec(select(TicketRecord)).first()
+        if count is not None:
+            return
+
+        demo_tickets = [
+            TicketRecord(
+                ticket_id="TICK-2026-001",
+                title="Severe packet loss and video buffering in Hostel Block B",
+                category="wifi",
+                location="Hostel Block B",
+                affected_service="Campus WiFi",
+                description="Students reporting intermittent video call freezes and dropped connections during peak evening hours.",
+                priority="high",
+                status="Investigating",
+                created_by="helpdesk",
+                contact_info="hostel-rep@iitbbsr.ac.in",
+                assigned_to="engineer",
+                linked_incident_id="inc-link-congestion-42",
+                resolution_notes="Corroborated with inc-link-congestion-42 telemetry showing interface saturation on SW_CAMPUS_1.",
+                user_facing_summary="Engineers are optimizing core switch traffic queues. Service stability expected within 15 minutes.",
+            ),
+            TicketRecord(
+                ticket_id="TICK-2026-002",
+                title="LMS portal timeout on assignment submissions",
+                category="application",
+                location="Academic Block 2",
+                affected_service="LMS",
+                description="Faculty and students experiencing 504 gateway timeouts when uploading assignment files to the Moodle portal.",
+                priority="medium",
+                status="Open",
+                created_by="helpdesk",
+                contact_info="dept-cse@iitbbsr.ac.in",
+                assigned_to="engineer",
+                linked_incident_id=None,
+                resolution_notes="Under active triage by Network Engineering.",
+                user_facing_summary="LMS application server capacity is being reviewed by the operations team.",
+            ),
+            TicketRecord(
+                ticket_id="TICK-2026-003",
+                title="Core switch uplink interface flap",
+                category="hardware",
+                location="Main Data Center",
+                affected_service="Internet Gateway",
+                description="Automated telemetry detected CRC error spikes and carrier transitions on port xe-0/0/2.",
+                priority="critical",
+                status="Assigned",
+                created_by="admin",
+                contact_info="noc-ops@iitbbsr.ac.in",
+                assigned_to="admin",
+                linked_incident_id="inc-link-congestion-42",
+                resolution_notes="Interface optics inspected, diagnostic report generated.",
+                user_facing_summary="Network backbone maintenance in progress. Redundant link active.",
+            ),
+        ]
+        for t in demo_tickets:
+            session.add(t)
+        session.commit()
+
+
+def create_ticket(
+    title: str,
+    category: str,
+    location: str,
+    affected_service: str,
+    description: str,
+    priority: str = "medium",
+    created_by: str = "helpdesk",
+    contact_info: str = None,
+    linked_incident_id: str = None,
+    assigned_to: str = None,
+) -> TicketRecord:
+    """Create and persist a new support ticket."""
+    import secrets
+    ticket_id = f"TICK-2026-{secrets.randbelow(9000) + 1000}"
+    with Session(engine) as session:
+        ticket = TicketRecord(
+            ticket_id=ticket_id,
+            title=title,
+            category=category,
+            location=location,
+            affected_service=affected_service,
+            description=description,
+            priority=priority,
+            status="New",
+            created_by=created_by,
+            contact_info=contact_info,
+            linked_incident_id=linked_incident_id,
+            assigned_to=assigned_to,
+        )
+        session.add(ticket)
+        session.commit()
+        session.refresh(ticket)
+        return ticket
+
+
+def get_ticket(ticket_id: str) -> Optional[TicketRecord]:
+    """Retrieve ticket by unique ticket_id."""
+    with Session(engine) as session:
+        stmt = select(TicketRecord).where(TicketRecord.ticket_id == ticket_id)
+        return session.exec(stmt).first()
+
+
+def list_tickets(
+    user_id: Optional[str] = None,
+    username: Optional[str] = None,
+    role: Optional[str] = None,
+    category: Optional[str] = None,
+    status: Optional[str] = None,
+    priority: Optional[str] = None,
+    limit: int = 100,
+) -> List[TicketRecord]:
+    """List tickets with optional role-based filtering and status constraints."""
+    with Session(engine) as session:
+        stmt = select(TicketRecord)
+        if category:
+            stmt = stmt.where(TicketRecord.category == category)
+        if status:
+            stmt = stmt.where(TicketRecord.status == status)
+        if priority:
+            stmt = stmt.where(TicketRecord.priority == priority)
+        # Role-based restriction:
+        # Non-operational users only see tickets they created
+        if role and role not in ["platform_admin", "network_admin", "network_engineer", "helpdesk"]:
+            if username:
+                stmt = stmt.where(TicketRecord.created_by == username)
+        stmt = stmt.order_by(TicketRecord.id.desc()).limit(limit)
+        return list(session.exec(stmt).all())
+
+
+def update_ticket_status(
+    ticket_id: str,
+    new_status: str,
+    actor_username: str,
+    actor_role: str,
+    notes: Optional[str] = None,
+    user_summary: Optional[str] = None,
+    assigned_to: Optional[str] = None,
+) -> Tuple[bool, str, Optional[TicketRecord]]:
+    """Validate lifecycle transition and update ticket status."""
+    with Session(engine) as session:
+        ticket = session.exec(select(TicketRecord).where(TicketRecord.ticket_id == ticket_id)).first()
+        if not ticket:
+            return False, f"Ticket {ticket_id} not found.", None
+
+        if new_status != ticket.status:
+            allowed = VALID_TICKET_TRANSITIONS.get(ticket.status, set())
+            if new_status not in allowed:
+                return False, f"Invalid transition from {ticket.status} to {new_status}. Allowed transitions: {sorted(list(allowed))}", None
+
+        ticket.status = new_status
+        ticket.updated_at = datetime.now(timezone.utc).isoformat()
+        if notes:
+            ticket.resolution_notes = notes
+        if user_summary:
+            ticket.user_facing_summary = user_summary
+        if assigned_to is not None:
+            ticket.assigned_to = assigned_to
+
+        session.add(ticket)
+        session.commit()
+        session.refresh(ticket)
+        return True, "Status updated successfully.", ticket
+
+
+def link_ticket_incident(ticket_id: str, incident_id: str, actor_username: str) -> Optional[TicketRecord]:
+    """Associate a support ticket with a network diagnostic incident."""
+    with Session(engine) as session:
+        ticket = session.exec(select(TicketRecord).where(TicketRecord.ticket_id == ticket_id)).first()
+        if not ticket:
+            return None
+        ticket.linked_incident_id = incident_id
+        ticket.updated_at = datetime.now(timezone.utc).isoformat()
+        if not ticket.resolution_notes:
+            ticket.resolution_notes = f"Linked to incident {incident_id} by {actor_username}."
+        session.add(ticket)
+        session.commit()
+        session.refresh(ticket)
+        return ticket
 

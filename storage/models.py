@@ -13,4 +13,5 @@ from netcoop.storage.models import (
     AuthAuditLog,
     RevokedToken,
     WsTicketRecord,
+    TicketRecord,
 )

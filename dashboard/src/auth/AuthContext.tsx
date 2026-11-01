@@ -7,6 +7,7 @@ export interface AuthUser {
   role: UserRole;
   full_name?: string;
   permissions: string[];
+  impersonated_by?: string;
 }
 
 export interface DemoAccount {
@@ -71,9 +72,13 @@ interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   isDemoMode: boolean;
+  isImpersonating: boolean;
+  impersonatedBy: string | null;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   loginAsDemoAccount: (username: string) => Promise<boolean>;
   logout: () => void;
+  impersonateUser: (username: string) => Promise<boolean>;
+  exitImpersonation: () => Promise<boolean>;
   isLoginModalOpen: boolean;
   openLoginModal: () => void;
   closeLoginModal: () => void;
@@ -107,6 +112,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearForbiddenError = () => setLastForbiddenError(null);
 
+  const isImpersonating = !!user?.impersonated_by;
+  const impersonatedBy = user?.impersonated_by || null;
+
   // Discover server runtime mode and demo availability
   useEffect(() => {
     fetch("/api/features")
@@ -128,6 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       role: userData.role as UserRole,
       full_name: userData.full_name,
       permissions: userData.permissions || [],
+      impersonated_by: userData.impersonated_by,
     };
     setToken(accessToken);
     setUser(authUser);
@@ -179,6 +188,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const impersonateUser = async (targetUsername: string): Promise<boolean> => {
+    try {
+      if (token && user) {
+        sessionStorage.setItem("netcoop_admin_token", token);
+        sessionStorage.setItem("netcoop_admin_user", JSON.stringify(user));
+      }
+      const res = await authFetch("/api/auth/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: targetUsername }),
+      });
+      if (!res.ok) {
+        return false;
+      }
+      const data = await res.json();
+      handleAuthSuccess(data.access_token, data);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const exitImpersonation = async (): Promise<boolean> => {
+    try {
+      await authFetch("/api/auth/exit-impersonation", {
+        method: "POST",
+      }).catch(() => {});
+
+      const savedAdminToken = sessionStorage.getItem("netcoop_admin_token");
+      const savedAdminUser = sessionStorage.getItem("netcoop_admin_user");
+      if (savedAdminToken && savedAdminUser) {
+        sessionStorage.removeItem("netcoop_admin_token");
+        sessionStorage.removeItem("netcoop_admin_user");
+        setToken(savedAdminToken);
+        const parsed = JSON.parse(savedAdminUser);
+        setUser(parsed);
+        sessionStorage.setItem("netcoop_token", savedAdminToken);
+        sessionStorage.setItem("netcoop_user", JSON.stringify(parsed));
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
   const logout = () => {
     if (token) {
       fetch("/api/auth/logout", {
@@ -190,6 +245,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     sessionStorage.removeItem("netcoop_token");
     sessionStorage.removeItem("netcoop_user");
+    sessionStorage.removeItem("netcoop_admin_token");
+    sessionStorage.removeItem("netcoop_admin_user");
     setIsLoginModalOpen(true);
   };
 
@@ -207,6 +264,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       sessionStorage.removeItem("netcoop_token");
       sessionStorage.removeItem("netcoop_user");
+      sessionStorage.removeItem("netcoop_admin_token");
+      sessionStorage.removeItem("netcoop_admin_user");
       setIsLoginModalOpen(true);
     } else if (res.status === 403) {
       try {
@@ -233,9 +292,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         token,
         isDemoMode,
+        isImpersonating,
+        impersonatedBy,
         login,
         loginAsDemoAccount,
         logout,
+        impersonateUser,
+        exitImpersonation,
         isLoginModalOpen,
         openLoginModal: () => setIsLoginModalOpen(true),
         closeLoginModal: () => setIsLoginModalOpen(false),
@@ -259,6 +322,8 @@ export const apiFetch = async (url: string, init: RequestInit = {}): Promise<Res
   if (res.status === 401) {
     sessionStorage.removeItem("netcoop_token");
     sessionStorage.removeItem("netcoop_user");
+    sessionStorage.removeItem("netcoop_admin_token");
+    sessionStorage.removeItem("netcoop_admin_user");
     window.dispatchEvent(new CustomEvent("netcoop_unauthorized"));
   }
   return res;

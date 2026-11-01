@@ -31,7 +31,13 @@ from core.auth import (
 
     CreateUserRequest,
 
-    DemoLoginRequest,
+    
+    ImpersonateRequest,
+    UpdateUserStatusRequest,
+    ROLE_PLATFORM_ADMIN,
+    ROLE_NETWORK_ADMIN,
+    ROLE_NETWORK_ENGINEER,
+    ROLE_HELPDESK,DemoLoginRequest,
 
     LoginRequest,
 
@@ -93,7 +99,7 @@ from core.auth import (
 
 )
 
-from storage.models import UserRecord
+from storage.models import UserRecord, TicketRecord
 
 
 from netcoop import __version__
@@ -163,6 +169,18 @@ from storage.db import (
     create_user,
 
     list_users,
+    
+    get_user_by_id,
+    create_ticket,
+    get_ticket,
+    list_tickets,
+    update_ticket_status,
+    link_ticket_incident,get_user_by_id,
+    create_ticket,
+    get_ticket,
+    list_tickets,
+    update_ticket_status,
+    link_ticket_incident,
 
 )
 
@@ -629,29 +647,31 @@ def demo_login_endpoint(req: DemoLoginRequest, request: Request) -> TokenRespons
 
 
 @app.get("/api/auth/me", response_model=UserProfileResponse)
-
-def get_auth_me_endpoint(current_user: UserRecord = Depends(get_current_user)) -> UserProfileResponse:
-
+def get_auth_me_endpoint(
+    request: Request,
+    current_user: UserRecord = Depends(get_current_user),
+) -> UserProfileResponse:
     """Retrieve profile and active permissions for the currently authenticated user."""
+    auth_header = request.headers.get("authorization", "")
+    impersonated_by = None
+    if auth_header.startswith("Bearer "):
+        try:
+            token_str = auth_header[7:].strip()
+            payload = decode_access_token(token_str)
+            impersonated_by = payload.get("impersonated_by")
+        except Exception:
+            pass
 
     user_perms = sorted(list(ROLE_PERMISSIONS_MAP.get(current_user.role, set())))
-
     return UserProfileResponse(
-
         user_id=current_user.user_id,
-
         username=current_user.username,
-
         role=current_user.role,
-
         full_name=current_user.full_name,
-
         permissions=user_perms,
-
         is_active=current_user.is_active,
-
         created_at=current_user.created_at,
-
+        impersonated_by=impersonated_by,
     )
 
 
@@ -886,6 +906,478 @@ def create_user_endpoint(
 
         created_at=user.created_at,
 
+    )
+
+
+@app.patch("/api/users/{user_id}/status", response_model=UserProfileResponse)
+def update_user_status_endpoint(
+    user_id: str,
+    req: UpdateUserStatusRequest,
+    current_user: UserRecord = Depends(require_permissions([PERM_MANAGE_USERS])),
+) -> UserProfileResponse:
+    """Enable or disable user account (Platform Administrator only)."""
+    target = get_user_by_id(user_id)
+    if not target:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User ID '{user_id}' not found.",
+        )
+    if target.user_id == current_user.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot modify active state of your own administrator account.",
+        )
+
+    from sqlmodel import Session, select
+    from storage.db import engine
+    with Session(engine) as session:
+        u = session.exec(select(UserRecord).where(UserRecord.user_id == user_id)).first()
+        if not u:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+        u.is_active = req.is_active
+        session.add(u)
+        session.commit()
+        session.refresh(u)
+        target = u
+
+    log_auth_event(
+        event_type="USER_STATUS_UPDATED",
+        username=target.username,
+        user_id=target.user_id,
+        role=target.role,
+        endpoint=f"/api/users/{user_id}/status",
+        details=f"Status set to {'active' if req.is_active else 'inactive'} by {current_user.username}",
+    )
+    return UserProfileResponse(
+        user_id=target.user_id,
+        username=target.username,
+        role=target.role,
+        full_name=target.full_name,
+        permissions=sorted(list(ROLE_PERMISSIONS_MAP.get(target.role, set()))),
+        is_active=target.is_active,
+        created_at=target.created_at,
+    )
+
+
+@app.post("/api/auth/impersonate", response_model=TokenResponse)
+def impersonate_user_endpoint(
+    req: ImpersonateRequest,
+    request: Request,
+    current_user: UserRecord = Depends(require_permissions([PERM_MANAGE_USERS])),
+) -> TokenResponse:
+    """Securely initiate user impersonation (Platform Administrator only). Audited in auth logs."""
+    if current_user.role != ROLE_PLATFORM_ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only Platform Administrators may initiate user impersonation.",
+        )
+    target = get_user_by_username(req.username)
+    if not target:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Target user '{req.username}' not found.",
+        )
+    if not target.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Target user '{req.username}' is deactivated.",
+        )
+    if target.username == current_user.username:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot impersonate your own active administrator account.",
+        )
+
+    client_ip = request.client.host if request.client else "unknown"
+    log_auth_event(
+        event_type="IMPERSONATION_START",
+        username=current_user.username,
+        user_id=current_user.user_id,
+        role=current_user.role,
+        endpoint="/api/auth/impersonate",
+        client_ip=client_ip,
+        details=f"Admin '{current_user.username}' initiated impersonation of '{target.username}' ({target.role})",
+    )
+
+    access_token = create_access_token(
+        {
+            "sub": target.username,
+            "user_id": target.user_id,
+            "role": target.role,
+            "impersonated_by": current_user.username,
+        }
+    )
+    target_perms = sorted(list(ROLE_PERMISSIONS_MAP.get(target.role, set())))
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=settings.jwt_access_token_expire_minutes * 60,
+        role=target.role,
+        username=target.username,
+        full_name=target.full_name,
+        permissions=target_perms,
+        impersonated_by=current_user.username,
+    )
+
+
+@app.post("/api/auth/exit-impersonation")
+def exit_impersonation_endpoint(
+    request: Request,
+    current_user: UserRecord = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Exit user impersonation session and record security audit log."""
+    client_ip = request.client.host if request.client else "unknown"
+    auth_header = request.headers.get("authorization", "")
+    impersonator = None
+    if auth_header.startswith("Bearer "):
+        try:
+            token_str = auth_header[7:].strip()
+            payload = decode_access_token(token_str)
+            impersonator = payload.get("impersonated_by")
+        except Exception:
+            pass
+
+    log_auth_event(
+        event_type="IMPERSONATION_END",
+        username=current_user.username,
+        user_id=current_user.user_id,
+        role=current_user.role,
+        endpoint="/api/auth/exit-impersonation",
+        client_ip=client_ip,
+        details=f"Impersonation session for '{current_user.username}' ended by '{impersonator or 'unknown'}'",
+    )
+    return {"status": "success", "message": "Impersonation session ended."}
+
+
+# -----------------------------------------------------------------------------
+# Support Ticket Management Endpoints
+# -----------------------------------------------------------------------------
+
+class CreateTicketRequest(BaseModel):
+    title: str
+    category: str
+    location: str
+    affected_service: str
+    description: str
+    priority: str = "medium"
+    contact_info: Optional[str] = None
+    linked_incident_id: Optional[str] = None
+    assigned_to: Optional[str] = None
+
+
+class UpdateTicketStatusRequest(BaseModel):
+    status: str
+    notes: Optional[str] = None
+    user_summary: Optional[str] = None
+    assigned_to: Optional[str] = None
+
+
+class LinkTicketIncidentRequest(BaseModel):
+    incident_id: str
+
+
+class TicketResponse(BaseModel):
+    id: Optional[int] = None
+    ticket_id: str
+    title: str
+    category: str
+    location: str
+    affected_service: str
+    description: str
+    priority: str
+    status: str
+    created_by: str
+    contact_info: Optional[str] = None
+    assigned_to: Optional[str] = None
+    linked_incident_id: Optional[str] = None
+    resolution_notes: Optional[str] = None
+    user_facing_summary: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
+@app.get("/api/tickets", response_model=List[TicketResponse])
+def list_tickets_endpoint(
+    category: Optional[str] = None,
+    status: Optional[str] = None,
+    priority: Optional[str] = None,
+    limit: int = 100,
+    current_user: UserRecord = Depends(get_current_user),
+) -> List[TicketResponse]:
+    """List operational and user support tickets according to role authorization."""
+    tickets = list_tickets(
+        user_id=current_user.user_id,
+        username=current_user.username,
+        role=current_user.role,
+        category=category,
+        status=status,
+        priority=priority,
+        limit=limit,
+    )
+    return [
+        TicketResponse(
+            id=t.id,
+            ticket_id=t.ticket_id,
+            title=t.title,
+            category=t.category,
+            location=t.location,
+            affected_service=t.affected_service,
+            description=t.description,
+            priority=t.priority,
+            status=t.status,
+            created_by=t.created_by,
+            contact_info=t.contact_info,
+            assigned_to=t.assigned_to,
+            linked_incident_id=t.linked_incident_id,
+            resolution_notes=t.resolution_notes,
+            user_facing_summary=t.user_facing_summary,
+            created_at=t.created_at,
+            updated_at=t.updated_at,
+        )
+        for t in tickets
+    ]
+
+
+@app.post("/api/tickets", response_model=TicketResponse, status_code=201)
+def create_ticket_endpoint(
+    req: CreateTicketRequest,
+    current_user: UserRecord = Depends(get_current_user),
+) -> TicketResponse:
+    """Create and persist a new customer or operational support ticket."""
+    if not req.title.strip() or not req.description.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ticket title and description cannot be empty.",
+        )
+    if not req.location.strip() or not req.affected_service.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Affected campus location and service are required.",
+        )
+
+    t = create_ticket(
+        title=req.title.strip(),
+        category=req.category.strip(),
+        location=req.location.strip(),
+        affected_service=req.affected_service.strip(),
+        description=req.description.strip(),
+        priority=req.priority.strip(),
+        created_by=current_user.username,
+        contact_info=req.contact_info.strip() if req.contact_info else None,
+        linked_incident_id=req.linked_incident_id.strip() if req.linked_incident_id else None,
+        assigned_to=req.assigned_to.strip() if req.assigned_to else None,
+    )
+    log_auth_event(
+        event_type="TICKET_CREATED",
+        username=current_user.username,
+        user_id=current_user.user_id,
+        role=current_user.role,
+        endpoint="/api/tickets",
+        details=f"Ticket '{t.ticket_id}' created ({t.category}, {t.priority})",
+    )
+    return TicketResponse(
+        id=t.id,
+        ticket_id=t.ticket_id,
+        title=t.title,
+        category=t.category,
+        location=t.location,
+        affected_service=t.affected_service,
+        description=t.description,
+        priority=t.priority,
+        status=t.status,
+        created_by=t.created_by,
+        contact_info=t.contact_info,
+        assigned_to=t.assigned_to,
+        linked_incident_id=t.linked_incident_id,
+        resolution_notes=t.resolution_notes,
+        user_facing_summary=t.user_facing_summary,
+        created_at=t.created_at,
+        updated_at=t.updated_at,
+    )
+
+
+@app.get("/api/tickets/{ticket_id}", response_model=TicketResponse)
+def get_ticket_endpoint(
+    ticket_id: str,
+    current_user: UserRecord = Depends(get_current_user),
+) -> TicketResponse:
+    """Retrieve support ticket details with access validation."""
+    t = get_ticket(ticket_id)
+    if not t:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Ticket '{ticket_id}' not found.",
+        )
+
+    # Access control: operational roles or ticket creator
+    allowed_roles = [ROLE_PLATFORM_ADMIN, ROLE_NETWORK_ADMIN, ROLE_NETWORK_ENGINEER, ROLE_HELPDESK]
+    if current_user.role not in allowed_roles and t.created_by != current_user.username:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted: you may only view support tickets you authored.",
+        )
+
+    return TicketResponse(
+        id=t.id,
+        ticket_id=t.ticket_id,
+        title=t.title,
+        category=t.category,
+        location=t.location,
+        affected_service=t.affected_service,
+        description=t.description,
+        priority=t.priority,
+        status=t.status,
+        created_by=t.created_by,
+        contact_info=t.contact_info,
+        assigned_to=t.assigned_to,
+        linked_incident_id=t.linked_incident_id,
+        resolution_notes=t.resolution_notes,
+        user_facing_summary=t.user_facing_summary,
+        created_at=t.created_at,
+        updated_at=t.updated_at,
+    )
+
+
+@app.patch("/api/tickets/{ticket_id}", response_model=TicketResponse)
+def update_ticket_endpoint(
+    ticket_id: str,
+    req: UpdateTicketStatusRequest,
+    current_user: UserRecord = Depends(get_current_user),
+) -> TicketResponse:
+    """Update ticket status, notes, or assigned engineer with lifecycle validation."""
+    t = get_ticket(ticket_id)
+    if not t:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Ticket '{ticket_id}' not found.",
+        )
+
+    allowed_roles = [ROLE_PLATFORM_ADMIN, ROLE_NETWORK_ADMIN, ROLE_NETWORK_ENGINEER, ROLE_HELPDESK]
+    if current_user.role not in allowed_roles and t.created_by != current_user.username:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted: unauthorized to update this support ticket.",
+        )
+
+    # Helpdesk cannot resolve tickets directly without engineering sign-off
+    if current_user.role == ROLE_HELPDESK and req.status == "Resolved":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Helpdesk cannot set ticket status to Resolved; technical verification by Network Engineering is required.",
+        )
+
+    ok, msg, updated = update_ticket_status(
+        ticket_id=ticket_id,
+        new_status=req.status,
+        actor_username=current_user.username,
+        actor_role=current_user.role,
+        notes=req.notes,
+        user_summary=req.user_summary,
+        assigned_to=req.assigned_to,
+    )
+    if not ok or not updated:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=msg,
+        )
+
+    log_auth_event(
+        event_type="TICKET_UPDATED",
+        username=current_user.username,
+        user_id=current_user.user_id,
+        role=current_user.role,
+        endpoint=f"/api/tickets/{ticket_id}",
+        details=f"Ticket '{ticket_id}' status updated to '{req.status}' by {current_user.username}",
+    )
+
+    return TicketResponse(
+        id=updated.id,
+        ticket_id=updated.ticket_id,
+        title=updated.title,
+        category=updated.category,
+        location=updated.location,
+        affected_service=updated.affected_service,
+        description=updated.description,
+        priority=updated.priority,
+        status=updated.status,
+        created_by=updated.created_by,
+        contact_info=updated.contact_info,
+        assigned_to=updated.assigned_to,
+        linked_incident_id=updated.linked_incident_id,
+        resolution_notes=updated.resolution_notes,
+        user_facing_summary=updated.user_facing_summary,
+        created_at=updated.created_at,
+        updated_at=updated.updated_at,
+    )
+
+
+@app.post("/api/tickets/{ticket_id}/link-incident", response_model=TicketResponse)
+def link_ticket_incident_endpoint(
+    ticket_id: str,
+    req: LinkTicketIncidentRequest,
+    current_user: UserRecord = Depends(get_current_user),
+) -> TicketResponse:
+    """Link a support ticket to an active network diagnostic incident."""
+    allowed_roles = [ROLE_PLATFORM_ADMIN, ROLE_NETWORK_ADMIN, ROLE_NETWORK_ENGINEER]
+    if current_user.role not in allowed_roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only Network Engineers, Network Administrators, or Platform Administrators may link tickets to incidents.",
+        )
+
+    t = get_ticket(ticket_id)
+    if not t:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Ticket '{ticket_id}' not found.",
+        )
+
+    from storage.db import get_incident
+    inc = get_incident(req.incident_id)
+    if not inc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Network incident '{req.incident_id}' not found.",
+        )
+
+    updated = link_ticket_incident(
+        ticket_id=ticket_id,
+        incident_id=req.incident_id,
+        actor_username=current_user.username,
+    )
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to link ticket to incident.",
+        )
+
+    log_auth_event(
+        event_type="TICKET_LINKED_INCIDENT",
+        username=current_user.username,
+        user_id=current_user.user_id,
+        role=current_user.role,
+        endpoint=f"/api/tickets/{ticket_id}/link-incident",
+        details=f"Ticket '{ticket_id}' linked to network incident '{req.incident_id}' by {current_user.username}",
+    )
+
+    return TicketResponse(
+        id=updated.id,
+        ticket_id=updated.ticket_id,
+        title=updated.title,
+        category=updated.category,
+        location=updated.location,
+        affected_service=updated.affected_service,
+        description=updated.description,
+        priority=updated.priority,
+        status=updated.status,
+        created_by=updated.created_by,
+        contact_info=updated.contact_info,
+        assigned_to=updated.assigned_to,
+        linked_incident_id=updated.linked_incident_id,
+        resolution_notes=updated.resolution_notes,
+        user_facing_summary=updated.user_facing_summary,
+        created_at=updated.created_at,
+        updated_at=updated.updated_at,
     )
 
 

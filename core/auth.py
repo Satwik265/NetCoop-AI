@@ -50,4 +50,6 @@ from netcoop.core.auth import (
     require_permissions,
     require_roles,
     verify_password,
+    ImpersonateRequest,
+    UpdateUserStatusRequest,
 )

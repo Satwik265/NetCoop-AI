@@ -322,6 +322,7 @@ class TokenResponse(BaseModel):
     username: str
     full_name: Optional[str] = None
     permissions: List[str]
+    impersonated_by: Optional[str] = None
 
 
 class UserProfileResponse(BaseModel):
@@ -332,6 +333,7 @@ class UserProfileResponse(BaseModel):
     permissions: List[str]
     is_active: bool
     created_at: str
+    impersonated_by: Optional[str] = None
 
 
 class AssignIncidentRequest(BaseModel):
@@ -344,6 +346,14 @@ class CreateUserRequest(BaseModel):
     password: str
     role: str
     full_name: Optional[str] = None
+
+
+class ImpersonateRequest(BaseModel):
+    username: str
+
+
+class UpdateUserStatusRequest(BaseModel):
+    is_active: bool
 
 
 # -----------------------------------------------------------------------------

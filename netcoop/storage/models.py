@@ -120,6 +120,7 @@ class RevokedToken(SQLModel, table=True):
     revoked_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     expires_at: Optional[str] = Field(default=None)
 
+
 class WsTicketRecord(SQLModel, table=True):
     """Persisted single-use WebSocket connection tickets."""
 
@@ -135,3 +136,26 @@ class WsTicketRecord(SQLModel, table=True):
     consumed: bool = Field(default=False, index=True)
     consumed_at: Optional[str] = Field(default=None)
 
+
+class TicketRecord(SQLModel, table=True):
+    """Persisted customer and operational support ticket record."""
+
+    __tablename__ = "tickets"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ticket_id: str = Field(unique=True, index=True)
+    title: str
+    category: str = Field(index=True)  # connectivity, wifi, dns, hardware, application, security, other
+    location: str = Field(index=True)  # e.g. Academic Block 1, Hostel Block A, Library
+    affected_service: str = Field(index=True)  # Campus WiFi, LMS, VoIP, Internet
+    description: str
+    priority: str = Field(default="medium", index=True)  # low, medium, high, critical
+    status: str = Field(default="New", index=True)  # New, Open, Assigned, Investigating, Awaiting User, Resolved, Closed
+    created_by: str = Field(index=True)  # username
+    contact_info: Optional[str] = Field(default=None)
+    assigned_to: Optional[str] = Field(default=None, index=True)
+    linked_incident_id: Optional[str] = Field(default=None, index=True)
+    resolution_notes: Optional[str] = Field(default=None)
+    user_facing_summary: Optional[str] = Field(default=None)
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
