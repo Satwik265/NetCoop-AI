@@ -135,6 +135,51 @@ const isAuthorizedForNav = (navId: string, role?: UserRole): boolean => {
   return true;
 };
 
+// Sample fallback report used when backend diagnostic API is unreachable
+const FALLBACK_SAMPLE_REPORT: UnifiedDiagnosticReport = {
+  incident_id: "sample-link-congestion-01",
+  network_id: "campus-core",
+  timestamp_utc: new Date().toISOString(),
+  status: "diagnosed",
+  probable_cause: "INTERFACE_SATURATION_QUEUE_OVERFLOW",
+  confidence: 0.94,
+  affected_devices: ["spine-01", "leaf-02"],
+  affected_interfaces: ["et-0/0/1"],
+  evidence: [
+    {
+      source_agent: "telemetry_agent",
+      category: "queue_drop_rate",
+      finding: "Egress queue saturation detected on interface et-0/0/1",
+      entity: "spine-01",
+      metric_name: "queue_drop_rate",
+      value: 4500,
+      severity: "critical",
+    },
+  ],
+  uncertainty: {
+    score: 0.06,
+    reasons: [],
+    missing_evidence: [],
+    alternative_hypotheses: [],
+  },
+  remediation_actions: [
+    {
+      action_id: "rem-sample-01",
+      title: "Rebalance traffic across ECMP paths",
+      description: "Shift flows away from saturated link et-0/0/1",
+      device: "spine-01",
+      commands: ["configure terminal", "traffic-policy REBALANCE_ECMP", "commit and-quit"],
+      rollback_commands: ["configure terminal", "no traffic-policy REBALANCE_ECMP", "commit and-quit"],
+      risk_level: "low",
+      blast_radius_devices: ["spine-01"],
+      is_simulated: true,
+      status: "pending_approval",
+    },
+  ],
+  summary: "[SAMPLE DATA] Interface saturation and queue drops observed on spine-01 et-0/0/1.",
+  processing_time_ms: 12.5,
+};
+
 export const App: React.FC = () => {
   const {
     user,
@@ -169,6 +214,7 @@ export const App: React.FC = () => {
   const [scenarios, setScenarios] = useState<ScenarioMeta[]>([]);
   const [selectedScenario, setSelectedScenario] = useState<string>("");
   const [report, setReport] = useState<UnifiedDiagnosticReport | null>(null);
+  const [isSampleData, setIsSampleData] = useState<boolean>(false);
   const [envelopes, setEnvelopes] = useState<EnvelopeLogItem[]>(MOCK_ENVELOPES);
   const [currentIndex, setCurrentIndex] = useState<number>(MOCK_ENVELOPES.length - 1);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -365,9 +411,13 @@ export const App: React.FC = () => {
       .then((data: UnifiedDiagnosticReport) => {
         if (data && data.incident_id) {
           setReport(data);
+          setIsSampleData(false);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setIsSampleData(true);
+        setReport(FALLBACK_SAMPLE_REPORT);
+      });
   }, []);
 
   // Fetch campus topology on startup
@@ -508,14 +558,36 @@ export const App: React.FC = () => {
         setLastRunTimestamp(data.timestamp_utc || new Date().toISOString());
         setPreviousRunId(data.previous_run_id || null);
         setExecutionStatus("completed");
+        setIsSampleData(false);
       } else {
         const err = await res.json().catch(() => ({ detail: "Diagnostic execution failed" }));
         setExecutionStatus("failed");
         setRunErrorMessage(err.detail || "Diagnostic execution failed.");
+        setIsSampleData(true);
+        setReport((prev) => {
+          const base = prev || FALLBACK_SAMPLE_REPORT;
+          return {
+            ...base,
+            summary: base.summary.includes("[SAMPLE DATA]") ? base.summary : `[SAMPLE DATA] ${base.summary}`,
+          };
+        });
+        setEnvelopes(MOCK_ENVELOPES);
+        setCurrentIndex(MOCK_ENVELOPES.length - 1);
       }
     } catch (e: any) {
       setExecutionStatus("failed");
       setRunErrorMessage(e?.message || "Network error connecting to diagnostic service.");
+      setIsSampleData(true);
+      setReport((prev) => {
+        const base = prev || FALLBACK_SAMPLE_REPORT;
+        return {
+          ...base,
+          is_sample_data: true,
+          summary: base.summary.includes("[SAMPLE DATA]") ? base.summary : `[SAMPLE DATA] ${base.summary}`,
+        };
+      });
+      setEnvelopes(MOCK_ENVELOPES);
+      setCurrentIndex(MOCK_ENVELOPES.length - 1);
     } finally {
       setLoading(false);
     }
@@ -692,6 +764,18 @@ export const App: React.FC = () => {
 
         {/* Main Content Area */}
         <main className="flex-1 p-4 sm:p-6 space-y-6 max-w-7xl w-full mx-auto">
+          {/* Visible amber banner when backend is unreachable and fallback sample data is displayed */}
+          {isSampleData && (
+            <div className="bg-amber-500/10 border border-amber-500/30 p-3 text-[11px] text-amber-600 dark:text-amber-400 flex flex-wrap items-center justify-between font-mono gap-2">
+              <div className="flex items-center gap-2">
+                <span className="bg-amber-500 text-black px-2 py-0.5 text-[9px] uppercase tracking-wider font-bold">
+                  [SAMPLE DATA]
+                </span>
+                <span className="font-semibold">Backend unreachable: showing sample data</span>
+                <span className="text-[#888884] text-[10px] ml-2">(Diagnostic backend API is unreachable; displaying simulated multi-agent telemetry and sample report)</span>
+              </div>
+            </div>
+          )}
           {/* Server-Side 403 Forbidden Alert Banner */}
           {lastForbiddenError && (
             <div className="bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 p-3 text-xs flex items-center justify-between font-mono">

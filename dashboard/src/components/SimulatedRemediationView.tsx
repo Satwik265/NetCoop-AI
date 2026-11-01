@@ -26,6 +26,7 @@ export const SimulatedRemediationView: React.FC = () => {
   const [selectedDevice, setSelectedDevice] = useState<string>("spine-01");
   const [simulationData, setSimulationData] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [isSampleData, setIsSampleData] = useState<boolean>(false);
 
   const runSimulation = async (actionType: string, device: string) => {
     setLoading(true);
@@ -43,6 +44,7 @@ export const SimulatedRemediationView: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         setSimulationData(data);
+        setIsSampleData(false);
         return;
       }
     } catch {
@@ -117,6 +119,7 @@ export const SimulatedRemediationView: React.FC = () => {
       },
     };
     setSimulationData(mockSim);
+    setIsSampleData(true);
     setLoading(false);
   };
 
@@ -126,6 +129,19 @@ export const SimulatedRemediationView: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Backend unreachable amber banner */}
+      {isSampleData && (
+        <div className="bg-amber-500/10 border border-amber-500/30 p-3 text-[11px] text-amber-600 dark:text-amber-400 flex flex-wrap items-center justify-between font-mono gap-2">
+          <div className="flex items-center gap-2">
+            <span className="bg-amber-500 text-black px-2 py-0.5 text-[9px] uppercase tracking-wider font-bold">
+              [SAMPLE DATA]
+            </span>
+            <span className="font-semibold">Backend unreachable: showing sample data</span>
+            <span className="text-[#888884] text-[10px] ml-2">(Simulation API unreachable; displaying sample sandbox preview)</span>
+          </div>
+        </div>
+      )}
+
       {/* Persistent Mandatory Invariant Label */}
       <div className="bg-[#161618] border-2 border-[#475569] p-4 text-center">
         <div className="flex items-center justify-center gap-3">
