@@ -12,8 +12,10 @@ interface DataQualityBannerProps {
   detectedFormat: string;
   validationErrors: TypedValidationErrorItem[];
   transformationsCount: number;
-  isChaosActive: boolean;
-  onToggleChaos: () => void;
+  isValidated?: boolean;
+  recordsCount?: number;
+  onRunValidation?: () => void;
+  validating?: boolean;
 }
 
 export const DataQualityBanner: React.FC<DataQualityBannerProps> = ({
@@ -21,95 +23,122 @@ export const DataQualityBanner: React.FC<DataQualityBannerProps> = ({
   detectedFormat,
   validationErrors,
   transformationsCount,
-  isChaosActive,
-  onToggleChaos,
+  isValidated = true,
+  recordsCount,
+  onRunValidation,
+  validating = false,
 }) => {
-  const [showErrorList, setShowErrorList] = useState<boolean>(false);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   const pct = Math.round(score * 100);
   const isHealthy = pct >= 85;
-  const healthColor = isHealthy
-    ? "text-[#5E7A6A] border-[#5E7A6A]/30 bg-[#5E7A6A]/10"
-    : "text-[#A08A5B] border-[#A08A5B]/30 bg-[#A08A5B]/10";
 
   return (
-    <div className="bg-[#FFFFFF] dark:bg-[#161618] border border-[#E5E5E3] dark:border-[#2A2A2D] p-4 font-mono space-y-3">
+    <div className="bg-[#FFFFFF] dark:bg-[#161618] border border-[#E2E8F0] dark:border-[#2A2A2D] p-4 text-sm font-sans space-y-3">
+      {/* Header Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Left: Quality Audit & Format */}
-        <div className="flex items-center gap-3 flex-wrap text-xs">
-          <span className="text-[10px] text-[#6B6B66] dark:text-[#888884] uppercase font-semibold">
-            Data Quality Audit:
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#0B2545] dark:text-[#94A3B8]">
+            Input Quality:
           </span>
 
-          <span className={`px-2 py-0.5 border text-[10px] uppercase font-semibold ${healthColor}`}>
-            Health: {pct}% {isHealthy ? "Verified" : "Degraded Recovery"}
-          </span>
-
-          <span className="px-2 py-0.5 border border-[#E5E5E3] dark:border-[#2A2A2D] text-[10px] uppercase text-[#6B6B66] dark:text-[#888884]">
-            Format: {detectedFormat}
-          </span>
-
-          <span className="text-[10px] text-[#6B6B66] dark:text-[#888884]">
-            Recovered via {transformationsCount} transformations
-          </span>
-        </div>
-
-        {/* Right: Chaos Mode Live Toggle */}
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <span className="text-[10px] text-[#6B6B66] dark:text-[#888884] uppercase">
-              Chaos Injection:
-            </span>
-            <button
-              onClick={onToggleChaos}
-              className={`px-2.5 py-1 text-[10px] uppercase font-semibold border transition-all ${
-                isChaosActive
-                  ? "bg-[#9A5B5B] text-white border-[#9A5B5B]"
-                  : "bg-[#FAFAF9] dark:bg-[#0F0F10] text-[#6B6B66] dark:text-[#888884] border-[#E5E5E3] dark:border-[#2A2A2D] hover:border-[#475569]"
+          {isValidated ? (
+            <span
+              className={`px-2.5 py-0.5 border text-xs font-semibold ${
+                isHealthy
+                  ? "text-[#15803D] bg-[#F0FDF4] border-[#15803D]/30"
+                  : "text-[#B45309] bg-[#FFFBEB] border-[#B45309]/30"
               }`}
             >
-              {isChaosActive ? "Chaos Active" : "Inject Chaos"}
-            </button>
-          </label>
+              {pct}% {isHealthy ? "Verified Compliance" : "Degraded with Tolerant Recovery"}
+            </span>
+          ) : (
+            <span className="px-2.5 py-0.5 border border-[#E2E8F0] text-xs font-semibold text-[#475569] bg-[#F8FAFC]">
+              Not Yet Validated
+            </span>
+          )}
 
-          {validationErrors.length > 0 && (
+          <span className="px-2.5 py-0.5 border border-[#E2E8F0] dark:border-[#2A2A2D] text-xs font-medium text-[#475569] dark:text-[#94A3B8]">
+            Format: <span className="font-mono text-xs font-semibold text-[#0F172A] dark:text-[#EDEDEA]">{detectedFormat}</span>
+          </span>
+
+          {isValidated && transformationsCount > 0 && (
+            <span className="text-xs text-[#475569] dark:text-[#94A3B8]">
+              {transformationsCount} field transformation{transformationsCount === 1 ? "" : "s"} applied
+            </span>
+          )}
+
+          {recordsCount !== undefined && recordsCount > 0 && (
+            <span className="text-xs text-[#475569] dark:text-[#94A3B8]">
+              ({recordsCount} telemetry records inspected)
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          {onRunValidation && (
             <button
-              onClick={() => setShowErrorList((prev) => !prev)}
-              className="text-[10px] underline text-[#475569] hover:text-[#111111] dark:hover:text-[#EDEDEA]"
+              onClick={onRunValidation}
+              disabled={validating}
+              className="px-3 py-1 text-xs border border-[#133E87] text-[#133E87] hover:bg-[#EEF4FB] font-semibold transition-colors disabled:opacity-50"
             >
-              {showErrorList ? "Hide Errors" : `View ${validationErrors.length} Typed Errors`}
+              {validating ? "Validating Input..." : "Verify Input"}
             </button>
           )}
+
+          <button
+            onClick={() => setIsExpanded((prev) => !prev)}
+            className="text-xs text-[#133E87] dark:text-[#3A86FF] hover:underline font-semibold"
+          >
+            {isExpanded ? "Hide Details" : validationErrors.length > 0 ? `Review ${validationErrors.length} Issue${validationErrors.length === 1 ? "" : "s"}` : "View Validation Details"}
+          </button>
         </div>
       </div>
 
-      {/* Expandable Typed Errors Breakdown */}
-      {showErrorList && validationErrors.length > 0 && (
-        <div className="pt-3 border-t border-[#E5E5E3] dark:border-[#2A2A2D] space-y-2">
-          <div className="text-[10px] uppercase tracking-wider text-[#A08A5B] font-semibold">
-            Gateway Typed Validation Errors ({validationErrors.length})
-          </div>
-
-          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-            {validationErrors.map((err, idx) => (
-              <div
-                key={idx}
-                className="p-2.5 bg-[#FAFAF9] dark:bg-[#0F0F10] border border-[#E5E5E3] dark:border-[#2A2A2D] text-[11px] space-y-0.5"
-              >
-                <div className="flex items-center justify-between text-[10px]">
-                  <span className="font-semibold text-[#9A5B5B]">{err.code}</span>
-                  {err.field && <span className="text-[#6B6B66] dark:text-[#888884]">Field: {err.field}</span>}
-                </div>
-                <div className="text-[#111111] dark:text-[#EDEDEA]">{err.explanation}</div>
-                <div className="text-[10px] text-[#6B6B66] dark:text-[#888884] italic">
-                  Suggested Fix: {err.suggested_fix}
-                </div>
+      {/* Expandable Validation Details */}
+      {isExpanded && (
+        <div className="pt-3 border-t border-[#E2E8F0] dark:border-[#2A2A2D] space-y-3">
+          {!isValidated ? (
+            <p className="text-xs text-[#475569]">
+              Dataset input has not been formally verified against RFC 8259 or the NetCoop telemetry schema. Run verification or execute diagnosis to audit input health.
+            </p>
+          ) : validationErrors.length === 0 ? (
+            <div className="p-3 bg-[#F0FDF4] border border-[#15803D]/20 text-[#15803D] text-xs space-y-1">
+              <div className="font-semibold">All Schema Constraints Verified</div>
+              <p className="text-[13px] text-[#475569]">
+                All telemetry records conform to required timestamp formatting, device identifiers, and metric units with zero syntax or format errors.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="text-xs font-bold uppercase tracking-wider text-[#B45309]">
+                Detected Input Discrepancies ({validationErrors.length})
               </div>
-            ))}
-          </div>
+              <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                {validationErrors.map((err, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 bg-[#F8FAFC] dark:bg-[#0B132B] border border-[#E2E8F0] dark:border-[#2A2A2D] text-xs space-y-1"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-mono font-bold text-[#DC2626]">{err.code}</span>
+                      {err.field && (
+                        <span className="font-mono text-xs text-[#475569] dark:text-[#94A3B8]">
+                          Target Field: {err.field}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[#0F172A] dark:text-[#F1F5F9] font-medium">{err.explanation}</div>
+                    <div className="text-xs text-[#475569] dark:text-[#94A3B8]">
+                      <strong>Recommended Fix:</strong> {err.suggested_fix}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 };
-

@@ -1,3 +1,4 @@
+import { apiFetch } from '../../auth/AuthContext';
 import React, { useState, useEffect } from "react";
 import { UnifiedDiagnosticReport } from "../../types/protocol";
 
@@ -24,7 +25,7 @@ export const AuditorView: React.FC<AuditorViewProps> = ({ report }) => {
   const [selectedRecord, setSelectedRecord] = useState<RemediationAuditRecord | null>(null);
 
   useEffect(() => {
-    fetch("/api/remediation/logs")
+    apiFetch("/api/remediation/logs")
       .then((res) => {
         if (!res.ok) throw new Error("Audit logs API unavailable");
         return res.json();

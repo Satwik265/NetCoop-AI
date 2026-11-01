@@ -9,4 +9,10 @@ from netcoop.storage.models import (
     EnvelopeLog,
     RemediationLog,
     OrchestratorCheckpoint,
+    UserRecord,
+    AuthAuditLog,
+    RevokedToken,
+    WsTicketRecord,
+    TicketRecord,
+    DiagnosisRunRecord,
 )

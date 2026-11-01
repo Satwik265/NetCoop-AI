@@ -1,3 +1,4 @@
+import { apiFetch } from '../auth/AuthContext';
 import React, { useState, useEffect } from "react";
 
 export interface SessionItem {
@@ -40,7 +41,7 @@ export const SessionListResume: React.FC<SessionListResumeProps> = ({ onSelectSe
     setLoading(true);
     setErrorMessage(null);
     try {
-      const res = await fetch("/api/incidents");
+      const res = await apiFetch("/api/incidents");
       if (res.ok) {
         const data: SessionItem[] = await res.json();
         if (data && data.length > 0) {
@@ -102,13 +103,13 @@ export const SessionListResume: React.FC<SessionListResumeProps> = ({ onSelectSe
 
     try {
       // First try orchestrator native resume route
-      let res = await fetch(`/api/orchestrator/resume/${incidentId}`, {
+      let res = await apiFetch(`/api/orchestrator/resume/${incidentId}`, {
         method: "POST",
       });
 
       if (!res.ok) {
         // Fall back to incident resume route
-        res = await fetch(`/api/incidents/${incidentId}/resume`, {
+        res = await apiFetch(`/api/incidents/${incidentId}/resume`, {
           method: "POST",
         });
       }
@@ -162,7 +163,7 @@ export const SessionListResume: React.FC<SessionListResumeProps> = ({ onSelectSe
     setErrorMessage(null);
 
     try {
-      const res = await fetch("/api/orchestrator/pause", {
+      const res = await apiFetch("/api/orchestrator/pause", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -199,7 +200,7 @@ export const SessionListResume: React.FC<SessionListResumeProps> = ({ onSelectSe
     setActiveSessionCheckpoints(null);
 
     try {
-      const res = await fetch(`/api/orchestrator/checkpoints/${sessionId}`);
+      const res = await apiFetch(`/api/orchestrator/checkpoints/${sessionId}`);
       if (res.ok) {
         const data: CheckpointItem[] = await res.json();
         if (data && data.length > 0) {
