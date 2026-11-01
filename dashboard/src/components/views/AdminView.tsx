@@ -15,7 +15,11 @@ export interface DeviceItem {
   maintenance_mode: boolean;
 }
 
-export const AdminView: React.FC = () => {
+export interface AdminViewProps {
+  onNavigate?: (navId: string) => void;
+}
+
+export const AdminView: React.FC<AdminViewProps> = ({ onNavigate }) => {
   const [devices, setDevices] = useState<DeviceItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedDevice, setSelectedDevice] = useState<DeviceItem | null>(null);
@@ -139,6 +143,29 @@ export const AdminView: React.FC = () => {
     <div className="space-y-6 font-mono text-xs">
       {/* Top Banner */}
       <div className="border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5">
+        {onNavigate && (
+          <div className="mb-3 flex items-center gap-2 pb-3 border-b border-[#E5E5E3] dark:border-[#2A2A2D] text-[10px]">
+            <span className="text-[#6B6B66] uppercase font-bold">Quick Operations:</span>
+            <button
+              onClick={() => onNavigate("role_engineer")}
+              className="px-2 py-0.5 border border-[#111111] dark:border-[#EDEDEA] uppercase hover:bg-[#111111]/5"
+            >
+              Incident Diagnosis
+            </button>
+            <button
+              onClick={() => onNavigate("topology")}
+              className="px-2 py-0.5 border border-[#111111] dark:border-[#EDEDEA] uppercase hover:bg-[#111111]/5"
+            >
+              Network Topology
+            </button>
+            <button
+              onClick={() => onNavigate("report")}
+              className="px-2 py-0.5 border border-[#111111] dark:border-[#EDEDEA] uppercase hover:bg-[#111111]/5"
+            >
+              Diagnostic Report
+            </button>
+          </div>
+        )}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 className="text-sm font-semibold tracking-wider uppercase text-[#111111] dark:text-[#EDEDEA]">

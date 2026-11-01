@@ -81,10 +81,23 @@ export const App: React.FC = () => {
 
   const playbackTimerRef = useRef<number | null>(null);
 
-  // Sync currentRole when authenticated user changes
+  // Sync currentRole and primary view when authenticated user changes
   useEffect(() => {
     if (user?.role && user.role !== currentRole) {
       setCurrentRole(user.role);
+      const roleToNavMap: Record<UserRole, string> = {
+        noc_operator: "role_noc",
+        network_engineer: "role_engineer",
+        network_admin: "role_admin",
+        security_analyst: "role_security",
+        it_manager: "role_it_manager",
+        platform_admin: "role_platform_admin",
+        auditor: "role_auditor",
+        helpdesk: "role_helpdesk",
+      };
+      if (roleToNavMap[user.role]) {
+        setActiveNav(roleToNavMap[user.role]);
+      }
     }
   }, [user?.role]);
 
@@ -607,20 +620,22 @@ export const App: React.FC = () => {
               </button>
             </div>
           )}
-          {/* Universal Scenario Picker and Fault Injection Bar */}
-          <ScenarioPicker
-            scenarios={scenarios}
-            selectedScenario={selectedScenario}
-            onSelectScenario={setSelectedScenario}
-            onRunDiagnosis={handleRunDiagnosis}
-            loading={loading}
-            qualityScore={qualityScore}
-            detectedFormat={detectedFormat}
-            validationErrors={validationErrors}
-            transformationsCount={transformationsCount}
-            isChaosActive={isChaosActive}
-            onToggleChaos={() => setIsChaosActive((prev) => !prev)}
-          />
+          {/* Universal Scenario Picker and Fault Injection Bar (Hidden for non-technical Helpdesk) */}
+          {currentRole !== "helpdesk" && (
+            <ScenarioPicker
+              scenarios={scenarios}
+              selectedScenario={selectedScenario}
+              onSelectScenario={setSelectedScenario}
+              onRunDiagnosis={handleRunDiagnosis}
+              loading={loading}
+              qualityScore={qualityScore}
+              detectedFormat={detectedFormat}
+              validationErrors={validationErrors}
+              transformationsCount={transformationsCount}
+              isChaosActive={isChaosActive}
+              onToggleChaos={() => setIsChaosActive((prev) => !prev)}
+            />
+          )}
 
           {/* VIEW SWITCHER ROUTING */}
 
@@ -638,12 +653,13 @@ export const App: React.FC = () => {
               report={report}
               onLaunchSimulation={() => setActiveNav("simulated_remediation")}
               onOpenHitlQueue={() => setActiveNav("hitl")}
+              onNavigate={(nav) => setActiveNav(nav)}
             />
           )}
 
           {/* 3. ROLE VIEW: Network Administrator */}
           {activeNav === "role_admin" && (
-            <AdminView />
+            <AdminView onNavigate={(nav) => setActiveNav(nav)} />
           )}
 
           {/* 4. ROLE VIEW: Security Analyst */}
@@ -658,7 +674,7 @@ export const App: React.FC = () => {
 
           {/* 6. ROLE VIEW: Platform Administrator */}
           {activeNav === "role_platform_admin" && (
-            <PlatformAdminView />
+            <PlatformAdminView onNavigate={(nav) => setActiveNav(nav)} />
           )}
 
           {/* 7. ROLE VIEW: Auditor / Compliance */}
@@ -670,7 +686,8 @@ export const App: React.FC = () => {
           {activeNav === "role_helpdesk" && (
             <HelpdeskView
               report={report}
-              onNavigateToIncidents={() => setActiveNav("role_noc")}
+              onNavigateToIncidents={() => setActiveNav("role_engineer")}
+              onNavigate={(nav) => setActiveNav(nav)}
             />
           )}
 
