@@ -371,10 +371,50 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     }
     is_statistical_domain = hypothesis and (hypothesis.cause_key in statistical_cause_keys)
 
+    # Normal operation resolution: zero specialist observations + classifier normal_operation above validated threshold
+    specialist_obs = [
+        o for o in state.get("accumulated_observations", [])
+        if getattr(o, "source_agent", o.get("source_agent") if isinstance(o, dict) else None) != "classifier_agent"
+    ]
+    top_class = max(classifier_calib_probs, key=classifier_calib_probs.get) if classifier_calib_probs else None
+    top_prob = classifier_calib_probs.get(top_class, 0.0) if top_class else 0.0
+    normal_threshold = weights_data.get("confidence_cutoffs", {}).get("high", 0.8)
+
+    if not specialist_obs and not hypothesis and top_class == "normal_operation" and top_prob >= normal_threshold:
+        status = "benign"
+        conformal_prediction_set = ["normal_operation"]
+        confidence_category = "high"
+        calibrated_confidence = top_prob
+        confidence_breakdown = {
+            "rules_score": 1.0,
+            "model_score": top_prob,
+            "blended_score": top_prob,
+            "calibrated_confidence": top_prob,
+        }
+        hypothesis = DiagnosticHypothesis(
+            cause_key="NO_FAULT",
+            title="Normal Operation",
+            description="Normal network operation within nominal operational boundaries; zero anomalous observations reported.",
+            confidence=top_prob,
+            affected_devices=state.get("scope_devices", []),
+            supporting_evidence=[],
+            suggested_remediation_type="none",
+            final_confidence=top_prob,
+        )
+        uncertainty = UncertaintyEvaluation(
+            score=round(1.0 - top_prob, 3),
+            reasons=["All telemetry metrics within nominal baselines; confirmed by statistical classifier."],
+            missing_evidence=[],
+            alternative_hypotheses=[],
+        )
+        summary_text = "All telemetry metrics, queue depths, and services operating within nominal operational baselines."
+
     classifier_abstained = (
-        classifier_conformal_status == "abstain"
-        or (is_statistical_domain and classifier_calib_probs and len(conformal_prediction_set) == 0)
-        or (not hypothesis and len(conformal_prediction_set) == 0 and classifier_calib_probs)
+        status != "benign" and (
+            classifier_conformal_status == "abstain"
+            or (is_statistical_domain and classifier_calib_probs and len(conformal_prediction_set) == 0)
+            or (not hypothesis and len(conformal_prediction_set) == 0 and classifier_calib_probs)
+        )
     )
 
     if classifier_abstained:

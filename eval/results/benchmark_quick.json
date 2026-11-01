@@ -1,0 +1,418 @@
+{
+  "version": "1.0.0",
+  "evaluation_mode": "quick",
+  "generated_at": "2026-11-01T00:28:42Z",
+  "reproducibility": {
+    "python_version": "3.13.15",
+    "agents_execution_mode": "in_process",
+    "seed_ranges": {
+      "in_distribution": "seeds 301-302 (TEST_SPEC)",
+      "held_out": "seeds 501-502",
+      "organizer": "seeds 6000-6009 (windowed), 7000-7009 (single-snapshot)",
+      "stress_missing": "seeds 3000-3009",
+      "stress_corruption": "seeds 3500-3509",
+      "ablations": "seeds 4000-4007"
+    },
+    "split_specification": "DatasetSplitter.TEST_SPEC",
+    "conformal_alpha": 0.1
+  },
+  "summary": {
+    "evaluation_mode": "quick",
+    "total_evaluation_samples": 100,
+    "primary_in_distribution_samples": 20,
+    "primary_in_distribution_accuracy": 0.45,
+    "held_out_samples": 20,
+    "held_out_accuracy": 0.4,
+    "organizer_samples": 60,
+    "organizer_set_match_accuracy": 0.85,
+    "organizer_exact_match_accuracy": 0.517,
+    "combined_primary_accuracy": 0.425,
+    "selective_accuracy": 1.0,
+    "coverage": 0.225,
+    "selective_risk": 0.0,
+    "safe_abstention_rate": 1.0,
+    "macro_f1": 0.374,
+    "weighted_f1": 0.374,
+    "macro_f1_classes": [
+      "normal_operation",
+      "link_congestion",
+      "weak_wifi_signal",
+      "ethernet_interface_fault",
+      "dns_failure",
+      "dhcp_failure",
+      "device_cpu_overload",
+      "upstream_failure_cascade"
+    ],
+    "macro_f1_population": "in_distribution_and_heldout_primary_samples",
+    "expected_calibration_error": 0.208,
+    "ece_population": "in_distribution_and_heldout_primary_samples",
+    "brier_score": 0.2,
+    "brier_score_population": "in_distribution_and_heldout_primary_samples",
+    "total_samples": 100,
+    "primary_benchmark_samples": 40,
+    "overall_accuracy": 0.425
+  },
+  "dataset_splits": {
+    "in_distribution_accuracy": 0.45,
+    "in_distribution_samples": 20,
+    "in_distribution_parameter_coverage": {
+      "missing_rate_min": 0.4374,
+      "missing_rate_max": 0.53,
+      "missing_rate_mean": 0.4837,
+      "onset_offset_min": 101.0,
+      "onset_offset_max": 140.93,
+      "onset_offset_mean": 120.96
+    },
+    "held_out_accuracy": 0.4,
+    "held_out_samples": 20,
+    "organizer_accuracy": 0.85,
+    "organizer_exact_accuracy": 0.517,
+    "organizer_samples": 60,
+    "organizer_single_snapshot_accuracy": 0.867,
+    "organizer_windowed_accuracy": 0.833
+  },
+  "per_class_metrics": {
+    "normal_operation": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 4
+    },
+    "link_congestion": {
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1": 0.667,
+      "support": 4
+    },
+    "weak_wifi_signal": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 4
+    },
+    "ethernet_interface_fault": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 4
+    },
+    "dns_failure": {
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1": 0.667,
+      "support": 4
+    },
+    "dhcp_failure": {
+      "precision": 1.0,
+      "recall": 0.25,
+      "f1": 0.4,
+      "support": 4
+    },
+    "device_cpu_overload": {
+      "precision": 1.0,
+      "recall": 0.75,
+      "f1": 0.857,
+      "support": 4
+    },
+    "upstream_failure_cascade": {
+      "precision": 1.0,
+      "recall": 0.25,
+      "f1": 0.4,
+      "support": 4
+    }
+  },
+  "confusion_matrix": {
+    "classes": [
+      "normal_operation",
+      "link_congestion",
+      "weak_wifi_signal",
+      "ethernet_interface_fault",
+      "dns_failure",
+      "dhcp_failure",
+      "device_cpu_overload",
+      "upstream_failure_cascade"
+    ],
+    "matrix": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    ]
+  },
+  "calibration": {
+    "expected_calibration_error": 0.208,
+    "max_calibration_error": 0.258,
+    "reliability_bins": [
+      {
+        "bin_lower": 0.0,
+        "bin_upper": 0.2,
+        "mean_confidence": 0.0,
+        "accuracy": 0.258,
+        "sample_count": 31
+      },
+      {
+        "bin_lower": 0.2,
+        "bin_upper": 0.4,
+        "mean_confidence": 0.3,
+        "accuracy": 0.0,
+        "sample_count": 0
+      },
+      {
+        "bin_lower": 0.4,
+        "bin_upper": 0.6,
+        "mean_confidence": 0.5,
+        "accuracy": 0.0,
+        "sample_count": 0
+      },
+      {
+        "bin_lower": 0.6,
+        "bin_upper": 0.8,
+        "mean_confidence": 0.7,
+        "accuracy": 0.0,
+        "sample_count": 0
+      },
+      {
+        "bin_lower": 0.8,
+        "bin_upper": 1.0,
+        "mean_confidence": 0.966,
+        "accuracy": 1.0,
+        "sample_count": 9
+      }
+    ]
+  },
+  "stress_tests": {
+    "accuracy_vs_missing_data_rate": [
+      {
+        "missing_rate": 0.0,
+        "accuracy": 1.0,
+        "samples": 9
+      },
+      {
+        "missing_rate": 0.1,
+        "accuracy": 1.0,
+        "samples": 9
+      },
+      {
+        "missing_rate": 0.2,
+        "accuracy": 1.0,
+        "samples": 9
+      },
+      {
+        "missing_rate": 0.3,
+        "accuracy": 1.0,
+        "samples": 9
+      },
+      {
+        "missing_rate": 0.4,
+        "accuracy": 1.0,
+        "samples": 9
+      },
+      {
+        "missing_rate": 0.5,
+        "accuracy": 0.667,
+        "samples": 9
+      },
+      {
+        "missing_rate": 0.6,
+        "accuracy": 0.667,
+        "samples": 9
+      },
+      {
+        "missing_rate": 0.7,
+        "accuracy": 0.667,
+        "samples": 9
+      }
+    ],
+    "accuracy_vs_corruption_rate": [
+      {
+        "corruption_rate": 0.0,
+        "accuracy": 1.0,
+        "samples": 9
+      },
+      {
+        "corruption_rate": 0.1,
+        "accuracy": 0.889,
+        "samples": 9
+      },
+      {
+        "corruption_rate": 0.2,
+        "accuracy": 0.889,
+        "samples": 9
+      },
+      {
+        "corruption_rate": 0.3,
+        "accuracy": 0.889,
+        "samples": 9
+      },
+      {
+        "corruption_rate": 0.4,
+        "accuracy": 0.889,
+        "samples": 9
+      },
+      {
+        "corruption_rate": 0.5,
+        "accuracy": 0.889,
+        "samples": 9
+      },
+      {
+        "corruption_rate": 0.6,
+        "accuracy": 0.889,
+        "samples": 9
+      }
+    ]
+  },
+  "risk_coverage": [
+    {
+      "threshold": 0.4,
+      "coverage": 0.225,
+      "selective_risk": 0.0,
+      "accepted_samples": 9
+    },
+    {
+      "threshold": 0.5,
+      "coverage": 0.225,
+      "selective_risk": 0.0,
+      "accepted_samples": 9
+    },
+    {
+      "threshold": 0.6,
+      "coverage": 0.225,
+      "selective_risk": 0.0,
+      "accepted_samples": 9
+    },
+    {
+      "threshold": 0.7,
+      "coverage": 0.225,
+      "selective_risk": 0.0,
+      "accepted_samples": 9
+    },
+    {
+      "threshold": 0.8,
+      "coverage": 0.225,
+      "selective_risk": 0.0,
+      "accepted_samples": 9
+    },
+    {
+      "threshold": 0.85,
+      "coverage": 0.225,
+      "selective_risk": 0.0,
+      "accepted_samples": 9
+    },
+    {
+      "threshold": 0.9,
+      "coverage": 0.225,
+      "selective_risk": 0.0,
+      "accepted_samples": 9
+    }
+  ],
+  "ablation_table": [
+    {
+      "configuration": "Full Multi-Agent Pipeline",
+      "accuracy": 1.0,
+      "f1_score": 1.0,
+      "ece": 0.04,
+      "avg_latency_ms": 687.0,
+      "insufficient_evidence_rate": 0.0
+    },
+    {
+      "configuration": "Rules-Only Core (Without Learned Layer)",
+      "accuracy": 1.0,
+      "f1_score": 1.0,
+      "ece": 0.073,
+      "avg_latency_ms": 1.1,
+      "insufficient_evidence_rate": 0.0
+    },
+    {
+      "configuration": "Model-Only (Learned Classifier Alone)",
+      "accuracy": 1.0,
+      "f1_score": 1.0,
+      "ece": 0.0,
+      "avg_latency_ms": 89.6,
+      "insufficient_evidence_rate": 0.0
+    },
+    {
+      "configuration": "Single-Agent Heuristic Baseline",
+      "accuracy": 0.25,
+      "f1_score": 0.167,
+      "ece": 0.4,
+      "avg_latency_ms": 0.4,
+      "insufficient_evidence_rate": 0.25
+    }
+  ]
+}
