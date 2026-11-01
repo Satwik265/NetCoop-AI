@@ -7,7 +7,7 @@ Exports models and builder for two-level Network Diagnostic Reports:
 - DiagnosticReportBuilder: Normalization and construction engine
 """
 
-from netcoop.reporting.builder import DiagnosticReportBuilder
+from netcoop.reporting.builder import DiagnosticReportBuilder, export_hackathon_report_json
 from netcoop.reporting.models import (
     AgentInvestigationRecord,
     AgentState,
@@ -30,6 +30,7 @@ from netcoop.reporting.models import (
 
 __all__ = [
     "DiagnosticReportBuilder",
+    "export_hackathon_report_json",
     "NetworkDiagnosticReport",
     "ExecutiveReport",
     "TechnicalReport",

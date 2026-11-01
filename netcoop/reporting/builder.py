@@ -813,3 +813,96 @@ class DiagnosticReportBuilder:
         )
 
         return sections
+
+
+def export_hackathon_report_json(unified_report: Any) -> Dict[str, Any]:
+    """Export a UnifiedDiagnosticReport or dictionary into the hackathon required JSON shape.
+
+    Keys:
+    - incident_id
+    - status
+    - suspected_root_cause
+    - confidence
+    - affected_devices
+    - supporting_evidence: [{metric, value, interpretation}]
+    - alternative_causes
+    - recommended_actions: list of strings
+    - evidence_sources
+    - limitations
+    """
+    if hasattr(unified_report, "model_dump"):
+        data = unified_report.model_dump()
+    elif isinstance(unified_report, dict):
+        data = unified_report
+    else:
+        raise ValueError("unified_report must be a model or dict")
+
+    incident_id = data.get("incident_id")
+    status = data.get("status")
+    suspected_root_cause = data.get("probable_cause")
+    confidence = data.get("confidence", 0.0)
+    affected_devices = list(data.get("affected_devices") or [])
+
+    raw_evidence = data.get("evidence") or []
+    supporting_evidence = []
+    evidence_sources_set = set()
+    for ev in raw_evidence:
+        if isinstance(ev, dict):
+            metric = ev.get("metric_name")
+            val = ev.get("value")
+            interp = ev.get("finding") or ev.get("interpretation")
+            src = ev.get("source_agent")
+        else:
+            metric = getattr(ev, "metric_name", None)
+            val = getattr(ev, "value", None)
+            interp = getattr(ev, "finding", None) or getattr(ev, "interpretation", None)
+            src = getattr(ev, "source_agent", None)
+        if src:
+            evidence_sources_set.add(src)
+        supporting_evidence.append({
+            "metric": metric,
+            "value": val,
+            "interpretation": interp,
+        })
+
+    uncertainty = data.get("uncertainty") or {}
+    alt_hyps = uncertainty.get("alternative_hypotheses") if isinstance(uncertainty, dict) else getattr(uncertainty, "alternative_hypotheses", [])
+    alternative_causes = []
+    for h in alt_hyps or []:
+        if isinstance(h, dict):
+            cause = h.get("cause") or h.get("title")
+        else:
+            cause = getattr(h, "cause", None) or getattr(h, "title", None)
+        if cause:
+            alternative_causes.append(cause)
+
+    raw_actions = data.get("remediation_actions") or []
+    recommended_actions = []
+    for act in raw_actions:
+        if isinstance(act, str):
+            recommended_actions.append(act)
+        elif isinstance(act, dict):
+            action_str = act.get("action") or act.get("description") or act.get("title")
+            if action_str:
+                recommended_actions.append(action_str)
+        else:
+            action_str = getattr(act, "action", None) or getattr(act, "description", None) or getattr(act, "title", None)
+            if action_str:
+                recommended_actions.append(action_str)
+
+    evidence_sources = sorted(list(evidence_sources_set))
+    limitations = list(data.get("limitations") or [])
+
+    return {
+        "incident_id": incident_id,
+        "status": status,
+        "suspected_root_cause": suspected_root_cause,
+        "confidence": confidence,
+        "affected_devices": affected_devices,
+        "supporting_evidence": supporting_evidence,
+        "alternative_causes": alternative_causes,
+        "recommended_actions": recommended_actions,
+        "evidence_sources": evidence_sources,
+        "limitations": limitations,
+    }
+
