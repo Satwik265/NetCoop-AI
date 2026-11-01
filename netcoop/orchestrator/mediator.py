@@ -526,7 +526,7 @@ class AgentMediator:
         duration_ms = round((time.time() - t0) * 1000, 2)
         completed_at = datetime.now(timezone.utc).isoformat()
 
-        if not settings.fallback_enabled and active_mode != "in_process":
+        if not settings.fallback_enabled:
             self.dead_agents.add(target_role.value)
             rec = AgentExecutionRecord(
                 agent_id=target_role.value,

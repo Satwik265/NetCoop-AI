@@ -1,3 +1,4 @@
+import { apiFetch } from '../auth/AuthContext';
 import React, { useState, useEffect } from "react";
 import { RemediationAction } from "../types/protocol";
 
@@ -93,7 +94,7 @@ export const HitlApprovalQueue: React.FC<HitlApprovalQueueProps> = ({
   // Fetch decision logs on load
   const fetchLogs = async () => {
     try {
-      const res = await fetch(`/api/remediation/logs?incident_id=${incidentId}`);
+      const res = await apiFetch(`/api/remediation/logs?incident_id=${incidentId}`);
       if (res.ok) {
         const data = await res.json();
         if (data && data.length > 0) {
@@ -179,14 +180,14 @@ export const HitlApprovalQueue: React.FC<HitlApprovalQueueProps> = ({
     };
 
     try {
-      await fetch(`/api/incidents/${incidentId}/hitl-decision`, {
+      await apiFetch(`/api/incidents/${incidentId}/hitl-decision`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       if (modalMode === "approve") {
-        await fetch(`/api/incidents/${incidentId}/remediate`, {
+        await apiFetch(`/api/incidents/${incidentId}/remediate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action_id: selectedAction.action_id, operator: operatorName }),

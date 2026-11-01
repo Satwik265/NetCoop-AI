@@ -24,6 +24,7 @@ from netcoop.storage.db import (
     save_checkpoint,
 )
 from api.main import app
+from core.auth import get_auth_headers, ROLE_NETWORK_ENGINEER
 
 SCENARIOS_DIR = Path(__file__).parent.parent / "data" / "scenarios"
 
@@ -293,26 +294,27 @@ def test_fastapi_endpoints_pause_resume_and_hitl():
     data = load_scenario("01_mtu_mismatch_blackhole.json")
     test_id = "inc-api-test-01"
     data["incident_id"] = test_id
-    diag_res = client.post("/api/diagnose", json=data)
+    eng_headers = get_auth_headers(role=ROLE_NETWORK_ENGINEER, username="engineer")
+    diag_res = client.post("/api/diagnose", json=data, headers=eng_headers)
     assert diag_res.status_code == 200
     diag_data = diag_res.json()
     assert len(diag_data["remediation_actions"]) > 0
     action_id = diag_data["remediation_actions"][0]["action_id"]
 
     # 2. Checkpoints list endpoint
-    cp_res = client.get(f"/api/orchestrator/checkpoints/{test_id}")
+    cp_res = client.get(f"/api/orchestrator/checkpoints/{test_id}", headers=eng_headers)
     assert cp_res.status_code == 200
     cps = cp_res.json()
     assert len(cps) >= 4
 
     # 3. Pause endpoint
     pause_payload = {"session_id": test_id, "rationale": "Testing API pause endpoint"}
-    pause_res = client.post("/api/orchestrator/pause", json=pause_payload)
+    pause_res = client.post("/api/orchestrator/pause", json=pause_payload, headers=eng_headers)
     assert pause_res.status_code == 200
     assert pause_res.json()["status"] == "paused"
 
     # 4. Resume endpoint
-    resume_res = client.post(f"/api/orchestrator/resume/{test_id}")
+    resume_res = client.post(f"/api/orchestrator/resume/{test_id}", headers=eng_headers)
     assert resume_res.status_code == 200
     resumed_data = resume_res.json()
     assert resumed_data["incident_id"] == test_id
@@ -330,7 +332,7 @@ def test_fastapi_endpoints_pause_resume_and_hitl():
         "operator": "noc_operator",
         "rationale": "Updated to standard jumbo MTU",
     }
-    mod_res = client.post(f"/api/remediation/{action_id}/modify", json=modify_payload)
+    mod_res = client.post(f"/api/remediation/{action_id}/modify", json=modify_payload, headers=eng_headers)
     assert mod_res.status_code == 200
     assert mod_res.json()["status"] == "modified"
 
@@ -339,7 +341,7 @@ def test_fastapi_endpoints_pause_resume_and_hitl():
         "operator": "noc_supervisor",
         "rationale": "Approved for simulation",
     }
-    appr_res = client.post(f"/api/remediation/{action_id}/approve", json=approve_payload)
+    appr_res = client.post(f"/api/remediation/{action_id}/approve", json=approve_payload, headers=eng_headers)
     assert appr_res.status_code == 200
     assert appr_res.json()["status"] == "approved"
     assert appr_res.json()["simulation"]["success"] is True
@@ -350,5 +352,5 @@ def test_fastapi_endpoints_pause_resume_and_hitl():
     assert len(actions_res.json()) >= 1
 
     # 9. Test 404 on nonexistent resume session
-    err_res = client.post("/api/orchestrator/resume/inc-nonexistent-session")
+    err_res = client.post("/api/orchestrator/resume/inc-nonexistent-session", headers=eng_headers)
     assert err_res.status_code == 404

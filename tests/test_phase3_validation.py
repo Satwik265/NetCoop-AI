@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 from netcoop.config import settings
 from netcoop.orchestrator.graph import pause_diagnosis, resume_diagnosis, run_diagnosis
 from netcoop.remediation.engine import RemediationEngine
+from netcoop.core.auth import get_auth_headers, ROLE_PLATFORM_ADMIN, ROLE_NETWORK_ADMIN, ROLE_NETWORK_ENGINEER, ROLE_AUDITOR
 from netcoop.storage.db import (
     get_incident,
     get_latest_checkpoint,
@@ -37,44 +38,46 @@ def setup_test_env():
     init_db()
 
 
-def load_test_scenario(filename: str = "01_mtu_mismatch_blackhole.json") -> dict:
-    """Load test scenario file."""
+def load_test_scenario(filename: str) -> dict:
+    """Load benchmark scenario JSON."""
     path = SCENARIOS_DIR / filename
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def test_resume_diagnosis_updates_incident_record_to_diagnosed():
-    """Regression test: Resuming from checkpoint must update SQLite IncidentRecord from paused to diagnosed."""
+    """Verify that resume_diagnosis directly updates IncidentRecord in SQLite to 'diagnosed'."""
     data = load_test_scenario("01_mtu_mismatch_blackhole.json")
     incident_id = "inc-regress-resume-status"
     data["incident_id"] = incident_id
 
-    # 1. Run initial diagnosis
+    # 1. Run diagnosis then pause it to verify paused checkpoint & state
     report = run_diagnosis(data)
-    assert report.status == "diagnosed"
+    pause_diagnosis(incident_id)
 
-    # 2. Pause session
-    paused = pause_diagnosis(incident_id)
-    assert paused is True
-    inc_paused = get_incident(incident_id)
-    assert inc_paused is not None
-    assert inc_paused.status == "paused"
+    # 2. Verify checkpoint exists and session is marked paused
+    cps = list_checkpoints(incident_id)
+    assert len(cps) > 0
 
-    # 3. Resume from checkpoint
-    resumed_report = resume_diagnosis(incident_id)
-    assert resumed_report is not None
-    assert resumed_report.status == "diagnosed"
+    inc_before = get_incident(incident_id)
+    assert inc_before is not None
+    assert inc_before.status == "paused"
 
-    # 4. Verify incident record in SQLite transitioned to 'diagnosed'
-    inc_resumed = get_incident(incident_id)
-    assert inc_resumed is not None
-    assert inc_resumed.status == "diagnosed", f"Expected 'diagnosed', got '{inc_resumed.status}'"
+    # 3. Resume diagnosis and verify record updated to 'diagnosed'
+    final_report = resume_diagnosis(incident_id)
+    assert final_report.status == "diagnosed"
+
+    inc_after = get_incident(incident_id)
+    assert inc_after is not None
+    assert inc_after.status == "diagnosed"
+    assert inc_after.probable_cause is not None
+    assert inc_after.confidence > 0.0
 
 
 def test_remediation_simulation_aliases():
     """Verify that both /api/remediate/simulate and /api/remediation/simulate work identically."""
     client = TestClient(app)
+    eng_headers = get_auth_headers(role=ROLE_NETWORK_ENGINEER, username="engineer")
     payload = {
         "scenario_or_incident_id": "link_congestion.json",
         "action_type": "rebalance traffic",
@@ -83,13 +86,13 @@ def test_remediation_simulation_aliases():
         "operator": "test_operator",
     }
 
-    res1 = client.post("/api/remediate/simulate", json=payload)
+    res1 = client.post("/api/remediate/simulate", json=payload, headers=eng_headers)
     assert res1.status_code == 200
     data1 = res1.json()
     assert data1.get("is_simulated") is True
     assert "spine-01" in data1.get("action_type", "")
 
-    res2 = client.post("/api/remediation/simulate", json=payload)
+    res2 = client.post("/api/remediation/simulate", json=payload, headers=eng_headers)
     assert res2.status_code == 200
     data2 = res2.json()
     assert data2.get("is_simulated") is True
@@ -99,6 +102,7 @@ def test_remediation_simulation_aliases():
 def test_hitl_approval_and_audit_persistence():
     """Verify full HITL lifecycle: action pending -> approve -> recorded in SQLite audit log."""
     client = TestClient(app)
+    eng_headers = get_auth_headers(role=ROLE_NETWORK_ENGINEER, username="engineer")
     data = load_test_scenario("01_mtu_mismatch_blackhole.json")
     incident_id = "inc-regress-hitl-audit"
     data["incident_id"] = incident_id
@@ -110,6 +114,7 @@ def test_hitl_approval_and_audit_persistence():
     # Approve via API endpoint
     approval_res = client.post(
         f"/api/remediation/{action_id}/approve",
+        headers=eng_headers,
         json={
             "operator": "test_qa_lead",
             "rationale": "Verified MTU mismatch in test suite; approved for simulation sandbox.",
@@ -129,8 +134,13 @@ def test_hitl_approval_and_audit_persistence():
 
 def test_websocket_stream_lifecycle():
     """Verify WebSocket /ws/events connection handshake, ping/pong, and broadcast."""
+    from netcoop.core.auth import get_auth_headers, ROLE_NETWORK_ENGINEER
     client = TestClient(app)
-    with client.websocket_connect("/ws/events") as ws:
+    headers = get_auth_headers(role=ROLE_NETWORK_ENGINEER, username="engineer")
+    ticket_res = client.post("/api/auth/ws-ticket", headers=headers)
+    assert ticket_res.status_code == 200
+    ticket = ticket_res.json()["ticket"]
+    with client.websocket_connect(f"/ws/events?ticket={ticket}") as ws:
         # Handshake
         handshake = ws.receive_json()
         assert handshake.get("event_type") == "connected"
@@ -144,16 +154,19 @@ def test_websocket_stream_lifecycle():
 def test_role_dashboard_endpoints():
     """Verify backend endpoints serving role-based dashboards."""
     client = TestClient(app)
+    admin_headers = get_auth_headers(role=ROLE_NETWORK_ADMIN, username="admin")
+    plat_headers = get_auth_headers(role=ROLE_PLATFORM_ADMIN, username="platform_admin")
+    auditor_headers = get_auth_headers(role=ROLE_AUDITOR, username="auditor")
 
     # Admin View: /api/devices
-    res_devices = client.get("/api/devices")
+    res_devices = client.get("/api/devices", headers=admin_headers)
     assert res_devices.status_code == 200
     devices = res_devices.json()
     assert len(devices) >= 5
     assert any(d["device_id"] == "spine-01" for d in devices)
 
     # Platform Admin View: /api/platform/status
-    res_status = client.get("/api/platform/status")
+    res_status = client.get("/api/platform/status", headers=plat_headers)
     assert res_status.status_code == 200
     status = res_status.json()
     assert "microservices" in status
@@ -168,6 +181,6 @@ def test_role_dashboard_endpoints():
     assert len(mcp_info["tools"]) >= 4
 
     # Auditor View: /api/remediation/logs
-    res_logs = client.get("/api/remediation/logs")
+    res_logs = client.get("/api/remediation/logs", headers=auditor_headers)
     assert res_logs.status_code == 200
     assert isinstance(res_logs.json(), list)

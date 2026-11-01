@@ -1,3 +1,4 @@
+import os
 """Model Context Protocol (MCP) server exposing NetCoop AI diagnostic and remediation tools."""
 
 import json
@@ -7,7 +8,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from netcoop.config import settings
 from gateway.adapters.organizer_adapter import OrganizerAdapter
-from netcoop.orchestrator.graph import run_diagnosis
+from netcoop.orchestrator.graph import pause_diagnosis, resume_diagnosis, run_diagnosis
 from netcoop.remediation.actions import RemediationCatalog
 from netcoop.remediation.engine import RemediationEngine
 from netcoop.storage.db import (
@@ -111,7 +112,8 @@ class NetCoopMCPServer:
                     "incident_data": {
                         "type": "object",
                         "description": "JSON object conforming to schemas/telemetry.json",
-                    }
+                    },
+                    "auth_token": {"type": "string", "description": "Bearer JWT token"},
                 },
                 "required": ["incident_data"],
             },
@@ -122,7 +124,8 @@ class NetCoopMCPServer:
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "incident_id": {"type": "string", "description": "Unique incident identifier"}
+                    "incident_id": {"type": "string", "description": "Unique incident identifier"},
+                    "auth_token": {"type": "string", "description": "Bearer JWT token"},
                 },
                 "required": ["incident_id"],
             },
@@ -133,7 +136,8 @@ class NetCoopMCPServer:
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "correlation_id": {"type": "string", "description": "Correlation identifier of incident"}
+                    "correlation_id": {"type": "string", "description": "Correlation identifier of incident"},
+                    "auth_token": {"type": "string", "description": "Bearer JWT token"},
                 },
                 "required": ["correlation_id"],
             },
@@ -151,7 +155,32 @@ class NetCoopMCPServer:
                         "description": "Optional action name: 'rebalance traffic', 'clear interface counters', 'raise QoS priority', 'fail over a link'",
                     },
                     "operator": {"type": "string", "default": "mcp_operator"},
+                    "auth_token": {"type": "string", "description": "Bearer JWT token"},
                 },
+            },
+        },
+        {
+            "name": "pause_session",
+            "description": "Pause an ongoing diagnostic session at its next checkpoint.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string"},
+                    "auth_token": {"type": "string", "description": "Bearer JWT token"},
+                },
+                "required": ["session_id"],
+            },
+        },
+        {
+            "name": "resume_session",
+            "description": "Resume an interrupted or paused diagnostic session from its latest checkpoint.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string"},
+                    "auth_token": {"type": "string", "description": "Bearer JWT token"},
+                },
+                "required": ["session_id"],
             },
         },
         {
@@ -264,6 +293,51 @@ class NetCoopMCPServer:
             }
 
         return {"isError": True, "message": f"Unknown resource URI scheme: '{uri}'"}
+
+    @classmethod
+    def _verify_auth(cls, arguments: Dict[str, Any], required_perm: str) -> Optional[Dict[str, Any]]:
+        """Verify token and permissions for sensitive tools."""
+        token = arguments.get("auth_token") or arguments.get("token") or os.getenv("NETCOOP_MCP_TOKEN")
+        if not token:
+            return {
+                "isError": True,
+                "content": [{"type": "text", "text": f"Unauthorized: Missing authentication token for sensitive tool. '{required_perm}' permission required."}],
+            }
+        try:
+            from netcoop.core.auth import ROLE_PERMISSIONS_MAP, decode_access_token
+            from netcoop.storage.db import get_user_by_username, is_token_revoked
+
+            payload = decode_access_token(token)
+            jti = payload.get("jti")
+            if jti and is_token_revoked(jti):
+                return {
+                    "isError": True,
+                    "content": [{"type": "text", "text": "Unauthorized: Token has been revoked."}],
+                }
+            username = payload.get("sub")
+            if not username:
+                return {
+                    "isError": True,
+                    "content": [{"type": "text", "text": "Unauthorized: Invalid token payload."}],
+                }
+            user = get_user_by_username(username)
+            if not user or not user.is_active:
+                return {
+                    "isError": True,
+                    "content": [{"type": "text", "text": "Unauthorized: User account is inactive or not found."}],
+                }
+            perms = ROLE_PERMISSIONS_MAP.get(user.role, set())
+            if required_perm not in perms:
+                return {
+                    "isError": True,
+                    "content": [{"type": "text", "text": f"Forbidden: User '{username}' with role '{user.role}' lacks '{required_perm}' permission."}],
+                }
+            return None
+        except Exception as e:
+            return {
+                "isError": True,
+                "content": [{"type": "text", "text": f"Unauthorized: {str(e)}"}],
+            }
 
     @classmethod
     def call_tool(cls, name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -686,6 +760,11 @@ class NetCoopMCPServer:
             return {"content": [{"type": "text", "text": json.dumps(trace, indent=2)}]}
 
         elif name == "simulate_remediation":
+            from netcoop.core.auth import PERM_SIMULATE_REMEDIATION
+            auth_err = cls._verify_auth(arguments, PERM_SIMULATE_REMEDIATION)
+            if auth_err:
+                return auth_err
+
             inc_id = arguments.get("incident_id", "")
             act_id = arguments.get("action_id", "")
             act_type = arguments.get("action_type") or arguments.get("action")
@@ -712,16 +791,20 @@ class NetCoopMCPServer:
                     )
                     return {"content": [{"type": "text", "text": json.dumps(res, indent=2)}]}
 
-            rec = get_incident(inc_id) if inc_id else None
-            if not rec or not rec.report_json:
-                target_act = RemediationCatalog.create_rebalance_traffic_action("spine-01", "et-0/0/1").model_dump()
-            else:
-                report_data = json.loads(rec.report_json)
+            if inc_id:
+                rec = get_incident(inc_id)
+                if not rec:
+                    return {"isError": True, "content": [{"type": "text", "text": f"Incident '{inc_id}' not found."}]}
+                report_data = json.loads(rec.report_json) if rec.report_json else {}
                 actions = report_data.get("remediation_actions", [])
                 target_act = next((a for a in actions if a.get("action_id") == act_id), None)
-                if not target_act:
-                    target_act = RemediationCatalog.create_rebalance_traffic_action("spine-01", "et-0/0/1").model_dump()
+            else:
+                target_act = None
 
+            if not target_act:
+                target_act = RemediationCatalog.create_rebalance_traffic_action("spine-01", "et-0/0/1").model_dump()
+
+            from netcoop.core.report import RemediationActionItem
             action_item = RemediationActionItem(**target_act)
             result = RemediationEngine.execute_simulated_action(
                 incident_id=inc_id or "inc-mcp-sim",
@@ -729,6 +812,26 @@ class NetCoopMCPServer:
                 operator=operator,
             )
             return {"content": [{"type": "text", "text": json.dumps(result, indent=2)}]}
+
+        elif name == "pause_session":
+            from netcoop.core.auth import PERM_EXECUTE_DIAGNOSIS
+            auth_err = cls._verify_auth(arguments, PERM_EXECUTE_DIAGNOSIS)
+            if auth_err:
+                return auth_err
+
+            session_id = arguments.get("session_id", "")
+            ok = pause_diagnosis(session_id)
+            return {"content": [{"type": "text", "text": json.dumps({"session_id": session_id, "paused": ok})}]}
+
+        elif name == "resume_session":
+            from netcoop.core.auth import PERM_EXECUTE_DIAGNOSIS
+            auth_err = cls._verify_auth(arguments, PERM_EXECUTE_DIAGNOSIS)
+            if auth_err:
+                return auth_err
+
+            session_id = arguments.get("session_id", "")
+            report = resume_diagnosis(session_id)
+            return {"content": [{"type": "text", "text": report.to_json()}]}
 
         elif name == "get_protocol_schema":
             schema_name = arguments.get("schema_name", "envelope")

@@ -1,5 +1,6 @@
-"""SQLModel database models for incident persistence and auditable envelope traces."""
+"""SQLModel database models for incident persistence, audit logs, and user authentication."""
 
+import uuid
 from datetime import datetime, timezone
 from typing import Optional
 from sqlmodel import Field, SQLModel
@@ -13,11 +14,14 @@ class IncidentRecord(SQLModel, table=True):
     incident_id: str = Field(primary_key=True)
     network_id: str = Field(index=True)
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    status: str = Field(default="pending", index=True)  # pending, diagnosed, insufficient_evidence, remediated
+    status: str = Field(default="pending", index=True)  # pending, diagnosed, insufficient_evidence, remediated, paused
     probable_cause: Optional[str] = Field(default=None)
     confidence: float = Field(default=0.0)
     report_json: Optional[str] = Field(default=None)
     state_blob: Optional[str] = Field(default=None)
+    assigned_to: Optional[str] = Field(default=None, index=True)
+    assigned_by: Optional[str] = Field(default=None)
+    assigned_at: Optional[str] = Field(default=None)
 
 
 class EnvelopeLog(SQLModel, table=True):
@@ -51,6 +55,10 @@ class RemediationLog(SQLModel, table=True):
     risk_level: str
     status: str = Field(default="pending")  # pending, approved, rejected, modified, simulated_executed
     approved_by: Optional[str] = Field(default=None)
+    actor_user_id: Optional[str] = Field(default=None, index=True)
+    actor_username: Optional[str] = Field(default=None, index=True)
+    actor_role: Optional[str] = Field(default=None, index=True)
+    decision: Optional[str] = Field(default=None, index=True)
     rationale: Optional[str] = Field(default=None)
     modified_commands_json: Optional[str] = Field(default=None)
     simulated_at: Optional[str] = Field(default=None)
@@ -68,5 +76,107 @@ class OrchestratorCheckpoint(SQLModel, table=True):
     iteration: int = Field(default=0)
     state_json: str
     is_paused: bool = Field(default=False)
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+class UserRecord(SQLModel, table=True):
+    """Persisted user account record for authentication and server-side RBAC."""
+
+    __tablename__ = "users"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(default_factory=lambda: str(uuid.uuid4()), index=True)
+    username: str = Field(unique=True, index=True)
+    hashed_password: str
+    role: str = Field(index=True)
+    full_name: Optional[str] = Field(default=None)
+    is_active: bool = Field(default=True)
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+class AuthAuditLog(SQLModel, table=True):
+    """Auditable log of authentication, authorization, and security events."""
+
+    __tablename__ = "auth_audit_logs"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    timestamp_utc: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat(), index=True)
+    event_type: str = Field(index=True)  # LOGIN_SUCCESS, LOGIN_FAILURE, ACCESS_DENIED, TOKEN_EXPIRED, TOKEN_REVOKED
+    username: Optional[str] = Field(default=None, index=True)
+    user_id: Optional[str] = Field(default=None)
+    role: Optional[str] = Field(default=None)
+    endpoint: Optional[str] = Field(default=None)
+    client_ip: Optional[str] = Field(default=None)
+    details: Optional[str] = Field(default=None)
+
+
+class RevokedToken(SQLModel, table=True):
+    """Persisted revoked JWT access tokens for server-side logout and session invalidation."""
+
+    __tablename__ = "revoked_tokens"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    jti: str = Field(unique=True, index=True)
+    revoked_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    expires_at: Optional[str] = Field(default=None)
+
+
+class WsTicketRecord(SQLModel, table=True):
+    """Persisted single-use WebSocket connection tickets."""
+
+    __tablename__ = "ws_tickets"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ticket_hash: str = Field(unique=True, index=True)
+    user_id: str = Field(index=True)
+    username: str = Field(index=True)
+    role: str = Field(index=True)
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    expires_at: float = Field(index=True)
+    consumed: bool = Field(default=False, index=True)
+    consumed_at: Optional[str] = Field(default=None)
+
+
+class TicketRecord(SQLModel, table=True):
+    """Persisted customer and operational support ticket record."""
+
+    __tablename__ = "tickets"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ticket_id: str = Field(unique=True, index=True)
+    title: str
+    category: str = Field(index=True)  # connectivity, wifi, dns, hardware, application, security, other
+    location: str = Field(index=True)  # e.g. Academic Block 1, Hostel Block A, Library
+    affected_service: str = Field(index=True)  # Campus WiFi, LMS, VoIP, Internet
+    description: str
+    priority: str = Field(default="medium", index=True)  # low, medium, high, critical
+    status: str = Field(default="New", index=True)  # New, Open, Assigned, Investigating, Awaiting User, Resolved, Closed
+    created_by: str = Field(index=True)  # username
+    contact_info: Optional[str] = Field(default=None)
+    assigned_to: Optional[str] = Field(default=None, index=True)
+    linked_incident_id: Optional[str] = Field(default=None, index=True)
+    resolution_notes: Optional[str] = Field(default=None)
+    user_facing_summary: Optional[str] = Field(default=None)
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+class DiagnosisRunRecord(SQLModel, table=True):
+    """Persisted diagnosis execution run record for historical tracking and run-to-run comparison."""
+
+    __tablename__ = "diagnosis_runs"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    run_id: str = Field(unique=True, index=True)
+    execution_id: str = Field(index=True)
+    scenario_filename: str = Field(index=True)
+    status: str = Field(default="completed", index=True)
+    probable_cause: Optional[str] = Field(default=None, index=True)
+    confidence: float = Field(default=0.0)
+    uncertainty_score: float = Field(default=0.0)
+    conformal_prediction_set_json: Optional[str] = Field(default=None)
+    report_json: str
+    previous_run_id: Optional[str] = Field(default=None, index=True)
+    triggered_by: Optional[str] = Field(default=None, index=True)
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 

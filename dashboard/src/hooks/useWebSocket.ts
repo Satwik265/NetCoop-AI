@@ -22,7 +22,7 @@ export function useWebSocket(initialEnvelopes: EnvelopeLogItem[] = []): UseWebSo
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
   const reconnectAttemptsRef = useRef<number>(0);
-  const seenIdsRef = useRef<Set<string>>(new Set(initialEnvelopes.map((e) => e.message_id)));
+  const seenIdsRef = useRef<Set<string>>(new Set());
 
   const addEnvelope = useCallback(
     (env: EnvelopeLogItem) => {
@@ -43,15 +43,37 @@ export function useWebSocket(initialEnvelopes: EnvelopeLogItem[] = []): UseWebSo
     setEnvelopes([]);
   }, []);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       return;
     }
 
     setStatus("connecting");
+    const token = sessionStorage.getItem("netcoop_token");
+    let ticket: string | null = null;
+
+    if (token) {
+      try {
+        const res = await fetch("/api/auth/ws-ticket", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          ticket = data.ticket;
+        }
+      } catch {
+        // Failed to obtain ws ticket
+      }
+    }
+
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/ws/events`;
+    const wsUrl = ticket
+      ? `${protocol}//${host}/ws/events?ticket=${encodeURIComponent(ticket)}`
+      : `${protocol}//${host}/ws/events`;
 
     try {
       const socket = new WebSocket(wsUrl);
@@ -130,4 +152,3 @@ export function useWebSocket(initialEnvelopes: EnvelopeLogItem[] = []): UseWebSo
     setIsPaused,
   };
 }
-
