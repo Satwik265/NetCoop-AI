@@ -1,5 +1,6 @@
 """Data normalization, unit conversion, and clock skew alignment engine."""
 
+import math
 import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -47,27 +48,29 @@ class TelemetryNormalizer:
 
     @classmethod
     def normalize_metric(
-        cls, value: Union[float, int, str], raw_unit: str
-    ) -> Tuple[float, str]:
+        cls, value: Union[float, int, str, None], raw_unit: str
+    ) -> Tuple[Optional[float], str]:
         """Convert a numerical metric and raw unit into standardized SI unit.
 
         Returns:
-            Tuple of (converted_value, standardized_unit_name)
+            Tuple of (converted_value, standardized_unit_name), where converted_value
+            is None if the input is non-numeric, null, or NaN.
         """
         unit_key = str(raw_unit).strip().lower()
-        if unit_key not in cls.UNIT_CONVERSIONS:
-            try:
-                numeric_val = float(value)
-                return numeric_val, unit_key
-            except (ValueError, TypeError):
-                return 0.0, unit_key
+        standard_unit, multiplier = cls.UNIT_CONVERSIONS.get(unit_key, (unit_key, 1.0))
 
-        standard_unit, multiplier = cls.UNIT_CONVERSIONS[unit_key]
+        if value is None:
+            return None, standard_unit
+        if isinstance(value, str) and value.strip().lower() in ("null", "none", "nan", ""):
+            return None, standard_unit
+
         try:
             numeric_val = float(value)
+            if math.isnan(numeric_val) or math.isinf(numeric_val):
+                return None, standard_unit
             return round(numeric_val * multiplier, 4), standard_unit
         except (ValueError, TypeError):
-            return 0.0, standard_unit
+            return None, standard_unit
 
     @classmethod
     def parse_iso_timestamp(cls, timestamp_str: Optional[str]) -> Optional[datetime]:

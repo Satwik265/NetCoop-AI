@@ -57,7 +57,7 @@ gen-assets:
 	python docs/assets/scripts/generate_all_assets.py
 
 readme:
-	python scripts/build_readme.py
+	@echo "Disabled: README.md is maintained by hand; docs/README.template.md is stale."
 
 run:
 	uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload

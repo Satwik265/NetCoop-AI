@@ -30,6 +30,7 @@ class TelemetryAgent(BaseAgent):
         raw_telemetry = (envelope.payload.raw_data or {}).get("telemetry", [])
 
         observations: List[Observation] = []
+        limitations: List[str] = []
         for inq in inquiries:
             q = inq.question.lower()
             if "upstream" in q or "utilization" in q or "queue" in q:
@@ -56,6 +57,9 @@ class TelemetryAgent(BaseAgent):
 
         response.payload.inquiries = inquiries
         response.payload.observations = observations
+        if limitations:
+            response.context["limitations"] = limitations
+
         return response
 
     def handle_envelope(self, envelope: AgentEnvelope) -> AgentEnvelope:
@@ -66,6 +70,7 @@ class TelemetryAgent(BaseAgent):
         raw_telemetry = (envelope.payload.raw_data or {}).get("telemetry", [])
 
         observations: List[Observation] = []
+        limitations: List[str] = []
 
         for item in raw_telemetry:
             # Case A: Record format with multiple fields per device
@@ -255,6 +260,11 @@ class TelemetryAgent(BaseAgent):
                 ts = item.get("timestamp_utc")
 
                 val, std_unit = TelemetryNormalizer.normalize_metric(raw_val, raw_unit)
+                if val is None:
+                    lim_msg = f"missing or non-numeric telemetry metric '{metric}' on {device}"
+                    if lim_msg not in limitations:
+                        limitations.append(lim_msg)
+                    continue
                 std_if = TelemetryNormalizer.standardize_interface_name(interface)
                 entity = f"{device}:{std_if}" if std_if != "system" else device
 
@@ -378,5 +388,8 @@ class TelemetryAgent(BaseAgent):
                     required_corroboration=["telemetry_agent"],
                 )
             )
+
+        if limitations:
+            response.context["limitations"] = limitations
 
         return response

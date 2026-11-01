@@ -28,7 +28,7 @@ from netcoop.core.normalizer import TelemetryNormalizer
 def test_normalizer_metric_fuzzing(val: object, unit: str) -> None:
     """Property: TelemetryNormalizer.normalize_metric must never raise an unhandled exception."""
     norm_val, std_unit = TelemetryNormalizer.normalize_metric(val, unit)
-    assert isinstance(norm_val, (float, int))
+    assert norm_val is None or isinstance(norm_val, (float, int))
     assert isinstance(std_unit, str)
 
 
