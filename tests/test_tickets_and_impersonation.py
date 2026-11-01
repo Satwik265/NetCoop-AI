@@ -151,6 +151,14 @@ def test_ticket_lifecycle_transitions(client: TestClient):
     )
     assert res_hd_res.status_code == 403
 
+    # 3b. Helpdesk cannot assign ticket to operational personnel -> 403
+    res_hd_assign = client.patch(
+        f"/api/tickets/{ticket_id}",
+        headers=hd_headers,
+        json={"assigned_to": "engineer"},
+    )
+    assert res_hd_assign.status_code == 403
+
     # 4. Engineer assigns and investigates (Open -> Assigned -> Investigating -> Resolved)
     res_assign = client.patch(
         f"/api/tickets/{ticket_id}",

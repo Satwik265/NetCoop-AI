@@ -1072,7 +1072,7 @@ class CreateTicketRequest(BaseModel):
 
 
 class UpdateTicketStatusRequest(BaseModel):
-    status: str
+    status: Optional[str] = None
     notes: Optional[str] = None
     user_summary: Optional[str] = None
     assigned_to: Optional[str] = None
@@ -1265,16 +1265,24 @@ def update_ticket_endpoint(
             detail="Access restricted: unauthorized to update this support ticket.",
         )
 
+    target_status = req.status or t.status
+
     # Helpdesk cannot resolve tickets directly without engineering sign-off
-    if current_user.role == ROLE_HELPDESK and req.status == "Resolved":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Helpdesk cannot set ticket status to Resolved; technical verification by Network Engineering is required.",
-        )
+    if current_user.role == ROLE_HELPDESK:
+        if target_status == "Resolved":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Helpdesk cannot set ticket status to Resolved; technical verification by Network Engineering is required.",
+            )
+        if req.assigned_to is not None and req.assigned_to != t.assigned_to:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Helpdesk cannot assign tickets to operational personnel.",
+            )
 
     ok, msg, updated = update_ticket_status(
         ticket_id=ticket_id,
-        new_status=req.status,
+        new_status=target_status,
         actor_username=current_user.username,
         actor_role=current_user.role,
         notes=req.notes,

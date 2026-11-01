@@ -55,6 +55,62 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate }) => {
   const [tickets, setTickets] = useState<TicketItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedDevice, setSelectedDevice] = useState<DeviceItem | null>(null);
+  const [selectedAdminTicket, setSelectedAdminTicket] = useState<TicketItem | null>(null);
+  const [assigneeInput, setAssigneeInput] = useState<string>("network_engineer");
+  const [ticketStatusInput, setTicketStatusInput] = useState<string>("Assigned");
+  const [ticketLinkIncInput, setTicketLinkIncInput] = useState<string>("inc-link-congestion-42");
+  const [ticketActionMsg, setTicketActionMsg] = useState<string | null>(null);
+
+  const handleAssignTicket = async () => {
+    if (!selectedAdminTicket) return;
+    setTicketActionMsg(null);
+    try {
+      const res = await apiFetch(`/api/tickets/${selectedAdminTicket.ticket_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: ticketStatusInput,
+          assigned_to: assigneeInput.trim() || undefined,
+        }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setTickets((prev) => prev.map((t) => (t.ticket_id === updated.ticket_id ? updated : t)));
+        setSelectedAdminTicket(updated);
+        setTicketActionMsg(`Ticket ${updated.ticket_id} assigned to ${updated.assigned_to} (${updated.status}).`);
+        setTimeout(() => setTicketActionMsg(null), 3500);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setTicketActionMsg(err.detail || "Failed to update ticket.");
+      }
+    } catch {
+      setTicketActionMsg("Network error communicating with ticket service.");
+    }
+  };
+
+  const handleLinkTicketToIncident = async () => {
+    if (!selectedAdminTicket || !ticketLinkIncInput.trim()) return;
+    setTicketActionMsg(null);
+    try {
+      const res = await apiFetch(`/api/tickets/${selectedAdminTicket.ticket_id}/link-incident`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ incident_id: ticketLinkIncInput.trim() }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setTickets((prev) => prev.map((t) => (t.ticket_id === updated.ticket_id ? updated : t)));
+        setSelectedAdminTicket(updated);
+        setTicketActionMsg(`Ticket ${updated.ticket_id} linked to incident ${ticketLinkIncInput.trim()}.`);
+        setTimeout(() => setTicketActionMsg(null), 3500);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setTicketActionMsg(err.detail || "Failed to link ticket.");
+      }
+    } catch {
+      setTicketActionMsg("Network error linking ticket.");
+    }
+  };
 
   // Search and filter for devices
   const [deviceSearch, setDeviceSearch] = useState<string>("");
@@ -638,50 +694,177 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate }) => {
       )}
 
       {/* ----------------------------------------------------------------- */}
-      {/* TAB 6: Assigned Support Tickets                                   */}
+      {/* TAB 6: Assigned Support Tickets (Network Operations Queue)         */}
       {/* ----------------------------------------------------------------- */}
       {activeTab === "tickets" && (
-        <div className="border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618]">
-          <div className="p-4 border-b border-[#E5E5E3] dark:border-[#2A2A2D] flex items-center justify-between">
-            <h3 className="text-sm font-bold uppercase tracking-wider">Network Infrastructure Support Tickets</h3>
-            <span className="text-xs text-[#6B6B66] dark:text-[#888884]">{networkTickets.length} Tickets</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#FAFAF9] dark:bg-[#0F0F10] border-b border-[#E5E5E3] dark:border-[#2A2A2D] text-[10px] uppercase text-[#6B6B66] dark:text-[#888884]">
-                <tr>
-                  <th className="p-3">Ticket ID</th>
-                  <th className="p-3">Title</th>
-                  <th className="p-3">Location</th>
-                  <th className="p-3">Priority</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3">Linked Incident</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E5E5E3] dark:divide-[#2A2A2D]">
-                {networkTickets.map((t) => (
-                  <tr key={t.ticket_id} className="hover:bg-[#FAFAF9] dark:hover:bg-[#0F0F10]">
-                    <td className="p-3 font-bold font-mono">{t.ticket_id}</td>
-                    <td className="p-3">{t.title}</td>
-                    <td className="p-3">{t.location}</td>
-                    <td className="p-3">
-                      <span className={`px-1.5 py-0.5 border text-[9px] uppercase font-semibold ${
-                        t.priority === "critical" ? "border-[#9A5B5B] text-[#9A5B5B]" : "border-[#A08A5B] text-[#A08A5B]"
-                      }`}>
-                        {t.priority}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <span className="px-1.5 py-0.5 border border-[#475569] text-[9px] uppercase font-semibold">
-                        {t.status}
-                      </span>
-                    </td>
-                    <td className="p-3 font-mono">{t.linked_incident_id || "None"}</td>
+        <div className="space-y-4">
+          <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-[#0B2545] dark:text-slate-100">
+                  Network Infrastructure Support Tickets Queue
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Click a ticket to assign to engineering personnel or link to an active network incident.
+                </p>
+              </div>
+              <span className="text-xs font-semibold px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                {networkTickets.length} Operational Tickets
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 text-xs uppercase font-bold text-slate-500">
+                  <tr>
+                    <th className="p-3.5">Ticket ID</th>
+                    <th className="p-3.5">Title</th>
+                    <th className="p-3.5">Location</th>
+                    <th className="p-3.5">Priority</th>
+                    <th className="p-3.5">Status</th>
+                    <th className="p-3.5">Assigned To</th>
+                    <th className="p-3.5">Linked Incident</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                  {networkTickets.map((t) => (
+                    <tr
+                      key={t.ticket_id}
+                      onClick={() => {
+                        setSelectedAdminTicket(t);
+                        setTicketStatusInput(t.status === "New" ? "Assigned" : t.status);
+                        setAssigneeInput(t.assigned_to || "network_engineer");
+                        setTicketLinkIncInput(t.linked_incident_id || (incidents[0]?.incident_id || "inc-link-congestion-42"));
+                      }}
+                      className={`cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${
+                        selectedAdminTicket?.ticket_id === t.ticket_id ? "bg-slate-50 dark:bg-slate-800/60" : ""
+                      }`}
+                    >
+                      <td className="p-3.5 font-bold font-mono text-[#0B2545] dark:text-blue-400">{t.ticket_id}</td>
+                      <td className="p-3.5 font-semibold text-slate-900 dark:text-slate-100">{t.title}</td>
+                      <td className="p-3.5 text-slate-600 dark:text-slate-400">{t.location}</td>
+                      <td className="p-3.5">
+                        <span className={`px-2 py-0.5 border text-xs uppercase font-semibold ${
+                          t.priority === "critical"
+                            ? "border-red-600/30 bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300"
+                            : t.priority === "high"
+                            ? "border-amber-600/30 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+                            : "border-slate-300 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                        }`}>
+                          {t.priority}
+                        </span>
+                      </td>
+                      <td className="p-3.5">
+                        <span className="px-2 py-0.5 border border-slate-300 text-xs uppercase font-semibold text-slate-700 dark:text-slate-300">
+                          {t.status}
+                        </span>
+                      </td>
+                      <td className="p-3.5 text-xs text-slate-600 dark:text-slate-400">{t.assigned_to || "Unassigned"}</td>
+                      <td className="p-3.5 font-mono text-xs text-slate-500">{t.linked_incident_id || "None"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
+
+          {/* Operational Ticket Assignment & Linkage Drawer */}
+          {selectedAdminTicket && (
+            <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-5 shadow-sm">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                <div>
+                  <span className="text-xs uppercase font-bold text-slate-500">Network Operations Assignment</span>
+                  <h4 className="text-lg font-bold text-[#0B2545] dark:text-slate-100 mt-0.5">
+                    <span className="font-mono">{selectedAdminTicket.ticket_id}</span>: {selectedAdminTicket.title}
+                  </h4>
+                </div>
+                <button
+                  onClick={() => setSelectedAdminTicket(null)}
+                  className="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                >
+                  Close
+                </button>
+              </div>
+
+              {ticketActionMsg && (
+                <div className="p-3 bg-blue-50 border border-blue-200 text-blue-800 text-sm">
+                  {ticketActionMsg}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-sm">
+                {/* Assignment & Lifecycle Control */}
+                <div className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-3">
+                  <h5 className="font-bold text-xs uppercase text-slate-600 dark:text-slate-400">
+                    Assign Engineer &amp; Lifecycle Transition
+                  </h5>
+                  <div>
+                    <label className="block text-xs uppercase text-slate-500 font-semibold mb-1">
+                      Assignee (Engineer / Team)
+                    </label>
+                    <input
+                      type="text"
+                      value={assigneeInput}
+                      onChange={(e) => setAssigneeInput(e.target.value)}
+                      placeholder="e.g. network_engineer, spine-ops-team"
+                      className="w-full p-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs uppercase text-slate-500 font-semibold mb-1">
+                      Target Lifecycle State
+                    </label>
+                    <select
+                      value={ticketStatusInput}
+                      onChange={(e) => setTicketStatusInput(e.target.value)}
+                      className="w-full p-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs outline-none"
+                    >
+                      <option value="Open">Open</option>
+                      <option value="Assigned">Assigned</option>
+                      <option value="Investigating">Investigating</option>
+                      <option value="Awaiting User">Awaiting User</option>
+                      <option value="Resolved">Resolved</option>
+                      <option value="Closed">Closed</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={handleAssignTicket}
+                    className="w-full py-2 bg-[#0B2545] hover:bg-[#133E87] text-white text-xs font-bold uppercase tracking-wide transition-colors"
+                  >
+                    Confirm Assignment &amp; Status
+                  </button>
+                </div>
+
+                {/* Associate to Incident */}
+                <div className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-3">
+                  <h5 className="font-bold text-xs uppercase text-slate-600 dark:text-slate-400">
+                    Link Ticket to Network Incident
+                  </h5>
+                  <div>
+                    <label className="block text-xs uppercase text-slate-500 font-semibold mb-1">
+                      Target Incident ID
+                    </label>
+                    <input
+                      type="text"
+                      value={ticketLinkIncInput}
+                      onChange={(e) => setTicketLinkIncInput(e.target.value)}
+                      placeholder="e.g. inc-link-congestion-42"
+                      className="w-full p-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono outline-none"
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Maps customer complaints to a single root-cause network outage for cross-correlation.
+                  </p>
+                  <button
+                    onClick={handleLinkTicketToIncident}
+                    className="w-full py-2 border border-[#0B2545] text-[#0B2545] dark:text-blue-400 hover:bg-[#0B2545]/10 text-xs font-bold uppercase tracking-wide transition-colors"
+                  >
+                    Associate Ticket to Incident
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

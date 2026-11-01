@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { apiFetch } from "../../auth/AuthContext";
+import { apiFetch, useAuth } from "../../auth/AuthContext";
 import { UnifiedDiagnosticReport } from "../../types/protocol";
 
 export interface TicketItem {
@@ -38,8 +38,9 @@ interface HelpdeskViewProps {
 }
 
 export const HelpdeskView: React.FC<HelpdeskViewProps> = ({ report }) => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<
-    "overview" | "create_ticket" | "tickets" | "status" | "caller_guide"
+    "overview" | "create_ticket" | "my_tickets" | "service_status"
   >("overview");
 
   const [tickets, setTickets] = useState<TicketItem[]>([]);
@@ -51,19 +52,19 @@ export const HelpdeskView: React.FC<HelpdeskViewProps> = ({ report }) => {
   const [title, setTitle] = useState<string>("");
   const [category, setCategory] = useState<string>("wifi");
   const [location, setLocation] = useState<string>("Hostel Block B");
-  const [affectedService, setAffectedService] = useState<string>("Campus WiFi");
+  const [affectedService, setAffectedService] = useState<string>("Campus Wi-Fi");
   const [description, setDescription] = useState<string>("");
   const [priority, setPriority] = useState<string>("high");
   const [contactInfo, setContactInfo] = useState<string>("");
   const [createMsg, setCreateMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [creating, setCreating] = useState<boolean>(false);
 
-  // Filter and search state
+  // Filter and search state for My Tickets
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
 
-  // Ticket detail / update drawer
+  // Ticket detail view state
   const [selectedTicket, setSelectedTicket] = useState<TicketItem | null>(null);
   const [updateStatus, setUpdateStatus] = useState<string>("");
   const [updateNotes, setUpdateNotes] = useState<string>("");
@@ -112,6 +113,10 @@ export const HelpdeskView: React.FC<HelpdeskViewProps> = ({ report }) => {
       setCreateMsg({ type: "error", text: "Please provide a ticket title and detailed description." });
       return;
     }
+    if (!location.trim() || !affectedService.trim()) {
+      setCreateMsg({ type: "error", text: "Please specify affected campus location and service." });
+      return;
+    }
 
     setCreating(true);
     try {
@@ -122,11 +127,11 @@ export const HelpdeskView: React.FC<HelpdeskViewProps> = ({ report }) => {
         body: JSON.stringify({
           title: title.trim(),
           category,
-          location,
-          affected_service: affectedService,
+          location: location.trim(),
+          affected_service: affectedService.trim(),
           description: description.trim(),
           priority,
-          contact_info: contactInfo.trim() || undefined,
+          contact_info: contactInfo.trim() || (user?.username ? `Reported by ${user.username}` : undefined),
           linked_incident_id: activeInc ? activeInc.incident_id : undefined,
         }),
       });
@@ -136,21 +141,22 @@ export const HelpdeskView: React.FC<HelpdeskViewProps> = ({ report }) => {
         setTickets((prev) => [created, ...prev]);
         setCreateMsg({
           type: "success",
-          text: `Support ticket ${created.ticket_id} submitted and logged in backend.`,
+          text: `Support ticket ${created.ticket_id} created and forwarded to Network Operations.`,
         });
         setTitle("");
         setDescription("");
         setContactInfo("");
         setTimeout(() => {
-          setActiveTab("tickets");
+          setActiveTab("my_tickets");
           setSelectedTicket(created);
+          setCreateMsg(null);
         }, 1200);
       } else {
         const err = await res.json().catch(() => ({}));
-        setCreateMsg({ type: "error", text: err.detail || "Failed to create support ticket." });
+        setCreateMsg({ type: "error", text: err.detail || "Failed to create support ticket in backend." });
       }
     } catch {
-      setCreateMsg({ type: "error", text: "Network error submitting ticket." });
+      setCreateMsg({ type: "error", text: "Network error submitting support ticket." });
     } finally {
       setCreating(false);
     }
@@ -188,7 +194,6 @@ export const HelpdeskView: React.FC<HelpdeskViewProps> = ({ report }) => {
     }
   };
 
-  // Plain language translation of technical root causes
   const getPlainLanguageExplanation = () => {
     const raw = report?.probable_cause || (incidents[0] ? incidents[0].probable_cause : null);
     if (!raw) {
@@ -239,28 +244,33 @@ Students and faculty do not need to reboot personal routers. Network Engineers a
   });
 
   return (
-    <div className="space-y-6 font-sans text-sm text-slate-800 dark:text-slate-100">
+    <div className="space-y-6 font-sans text-slate-800 dark:text-slate-100">
       {/* Helpdesk Center Header */}
-      <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
+      <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[11px] uppercase font-bold tracking-wider px-2 py-0.5 border border-emerald-600/30 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-xs uppercase font-bold tracking-wider px-2.5 py-0.5 border border-emerald-600/30 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
                 Customer Support &amp; Helpdesk Center
               </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                Campus Support Portal &bull; IIT-Bhubaneswar
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                IIT Bhubaneswar Campus Portal
               </span>
             </div>
-            <h2 className="text-2xl font-bold tracking-tight text-[#0B2545] dark:text-slate-100">End-User Support &amp; Service Status</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-[#0B2545] dark:text-slate-100">
+              End-User Support &amp; Ticket Operations
+            </h2>
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-              Plain-language campus notices, ticket submission, and user advisory coordination.
+              Create student and faculty support requests, track incident escalation, and coordinate campus notices.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setActiveTab("create_ticket")}
-              className="px-4 py-2 bg-[#0B2545] hover:bg-[#133E87] text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-sm"
+              onClick={() => {
+                setSelectedTicket(null);
+                setActiveTab("create_ticket");
+              }}
+              className="px-5 py-2.5 bg-[#0B2545] hover:bg-[#133E87] text-white text-sm font-semibold tracking-wide transition-colors shadow-sm"
             >
               + Create Support Ticket
             </button>
@@ -268,28 +278,32 @@ Students and faculty do not need to reboot personal routers. Network Engineers a
         </div>
 
         {errorMsg && (
-          <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-400 text-xs">
+          <div className="mt-4 p-3.5 bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-400 text-sm">
             {errorMsg}
           </div>
         )}
       </div>
 
-      {/* Navigation Sub-Tabs */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-1 overflow-x-auto text-xs">
+      {/* Navigation Tabs - 4 strictly clean tabs */}
+      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-2 overflow-x-auto text-sm">
         {[
           { id: "overview", label: "Overview" },
           { id: "create_ticket", label: "Create Ticket" },
-          { id: "tickets", label: `Support Tickets Queue (${openTicketsCount} open)` },
-          { id: "status", label: "Campus Status & Bulletin" },
-          { id: "caller_guide", label: "Inbound Caller Script" },
+          { id: "my_tickets", label: `My Tickets (${openTicketsCount} open)` },
+          { id: "service_status", label: "Service Status" },
         ].map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`px-3.5 py-2.5 font-bold uppercase tracking-wider whitespace-nowrap border-b-2 transition-colors ${
+            onClick={() => {
+              setActiveTab(tab.id as any);
+              if (tab.id !== "my_tickets") {
+                setSelectedTicket(null);
+              }
+            }}
+            className={`px-4 py-3 font-semibold tracking-wide whitespace-nowrap border-b-2 transition-colors ${
               activeTab === tab.id
                 ? "border-[#0B2545] text-[#0B2545] dark:text-blue-400 bg-slate-50 dark:bg-slate-800/50"
-                : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
             }`}
           >
             {tab.label}
@@ -297,79 +311,84 @@ Students and faculty do not need to reboot personal routers. Network Engineers a
         ))}
       </div>
 
-      {/* ----------------------------------------------------------------- */}
-      {/* TAB 1: Helpdesk Overview                                          */}
-      {/* ----------------------------------------------------------------- */}
+      {/* TAB 1: Overview */}
       {activeTab === "overview" && (
         <div className="space-y-6">
           {/* Service Status Notice Banner */}
           <div
-            className={`p-4 border ${
+            className={`p-5 border ${
               activeIncidents.length > 0
-                ? "border-[#A08A5B] bg-[#A08A5B]/10"
-                : "border-[#5E7A6A] bg-[#5E7A6A]/10"
+                ? "border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800"
+                : "border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800"
             }`}
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <span
                   className={`w-3 h-3 rounded-full ${
-                    activeIncidents.length > 0 ? "bg-[#A08A5B]" : "bg-[#5E7A6A]"
+                    activeIncidents.length > 0 ? "bg-amber-600 animate-pulse" : "bg-emerald-600"
                   }`}
                 ></span>
-                <span className="font-bold uppercase text-xs">
+                <span className="font-bold text-sm tracking-wide text-slate-900 dark:text-slate-100">
                   {activeIncidents.length > 0
-                    ? "Service Notice Active: Degraded Campus Performance"
-                    : "All Campus Services Operating Normally"}
+                    ? "Service Notice: Network Performance Under Investigation"
+                    : "All Campus Digital Services Operating Normally"}
                 </span>
               </div>
-              <span className="text-[10px] text-[#6B6B66] dark:text-[#888884]">
-                Next status update in ~15 mins
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                Auto-updated from Network Operations
               </span>
             </div>
-            <p className="mt-2 text-xs leading-relaxed text-[#111111] dark:text-[#EDEDEA]">
+            <p className="mt-2.5 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
               {getPlainLanguageExplanation()}
             </p>
           </div>
 
           {/* Quick Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div className="p-4 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618]">
-              <span className="text-[10px] uppercase text-[#6B6B66] dark:text-[#888884]">Open Tickets</span>
-              <div className="text-xl font-bold mt-1 text-[#A08A5B]">{openTicketsCount}</div>
-              <div className="text-[10px] text-[#6B6B66] dark:text-[#888884] mt-0.5">Awaiting resolution</div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <span className="text-xs uppercase font-semibold text-slate-500">Active Campus Incidents</span>
+              <div className="text-2xl font-bold mt-1 text-slate-900 dark:text-slate-100">
+                {activeIncidents.length}
+              </div>
+              <div className="text-xs text-slate-500 mt-1">
+                {activeIncidents.length > 0 ? "Engineering triage in progress" : "No active disruptions"}
+              </div>
             </div>
 
-            <div className="p-4 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618]">
-              <span className="text-[10px] uppercase text-[#6B6B66] dark:text-[#888884]">Affected Location</span>
-              <div className="text-base font-bold mt-1">Hostel Block B</div>
-              <div className="text-[10px] text-[#6B6B66] dark:text-[#888884] mt-0.5">South Campus area</div>
+            <div className="p-5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <span className="text-xs uppercase font-semibold text-slate-500">Open Support Tickets</span>
+              <div className="text-2xl font-bold mt-1 text-amber-700 dark:text-amber-400">
+                {openTicketsCount}
+              </div>
+              <div className="text-xs text-slate-500 mt-1">In user support queue</div>
             </div>
 
-            <div className="p-4 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618]">
-              <span className="text-[10px] uppercase text-[#6B6B66] dark:text-[#888884]">Impacted Services</span>
-              <div className="text-base font-bold mt-1">Wi-Fi &amp; Video Calls</div>
-              <div className="text-[10px] text-[#6B6B66] dark:text-[#888884] mt-0.5">LMS operational</div>
-            </div>
-
-            <div className="p-4 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618]">
-              <span className="text-[10px] uppercase text-[#6B6B66] dark:text-[#888884]">Engineering Triage</span>
-              <div className="text-base font-bold mt-1 text-[#5E7A6A]">In Progress</div>
-              <div className="text-[10px] text-[#6B6B66] dark:text-[#888884] mt-0.5">Automated rebalancing</div>
+            <div className="p-5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <span className="text-xs uppercase font-semibold text-slate-500">Total Logged Tickets</span>
+              <div className="text-2xl font-bold mt-1 text-slate-900 dark:text-slate-100">
+                {tickets.length}
+              </div>
+              <div className="text-xs text-slate-500 mt-1">Persisted in local database</div>
             </div>
           </div>
 
-          {/* Primary Action Callout */}
-          <div className="p-4 border border-[#475569] bg-[#FAFAF9] dark:bg-[#0F0F10] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Action prompt */}
+          <div className="p-5 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="font-bold text-xs uppercase">Need to Report a New User Issue?</div>
-              <div className="text-xs text-[#6B6B66] dark:text-[#888884] mt-0.5">
-                Log student or faculty connectivity complaints directly into the central ticket queue.
+              <div className="font-bold text-base text-[#0B2545] dark:text-slate-100">
+                Log a Student or Faculty Request
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                Capture connectivity complaints directly into the persistent support ticket queue for Network Operations.
               </div>
             </div>
             <button
-              onClick={() => setActiveTab("create_ticket")}
-              className="px-4 py-2 bg-[#0B2545] hover:bg-[#133E87] text-white text-xs font-bold uppercase tracking-wider transition-colors"
+              onClick={() => {
+                setSelectedTicket(null);
+                setActiveTab("create_ticket");
+              }}
+              className="px-5 py-2.5 bg-[#0B2545] hover:bg-[#133E87] text-white text-sm font-semibold tracking-wide transition-colors whitespace-nowrap"
             >
               Create Support Ticket &rarr;
             </button>
@@ -377,438 +396,469 @@ Students and faculty do not need to reboot personal routers. Network Engineers a
         </div>
       )}
 
-      {/* ----------------------------------------------------------------- */}
-      {/* TAB 2: Create Support Ticket Form                                 */}
-      {/* ----------------------------------------------------------------- */}
+      {/* TAB 2: Create Support Ticket */}
       {activeTab === "create_ticket" && (
-        <div className="border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5 max-w-2xl mx-auto">
-          <h3 className="text-sm font-bold uppercase tracking-wider mb-1">Create Support Ticket</h3>
-          <p className="text-xs text-[#6B6B66] dark:text-[#888884] mb-4">
-            Submits a verified support request persisted in the central database.
-          </p>
+        <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-6">
+          <div>
+            <h3 className="text-xl font-bold text-[#0B2545] dark:text-slate-100">
+              Create Support Ticket
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+              Submit end-user connectivity issues into the central database. The ticket will automatically enter the Network Operations queue.
+            </p>
+          </div>
 
           {createMsg && (
             <div
-              className={`p-3 border text-xs mb-4 ${
+              className={`p-4 border text-sm ${
                 createMsg.type === "success"
-                  ? "bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400"
-                  : "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400"
+                  ? "bg-emerald-50 border-emerald-300 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
+                  : "bg-red-50 border-red-300 text-red-800 dark:bg-red-950/30 dark:text-red-300"
               }`}
             >
               {createMsg.text}
             </div>
           )}
 
-          <form onSubmit={handleCreateTicket} className="space-y-4">
-            <div>
-              <label className="block text-[10px] uppercase font-bold text-[#6B6B66] dark:text-[#888884] mb-1">
-                Ticket Title
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. WiFi dropping out in Library 2nd floor reading hall"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full p-2 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FAFAF9] dark:bg-[#0F0F10] focus:border-[#475569] outline-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <form onSubmit={handleCreateTicket} className="space-y-5 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
-                <label className="block text-[10px] uppercase font-bold text-[#6B6B66] dark:text-[#888884] mb-1">
-                  Problem Category
+                <label className="block text-xs uppercase font-bold text-slate-600 dark:text-slate-400 mb-1.5">
+                  Issue Title <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. WiFi dropping intermittently in Hostel B"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full p-2.5 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:border-[#0B2545] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase font-bold text-slate-600 dark:text-slate-400 mb-1.5">
+                  Category
                 </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full p-2 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FAFAF9] dark:bg-[#0F0F10] focus:border-[#475569] outline-none"
+                  className="w-full p-2.5 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:border-[#0B2545] outline-none"
                 >
-                  <option value="wifi">Campus Wi-Fi</option>
-                  <option value="connectivity">Internet / Intranet Connectivity</option>
-                  <option value="application">LMS / Moodle Portal</option>
-                  <option value="hardware">Hardware / Cable / Switch</option>
-                  <option value="dns">Domain / DNS Resolution</option>
-                  <option value="other">General Network Inquiry</option>
+                  <option value="wifi">Campus Wi-Fi / AP</option>
+                  <option value="connectivity">Ethernet LAN Connectivity</option>
+                  <option value="hardware">Router / Switch Hardware</option>
+                  <option value="email_auth">Academic Portal &amp; Authentication</option>
+                  <option value="dns_access">DNS &amp; Web Access</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+              <div>
+                <label className="block text-xs uppercase font-bold text-slate-600 dark:text-slate-400 mb-1.5">
+                  Campus Location <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="w-full p-2.5 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:border-[#0B2545] outline-none"
+                >
+                  <option value="Hostel Block B">Hostel Block B</option>
+                  <option value="Hostel Block A">Hostel Block A</option>
+                  <option value="Academic Complex A">Academic Complex A</option>
+                  <option value="Academic Complex B">Academic Complex B</option>
+                  <option value="Central Library">Central Library</option>
+                  <option value="Administrative Building">Administrative Building</option>
+                  <option value="Faculty Housing">Faculty Housing</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase font-bold text-[#6B6B66] dark:text-[#888884] mb-1">
-                  Priority / Impact Level
+                <label className="block text-xs uppercase font-bold text-slate-600 dark:text-slate-400 mb-1.5">
+                  Affected Service <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Campus Wi-Fi, LMS Moodle"
+                  value={affectedService}
+                  onChange={(e) => setAffectedService(e.target.value)}
+                  className="w-full p-2.5 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:border-[#0B2545] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase font-bold text-slate-600 dark:text-slate-400 mb-1.5">
+                  Priority
                 </label>
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
-                  className="w-full p-2 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FAFAF9] dark:bg-[#0F0F10] focus:border-[#475569] outline-none"
+                  className="w-full p-2.5 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:border-[#0B2545] outline-none"
                 >
-                  <option value="low">Low (Single user inquiry)</option>
-                  <option value="medium">Medium (Moderate slowdown)</option>
-                  <option value="high">High (Multiple users affected)</option>
-                  <option value="critical">Critical (Full block or hall outage)</option>
+                  <option value="critical">Critical (Campus Outage)</option>
+                  <option value="high">High (Severe Slowdown)</option>
+                  <option value="medium">Medium (Moderate Degradation)</option>
+                  <option value="low">Low (Minor Inquiry)</option>
                 </select>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-[#6B6B66] dark:text-[#888884] mb-1">
-                  Affected Campus Location
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Hostel Block B, Room 204"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="w-full p-2 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FAFAF9] dark:bg-[#0F0F10] focus:border-[#475569] outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-[#6B6B66] dark:text-[#888884] mb-1">
-                  Affected Campus Service
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Campus WiFi, Moodle, VoIP"
-                  value={affectedService}
-                  onChange={(e) => setAffectedService(e.target.value)}
-                  className="w-full p-2 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FAFAF9] dark:bg-[#0F0F10] focus:border-[#475569] outline-none"
-                />
-              </div>
-            </div>
-
             <div>
-              <label className="block text-[10px] uppercase font-bold text-[#6B6B66] dark:text-[#888884] mb-1">
-                Description of Issue
+              <label className="block text-xs uppercase font-bold text-slate-600 dark:text-slate-400 mb-1.5">
+                Issue Description <span className="text-red-600">*</span>
               </label>
               <textarea
                 required
                 rows={4}
-                placeholder="Describe what the user is experiencing in detail..."
+                placeholder="Describe the problem experienced by the user in detail..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full p-2 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FAFAF9] dark:bg-[#0F0F10] focus:border-[#475569] outline-none"
-              ></textarea>
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase font-bold text-[#6B6B66] dark:text-[#888884] mb-1">
-                User Contact Information (Optional)
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. student@iitbbsr.ac.in or +91 98765 43210"
-                value={contactInfo}
-                onChange={(e) => setContactInfo(e.target.value)}
-                className="w-full p-2 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FAFAF9] dark:bg-[#0F0F10] focus:border-[#475569] outline-none"
+                className="w-full p-2.5 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:border-[#0B2545] outline-none"
               />
             </div>
 
-            <div className="pt-2 flex justify-end gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <div>
+                <label className="block text-xs uppercase font-bold text-slate-600 dark:text-slate-400 mb-1.5">
+                  User Contact / Notes
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Room 204, user@iitbbs.ac.in"
+                  value={contactInfo}
+                  onChange={(e) => setContactInfo(e.target.value)}
+                  className="w-full p-2.5 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:border-[#0B2545] outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col justify-end">
+                <div className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                  Reporter: <span className="font-semibold text-slate-800 dark:text-slate-200">{user?.full_name || user?.username || "Helpdesk User"}</span> ({user?.role || "helpdesk"})
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 flex items-center justify-end gap-3">
               <button
                 type="button"
-                onClick={() => setActiveTab("overview")}
-                className="px-4 py-2 border border-[#E5E5E3] dark:border-[#2A2A2D] text-xs font-semibold uppercase"
+                onClick={() => setActiveTab("my_tickets")}
+                className="px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={creating}
-                className="px-5 py-2 bg-[#0B2545] hover:bg-[#133E87] text-white font-bold uppercase text-xs tracking-wider transition-colors"
+                className="px-6 py-2.5 bg-[#0B2545] hover:bg-[#133E87] text-white font-semibold text-sm tracking-wide transition-colors shadow-sm disabled:opacity-50"
               >
-                {creating ? "Submitting..." : "Submit Ticket"}
+                {creating ? "Submitting..." : "Create Support Ticket"}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* ----------------------------------------------------------------- */}
-      {/* TAB 3: Support Tickets Queue                                      */}
-      {/* ----------------------------------------------------------------- */}
-      {activeTab === "tickets" && (
+      {/* TAB 3: My Tickets */}
+      {activeTab === "my_tickets" && (
         <div className="space-y-4">
-          <div className="border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618]">
-            <div className="p-4 border-b border-[#E5E5E3] dark:border-[#2A2A2D] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider">Authorized Support Ticket Queue</h3>
-                <p className="text-xs text-[#6B6B66] dark:text-[#888884]">Live records persisted in backend database.</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Search tickets..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="px-2.5 py-1 text-xs border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FAFAF9] dark:bg-[#0F0F10] focus:border-[#475569] outline-none"
-                />
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-2 py-1 text-xs border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FAFAF9] dark:bg-[#0F0F10] focus:border-[#475569] outline-none"
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="New">New</option>
-                  <option value="Open">Open</option>
-                  <option value="Assigned">Assigned</option>
-                  <option value="Investigating">Investigating</option>
-                  <option value="Awaiting User">Awaiting User</option>
-                  <option value="Resolved">Resolved</option>
-                  <option value="Closed">Closed</option>
-                </select>
-                <select
-                  value={filterPriority}
-                  onChange={(e) => setFilterPriority(e.target.value)}
-                  className="px-2 py-1 text-xs border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FAFAF9] dark:bg-[#0F0F10] focus:border-[#475569] outline-none"
-                >
-                  <option value="all">All Priorities</option>
-                  <option value="critical">Critical</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#FAFAF9] dark:bg-[#0F0F10] border-b border-[#E5E5E3] dark:border-[#2A2A2D] text-[10px] uppercase text-[#6B6B66] dark:text-[#888884]">
-                  <tr>
-                    <th className="p-3">Ticket ID</th>
-                    <th className="p-3">Issue Title</th>
-                    <th className="p-3">Location</th>
-                    <th className="p-3">Priority</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Linked Incident</th>
-                    <th className="p-3 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E5E5E3] dark:divide-[#2A2A2D]">
-                  {filteredTickets.map((t) => (
-                    <tr
-                      key={t.ticket_id}
-                      onClick={() => {
-                        setSelectedTicket(t);
-                        setUpdateStatus(t.status);
-                      }}
-                      className={`cursor-pointer hover:bg-[#FAFAF9] dark:hover:bg-[#0F0F10] ${
-                        selectedTicket?.ticket_id === t.ticket_id ? "bg-[#FAFAF9] dark:bg-[#0F0F10]" : ""
-                      }`}
-                    >
-                      <td className="p-3 font-bold font-mono">{t.ticket_id}</td>
-                      <td className="p-3 max-w-xs truncate">{t.title}</td>
-                      <td className="p-3">{t.location}</td>
-                      <td className="p-3">
-                        <span
-                          className={`px-1.5 py-0.5 border text-[9px] uppercase font-semibold ${
-                            t.priority === "critical"
-                              ? "border-[#9A5B5B] text-[#9A5B5B]"
-                              : t.priority === "high"
-                              ? "border-[#A08A5B] text-[#A08A5B]"
-                              : "border-[#6B6B66] text-[#6B6B66]"
-                          }`}
-                        >
-                          {t.priority}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <span className="px-1.5 py-0.5 border border-[#475569] text-[9px] uppercase font-semibold">
-                          {t.status}
-                        </span>
-                      </td>
-                      <td className="p-3 font-mono">{t.linked_incident_id || "None"}</td>
-                      <td className="p-3 text-right">
-                        <button className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-semibold hover:underline">
-                          Inspect &rarr;
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {loading && (
-                    <tr>
-                      <td colSpan={7} className="p-4 text-center text-[#6B6B66] dark:text-[#888884]">
-                        Loading support tickets...
-                      </td>
-                    </tr>
-                  )}
-                  {!loading && filteredTickets.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="p-4 text-center text-[#6B6B66] dark:text-[#888884]">
-                        No support tickets matching current filter criteria.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Ticket Detail & Status Update Drawer */}
-          {selectedTicket && (
-            <div className="border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#E5E5E3] dark:border-[#2A2A2D]">
+          {/* If a ticket is clicked, show dedicated simplified ticket details view */}
+          {selectedTicket ? (
+            <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-[#6B6B66] dark:text-[#888884]">
-                    Ticket Inspector
-                  </span>
-                  <h4 className="text-base font-bold font-mono mt-0.5">{selectedTicket.ticket_id}: {selectedTicket.title}</h4>
+                  <button
+                    onClick={() => setSelectedTicket(null)}
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#0B2545] hover:text-[#133E87] dark:text-blue-400 mb-2 transition-colors"
+                  >
+                    &larr; Back to My Tickets
+                  </button>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                    <span className="font-mono text-[#0B2545] dark:text-blue-400">{selectedTicket.ticket_id}</span>: {selectedTicket.title}
+                  </h3>
                 </div>
-                <button
-                  onClick={() => setSelectedTicket(null)}
-                  className="text-xs text-[#6B6B66] hover:text-[#111111] dark:hover:text-[#EDEDEA]"
-                >
-                  Close
-                </button>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`px-3 py-1 border text-xs uppercase font-bold tracking-wider ${
+                      selectedTicket.priority === "critical"
+                        ? "border-red-600/30 bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300"
+                        : selectedTicket.priority === "high"
+                        ? "border-amber-600/30 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+                        : "border-slate-300 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                    }`}
+                  >
+                    Priority: {selectedTicket.priority}
+                  </span>
+                  <span className="px-3 py-1 border border-slate-300 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs uppercase font-bold tracking-wider">
+                    Status: {selectedTicket.status}
+                  </span>
+                </div>
               </div>
 
               {updateMsg && (
-                <div className="p-2.5 bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 text-xs">
+                <div className="p-3 bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300 text-sm">
                   {updateMsg}
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                <div className="p-3 border border-[#E5E5E3] dark:border-[#2A2A2D] space-y-1">
-                  <span className="text-[10px] uppercase text-[#6B6B66] dark:text-[#888884]">Campus Location</span>
-                  <div className="font-bold">{selectedTicket.location}</div>
-                  <div className="text-[11px] text-[#6B6B66] dark:text-[#888884]">Service: {selectedTicket.affected_service}</div>
+              {/* Clean Information Grid - strictly ticket fields, NO raw telemetry or internal diagnostics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                <div className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-1">
+                  <span className="text-xs uppercase font-bold text-slate-500">Campus Location</span>
+                  <div className="font-semibold text-slate-900 dark:text-slate-100">{selectedTicket.location}</div>
+                  <div className="text-xs text-slate-500">Service: {selectedTicket.affected_service}</div>
                 </div>
 
-                <div className="p-3 border border-[#E5E5E3] dark:border-[#2A2A2D] space-y-1">
-                  <span className="text-[10px] uppercase text-[#6B6B66] dark:text-[#888884]">Lifecycle State</span>
-                  <div className="font-bold">{selectedTicket.status}</div>
-                  <div className="text-[11px] text-[#6B6B66] dark:text-[#888884]">Priority: {selectedTicket.priority}</div>
+                <div className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-1">
+                  <span className="text-xs uppercase font-bold text-slate-500">Category</span>
+                  <div className="font-semibold text-slate-900 dark:text-slate-100 uppercase text-xs">{selectedTicket.category}</div>
+                  <div className="text-xs text-slate-500">Created by: {selectedTicket.created_by}</div>
                 </div>
 
-                <div className="p-3 border border-[#E5E5E3] dark:border-[#2A2A2D] space-y-1">
-                  <span className="text-[10px] uppercase text-[#6B6B66] dark:text-[#888884]">Linked Network Incident</span>
-                  <div className="font-bold font-mono">{selectedTicket.linked_incident_id || "Unlinked"}</div>
-                  <div className="text-[11px] text-[#6B6B66] dark:text-[#888884]">Created by: {selectedTicket.created_by}</div>
+                <div className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-1">
+                  <span className="text-xs uppercase font-bold text-slate-500">Assigned Team / Person</span>
+                  <div className="font-semibold text-slate-900 dark:text-slate-100">
+                    {selectedTicket.assigned_to || "Unassigned (Network Operations)"}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {selectedTicket.assigned_to ? "Assigned to engineer" : "Awaiting assignment"}
+                  </div>
+                </div>
+
+                <div className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-1">
+                  <span className="text-xs uppercase font-bold text-slate-500">Timestamps</span>
+                  <div className="text-xs font-mono text-slate-700 dark:text-slate-300">
+                    Created: {new Date(selectedTicket.created_at).toLocaleString()}
+                  </div>
+                  <div className="text-xs font-mono text-slate-500">
+                    Updated: {new Date(selectedTicket.updated_at).toLocaleString()}
+                  </div>
                 </div>
               </div>
 
-              <div className="p-3 bg-[#FAFAF9] dark:bg-[#0F0F10] border border-[#E5E5E3] dark:border-[#2A2A2D] text-xs">
-                <span className="text-[10px] uppercase font-bold text-[#6B6B66] dark:text-[#888884] block mb-1">
-                  Description:
+              {/* Description */}
+              <div className="p-5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 space-y-2">
+                <span className="text-xs uppercase font-bold text-slate-500 block">
+                  Detailed Description
                 </span>
-                <p className="leading-relaxed">{selectedTicket.description}</p>
-                {selectedTicket.user_facing_summary && (
-                  <div className="mt-2 pt-2 border-t border-[#E5E5E3] dark:border-[#2A2A2D]">
-                    <span className="text-[10px] uppercase font-bold text-[#5E7A6A] block mb-0.5">
-                      Engineering Resolution Summary:
-                    </span>
-                    <p className="text-[#5E7A6A] dark:text-[#86EFAC]">{selectedTicket.user_facing_summary}</p>
-                  </div>
+                <p className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line">
+                  {selectedTicket.description}
+                </p>
+                {selectedTicket.contact_info && (
+                  <p className="text-xs text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    User Contact Notes: {selectedTicket.contact_info}
+                  </p>
                 )}
               </div>
 
-              {/* Status Update Form for Helpdesk */}
-              <div className="pt-2 border-t border-[#E5E5E3] dark:border-[#2A2A2D] flex flex-col sm:flex-row items-end gap-3 text-xs">
-                <div className="w-full sm:w-48">
-                  <label className="block text-[10px] uppercase font-bold text-[#6B6B66] dark:text-[#888884] mb-1">
-                    Update Status
-                  </label>
-                  <select
-                    value={updateStatus}
-                    onChange={(e) => setUpdateStatus(e.target.value)}
-                    className="w-full p-2 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FAFAF9] dark:bg-[#0F0F10] outline-none"
-                  >
-                    <option value="New">New</option>
-                    <option value="Open">Open</option>
-                    <option value="Awaiting User">Awaiting User</option>
-                    <option value="Closed">Closed</option>
-                  </select>
+              {/* User-facing engineering summary if available */}
+              {selectedTicket.user_facing_summary && (
+                <div className="p-5 border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800">
+                  <span className="text-xs uppercase font-bold text-emerald-800 dark:text-emerald-300 block mb-1">
+                    Network Engineering Resolution Summary
+                  </span>
+                  <p className="text-sm text-emerald-900 dark:text-emerald-100 leading-relaxed">
+                    {selectedTicket.user_facing_summary}
+                  </p>
                 </div>
-                <div className="w-full sm:flex-1">
-                  <label className="block text-[10px] uppercase font-bold text-[#6B6B66] dark:text-[#888884] mb-1">
-                    Add Note / Progress Update
-                  </label>
+              )}
+
+              {/* Status Update / Notes Form */}
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                  Update Ticket Note / Lifecycle State
+                </h4>
+                <div className="flex flex-col sm:flex-row items-end gap-3 text-sm">
+                  <div className="w-full sm:w-56">
+                    <label className="block text-xs uppercase font-bold text-slate-500 mb-1">
+                      Status
+                    </label>
+                    <select
+                      value={updateStatus}
+                      onChange={(e) => setUpdateStatus(e.target.value)}
+                      className="w-full p-2.5 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 outline-none"
+                    >
+                      <option value="New">New</option>
+                      <option value="Open">Open</option>
+                      <option value="Awaiting User">Awaiting User</option>
+                      <option value="Closed">Closed</option>
+                    </select>
+                  </div>
+                  <div className="w-full sm:flex-1">
+                    <label className="block text-xs uppercase font-bold text-slate-500 mb-1">
+                      Add Progress Note
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Contacted user, verified local switch port"
+                      value={updateNotes}
+                      onChange={(e) => setUpdateNotes(e.target.value)}
+                      className="w-full p-2.5 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 outline-none"
+                    />
+                  </div>
+                  <button
+                    onClick={handleUpdateTicket}
+                    disabled={updating}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-[#0B2545] hover:bg-[#133E87] text-white font-semibold text-sm whitespace-nowrap transition-colors"
+                  >
+                    {updating ? "Saving..." : "Save Update"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Ticket Table View - Clean without repeated Inspect column */
+            <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+              <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-bold text-[#0B2545] dark:text-slate-100">
+                    My Support Tickets
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Click any ticket row to view dedicated details.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2.5">
                   <input
                     type="text"
-                    placeholder="e.g. Contacted user, waiting for test confirmation"
-                    value={updateNotes}
-                    onChange={(e) => setUpdateNotes(e.target.value)}
-                    className="w-full p-2 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FAFAF9] dark:bg-[#0F0F10] outline-none"
+                    placeholder="Search tickets..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="px-3 py-1.5 text-xs border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:border-[#0B2545] outline-none"
                   />
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="px-3 py-1.5 text-xs border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:border-[#0B2545] outline-none"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="New">New</option>
+                    <option value="Open">Open</option>
+                    <option value="Assigned">Assigned</option>
+                    <option value="Investigating">Investigating</option>
+                    <option value="Awaiting User">Awaiting User</option>
+                    <option value="Resolved">Resolved</option>
+                    <option value="Closed">Closed</option>
+                  </select>
+                  <select
+                    value={filterPriority}
+                    onChange={(e) => setFilterPriority(e.target.value)}
+                    className="px-3 py-1.5 text-xs border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:border-[#0B2545] outline-none"
+                  >
+                    <option value="all">All Priorities</option>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
                 </div>
-                <button
-                  onClick={handleUpdateTicket}
-                  disabled={updating}
-                  className="w-full sm:w-auto px-4 py-2 bg-[#0B2545] hover:bg-[#133E87] text-white font-bold uppercase tracking-wider text-xs whitespace-nowrap transition-colors"
-                >
-                  {updating ? "Saving..." : "Save Update"}
-                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 text-xs uppercase font-bold text-slate-500">
+                    <tr>
+                      <th className="p-3.5">Ticket ID</th>
+                      <th className="p-3.5">Issue Title</th>
+                      <th className="p-3.5">Location</th>
+                      <th className="p-3.5">Priority</th>
+                      <th className="p-3.5">Status</th>
+                      <th className="p-3.5">Assigned To</th>
+                      <th className="p-3.5">Linked Incident</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                    {filteredTickets.map((t) => (
+                      <tr
+                        key={t.ticket_id}
+                        onClick={() => {
+                          setSelectedTicket(t);
+                          setUpdateStatus(t.status);
+                        }}
+                        className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                      >
+                        <td className="p-3.5 font-bold font-mono text-[#0B2545] dark:text-blue-400">
+                          {t.ticket_id}
+                        </td>
+                        <td className="p-3.5 font-semibold text-slate-900 dark:text-slate-100 max-w-xs truncate">
+                          {t.title}
+                        </td>
+                        <td className="p-3.5 text-slate-600 dark:text-slate-400">{t.location}</td>
+                        <td className="p-3.5">
+                          <span
+                            className={`px-2 py-0.5 border text-xs uppercase font-semibold ${
+                              t.priority === "critical"
+                                ? "border-red-600/30 bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300"
+                                : t.priority === "high"
+                                ? "border-amber-600/30 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+                                : "border-slate-300 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                            }`}
+                          >
+                            {t.priority}
+                          </span>
+                        </td>
+                        <td className="p-3.5">
+                          <span className="px-2 py-0.5 border border-slate-300 text-xs uppercase font-semibold text-slate-700 dark:text-slate-300">
+                            {t.status}
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-slate-600 dark:text-slate-400 text-xs">
+                          {t.assigned_to || "Unassigned"}
+                        </td>
+                        <td className="p-3.5 font-mono text-xs text-slate-500">
+                          {t.linked_incident_id || "None"}
+                        </td>
+                      </tr>
+                    ))}
+                    {loading && (
+                      <tr>
+                        <td colSpan={7} className="p-6 text-center text-slate-500">
+                          Loading support tickets...
+                        </td>
+                      </tr>
+                    )}
+                    {!loading && filteredTickets.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="p-6 text-center text-slate-500">
+                          No support tickets matching current filter criteria.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* ----------------------------------------------------------------- */}
-      {/* TAB 4: Campus Status & Advisory Bulletin                          */}
-      {/* ----------------------------------------------------------------- */}
-      {activeTab === "status" && (
-        <div className="border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-[#E5E5E3] dark:border-[#2A2A2D]">
+      {/* TAB 4: Service Status & Bulletin */}
+      {activeTab === "service_status" && (
+        <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider">Campus Service Advisory Bulletin</h3>
-              <p className="text-xs text-[#6B6B66] dark:text-[#888884]">
-                Standardized non-technical communication for students and faculty.
+              <h3 className="text-xl font-bold text-[#0B2545] dark:text-slate-100">
+                Campus Service Status &amp; Advisory Notice
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Standardized non-technical communication for sharing with students, faculty, and departments.
               </p>
             </div>
             <button
               onClick={handleCopyBulletin}
-              className={`px-3.5 py-1.5 border text-xs font-bold uppercase tracking-wider transition-colors ${
+              className={`px-4 py-2 border text-sm font-semibold tracking-wide transition-colors ${
                 copiedBulletin
-                  ? "border-[#5E7A6A] bg-[#5E7A6A] text-white"
-                  : "border-[#475569] text-[#475569] dark:text-[#94A3B8] hover:bg-[#475569]/10"
+                  ? "border-emerald-600 bg-emerald-600 text-white"
+                  : "border-[#0B2545] text-[#0B2545] dark:text-blue-400 hover:bg-[#0B2545]/10"
               }`}
             >
               {copiedBulletin ? "Copied Bulletin!" : "Copy Bulletin to Clipboard"}
             </button>
           </div>
 
-          <div className="p-4 bg-[#FAFAF9] dark:bg-[#0F0F10] border border-[#E5E5E3] dark:border-[#2A2A2D] font-mono text-xs whitespace-pre-line leading-relaxed">
+          <div className="p-5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm whitespace-pre-line leading-relaxed text-slate-800 dark:text-slate-200">
             {bulletinText}
-          </div>
-        </div>
-      )}
-
-      {/* ----------------------------------------------------------------- */}
-      {/* TAB 5: Inbound Caller Script                                      */}
-      {/* ----------------------------------------------------------------- */}
-      {activeTab === "caller_guide" && (
-        <div className="border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5 space-y-4">
-          <h3 className="text-sm font-bold uppercase tracking-wider">Helpdesk Inbound Phone Caller Script</h3>
-          <p className="text-xs text-[#6B6B66] dark:text-[#888884]">
-            Guidance for telephone interactions with students and professors reporting slowdowns.
-          </p>
-
-          <div className="space-y-3 text-xs">
-            <div className="p-3 border border-[#E5E5E3] dark:border-[#2A2A2D] space-y-1">
-              <div className="font-bold text-[#475569] dark:text-[#94A3B8]">1. Greet and Collect Location</div>
-              <p className="text-[#6B6B66] dark:text-[#888884]">
-                &quot;Thank you for calling IIT-Bhubaneswar IT Helpdesk. May I please have your name, department or hostel room number, and which service you are experiencing difficulties with?&quot;
-              </p>
-            </div>
-
-            <div className="p-3 border border-[#E5E5E3] dark:border-[#2A2A2D] space-y-1">
-              <div className="font-bold text-[#475569] dark:text-[#94A3B8]">2. Explain Situation Clearly</div>
-              <p className="text-[#6B6B66] dark:text-[#888884]">
-                &quot;We are currently experiencing high network volume in Hostel Block B. Our network engineering team is actively optimizing connections and traffic routing.&quot;
-              </p>
-            </div>
-
-            <div className="p-3 border border-[#E5E5E3] dark:border-[#2A2A2D] space-y-1">
-              <div className="font-bold text-[#475569] dark:text-[#94A3B8]">3. Provide Actionable Guidance</div>
-              <p className="text-[#6B6B66] dark:text-[#888884]">
-                &quot;You do not need to restart your device or alter network settings. LMS submission services remain accessible. We anticipate full stability within approximately 15 minutes.&quot;
-              </p>
-            </div>
           </div>
         </div>
       )}

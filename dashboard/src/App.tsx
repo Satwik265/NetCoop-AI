@@ -766,6 +766,14 @@ export const App: React.FC = () => {
                   onLaunchSimulation={() => navigateTo("simulated_remediation")}
                   onOpenHitlQueue={() => navigateTo("hitl")}
                   onNavigate={(nav) => navigateTo(nav)}
+                  lastRunId={lastRunId}
+                  lastRunTimestamp={lastRunTimestamp}
+                  selectedScenario={selectedScenario}
+                  executionStatus={executionStatus}
+                  runErrorMessage={runErrorMessage}
+                  previousRunId={previousRunId}
+                  onRunDiagnosis={handleRunDiagnosis}
+                  onCompareRuns={handleCompareRuns}
                 />
               )}
 

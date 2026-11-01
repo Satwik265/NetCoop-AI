@@ -36,19 +36,41 @@ interface TicketItem {
   created_at: string;
 }
 
-interface EngineerViewProps {
+export interface EngineerViewProps {
   report: UnifiedDiagnosticReport | null;
   onLaunchSimulation: () => void;
   onOpenHitlQueue: () => void;
   onNavigate?: (navId: string) => void;
+  lastRunId?: string | null;
+  lastRunTimestamp?: string | null;
+  selectedScenario?: string;
+  executionStatus?: "idle" | "running" | "completed" | "failed";
+  runErrorMessage?: string | null;
+  previousRunId?: string | null;
+  onRunDiagnosis?: () => void;
+  onCompareRuns?: () => void;
 }
 
 export const EngineerView: React.FC<EngineerViewProps> = ({
   report,
   onLaunchSimulation,
   onOpenHitlQueue,
-  onNavigate,
+  onNavigate: _onNavigate,
+  lastRunId,
+  lastRunTimestamp,
+  selectedScenario = "link_congestion.json",
+  executionStatus = "idle",
+  runErrorMessage,
+  previousRunId,
+  onRunDiagnosis,
+  onCompareRuns,
 }) => {
+  // Top-level independent navigation: Diagnosis Results vs Incident Investigation
+  const [activeMainTab, setActiveMainTab] = useState<"diagnosis_results" | "incident_investigation">(
+    lastRunId ? "diagnosis_results" : "incident_investigation"
+  );
+
+  // Incident Investigation state
   const [incidents, setIncidents] = useState<IncidentSummaryItem[]>([]);
   const [selectedIncidentId, setSelectedIncidentId] = useState<string>(
     report?.incident_id || "inc-link-congestion-42"
@@ -56,16 +78,22 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
   const [envelopes, setEnvelopes] = useState<EnvelopeItem[]>([]);
   const [tickets, setTickets] = useState<TicketItem[]>([]);
   const [loadingEnvelopes, setLoadingEnvelopes] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<
-    "summary" | "explanation" | "evidence" | "action" | "tickets"
-  >("summary");
-  const [expandedPayloadId, setExpandedPayloadId] = useState<string | null>(null);
   const [showTechnicalMessages, setShowTechnicalMessages] = useState<boolean>(false);
-  const [showAllEvidence, setShowAllEvidence] = useState<boolean>(false);
+  const [expandedPayloadId, setExpandedPayloadId] = useState<string | null>(null);
+  const [showRawReport, setShowRawReport] = useState<boolean>(false);
+
+  // Ticket linking inside incident investigation
   const [linkTicketId, setLinkTicketId] = useState<string>("");
   const [linkMsg, setLinkMsg] = useState<string | null>(null);
 
-  // Synchronize when report changes from external run
+  // Switch to Diagnosis Results tab automatically when a new diagnosis run begins or completes
+  useEffect(() => {
+    if (executionStatus === "running" || executionStatus === "completed") {
+      setActiveMainTab("diagnosis_results");
+    }
+  }, [executionStatus, lastRunId]);
+
+  // Synchronize when report changes
   useEffect(() => {
     if (report?.incident_id) {
       setSelectedIncidentId(report.incident_id);
@@ -84,7 +112,7 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
       .catch(() => {});
   }, []);
 
-  // Fetch live envelopes for selected incident
+  // Fetch envelopes for selected incident
   useEffect(() => {
     if (!selectedIncidentId) return;
     setLoadingEnvelopes(true);
@@ -149,7 +177,7 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
       .finally(() => setLoadingEnvelopes(false));
   }, [selectedIncidentId]);
 
-  // Fetch tickets for linking and inspection
+  // Fetch operational support tickets
   useEffect(() => {
     apiFetch("/api/tickets")
       .then((res) => (res.ok ? res.json() : []))
@@ -166,6 +194,7 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
     try {
       const res = await apiFetch(`/api/tickets/${linkTicketId}/link-incident`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ incident_id: selectedIncidentId }),
       });
       if (res.ok) {
@@ -173,6 +202,7 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
         setLinkTicketId("");
         const refreshed = await apiFetch("/api/tickets");
         if (refreshed.ok) setTickets(await refreshed.json());
+        setTimeout(() => setLinkMsg(null), 3500);
       } else {
         const err = await res.json().catch(() => ({ detail: "Failed to link ticket." }));
         setLinkMsg(`Error: ${err.detail || "Unable to associate ticket."}`);
@@ -182,7 +212,8 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
     }
   };
 
-  const primaryTelemetry = [
+  // Structured telemetry data
+  const telemetryData = [
     {
       name: "Egress Link Utilization",
       value: "94.2%",
@@ -213,9 +244,6 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
       timestamp: "2026-11-01T07:15:10Z",
       explanation: "Packets spend excess time queuing in transmission buffers across transit hops.",
     },
-  ];
-
-  const secondaryTelemetry = [
     {
       name: "RTT Jitter Variance",
       value: "14.2 ms",
@@ -227,7 +255,7 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
       explanation: "Micro-burst queuing induces delay variation affecting real-time UDP streams.",
     },
     {
-      name: "CPU Utilization",
+      name: "Control Plane CPU",
       value: "38.4%",
       unit: "percent",
       nominal: "< 60.0%",
@@ -235,16 +263,6 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
       source: "telemetry_agent (Host telemetry)",
       timestamp: "2026-11-01T07:15:15Z",
       explanation: "Control plane CPU remains unconstrained; fault is isolated to data-plane egress buffers.",
-    },
-    {
-      name: "Memory Utilization",
-      value: "42.1%",
-      unit: "percent",
-      nominal: "< 70.0%",
-      delta: "Nominal",
-      source: "telemetry_agent (Host telemetry)",
-      timestamp: "2026-11-01T07:15:15Z",
-      explanation: "Routing daemon memory usage is stable with no memory pressure or leakage.",
     },
   ];
 
@@ -290,463 +308,497 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
       : ["spine-01", "leaf-01", "leaf-02"];
 
   const linkedTickets = tickets.filter((t) => t.linked_incident_id === selectedIncidentId);
+  const selectedIncident = incidents.find((i) => i.incident_id === selectedIncidentId);
 
   return (
-    <div className="space-y-6 font-sans text-sm text-[#0F172A] dark:text-[#EDEDEA]">
-      {/* Top Banner: Incident Summary Card (Level 1) */}
-      <div className="border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-6 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#15803D]"></span>
-              <span className="text-xs text-[#0B2545] dark:text-[#94A3B8] uppercase tracking-wider font-bold">
-                Network Engineer Incident Investigation
+    <div className="space-y-6 font-sans text-slate-800 dark:text-slate-100">
+      {/* Top Header */}
+      <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-xs uppercase font-bold tracking-wider px-2.5 py-0.5 border border-[#0B2545]/20 bg-blue-50 text-[#0B2545] dark:bg-blue-950/40 dark:text-blue-300">
+                Network Engineering Operations
+              </span>
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                Fabric Domain: iitbbsr-campus-prod
               </span>
             </div>
-            <h2 className="text-xl font-bold text-[#0B2545] dark:text-[#F1F5F9]">
-              {probableCause.replace(/_/g, " ")}
+            <h2 className="text-2xl font-bold tracking-tight text-[#0B2545] dark:text-slate-100">
+              Diagnostic Execution &amp; Incident Investigation
             </h2>
-            <div className="text-xs text-[#475569] dark:text-[#94A3B8] flex flex-wrap items-center gap-3">
-              <span>Incident ID: <strong className="font-mono text-[#0F172A] dark:text-[#EDEDEA]">{selectedIncidentId}</strong></span>
-              <span>&bull;</span>
-              <span>Affected Devices: <strong className="font-mono">{affectedDevices.join(", ")}</strong></span>
-              <span>&bull;</span>
-              <span>Status: <strong className="uppercase text-[#15803D]">{report?.status || "Diagnosed"}</strong></span>
-            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+              Trigger live AI multi-agent diagnoses and perform deep root-cause investigations on persisted network incidents.
+            </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="border border-[#15803D]/30 px-4 py-2 bg-[#F0FDF4] text-center">
-              <div className="text-[11px] uppercase text-[#15803D] font-bold">Calibrated Confidence</div>
-              <div className="text-2xl font-bold text-[#15803D]">{confidencePct}%</div>
-              <div className="text-[11px] text-[#475569]">Uncertainty: {uncertaintyPct}%</div>
-            </div>
+          <div className="flex items-center gap-2.5">
+            {previousRunId && onCompareRuns && (
+              <button
+                onClick={onCompareRuns}
+                className="px-4 py-2 border border-[#0B2545] text-[#0B2545] dark:text-blue-400 hover:bg-[#0B2545]/10 text-xs font-bold uppercase tracking-wide transition-colors"
+              >
+                Compare with Previous Run
+              </button>
+            )}
+            {onRunDiagnosis && (
+              <button
+                onClick={onRunDiagnosis}
+                disabled={executionStatus === "running"}
+                className="px-5 py-2.5 bg-[#0B2545] hover:bg-[#133E87] disabled:opacity-50 text-white text-sm font-semibold tracking-wide transition-colors shadow-sm"
+              >
+                {executionStatus === "running" ? "Diagnosing..." : "Run Network Diagnosis"}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
-            <div className="space-y-2">
-              {incidents.length > 0 && (
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-[#475569] font-medium">Select Incident:</span>
+      {/* Primary Tab Navigation: Exact labels "Diagnosis Results" and "Incident Investigation" */}
+      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-3 text-base">
+        <button
+          onClick={() => setActiveMainTab("diagnosis_results")}
+          className={`px-5 py-3.5 font-bold tracking-wide border-b-2 transition-colors flex items-center gap-2 ${
+            activeMainTab === "diagnosis_results"
+              ? "border-[#0B2545] text-[#0B2545] dark:text-blue-400 bg-slate-50 dark:bg-slate-800/40"
+              : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+          }`}
+        >
+          <span>Diagnosis Results</span>
+          {lastRunId && (
+            <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 font-mono">
+              Live
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveMainTab("incident_investigation")}
+          className={`px-5 py-3.5 font-bold tracking-wide border-b-2 transition-colors flex items-center gap-2 ${
+            activeMainTab === "incident_investigation"
+              ? "border-[#0B2545] text-[#0B2545] dark:text-blue-400 bg-slate-50 dark:bg-slate-800/40"
+              : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+          }`}
+        >
+          <span>Incident Investigation</span>
+          <span className="text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono">
+            {incidents.length}
+          </span>
+        </button>
+      </div>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* TAB 1: Diagnosis Results                                          */}
+      {/* ----------------------------------------------------------------- */}
+      {activeMainTab === "diagnosis_results" && (
+        <div className="space-y-6">
+          {/* State 1: Running */}
+          {executionStatus === "running" && (
+            <div className="border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800 p-8 text-center space-y-4">
+              <div className="inline-block animate-spin w-8 h-8 border-4 border-[#0B2545] border-t-transparent rounded-full mb-2"></div>
+              <h3 className="text-xl font-bold text-[#0B2545] dark:text-slate-100">
+                Diagnosis Execution in Progress
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 max-w-lg mx-auto">
+                Dispatching topology telemetry from scenario <code className="font-mono font-bold text-slate-800 dark:text-slate-200">{selectedScenario}</code> to the multi-agent diagnostic pipeline.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 max-w-3xl mx-auto pt-4 text-xs font-semibold">
+                <div className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-emerald-700">1. Telemetry Auditor</div>
+                <div className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-emerald-700">2. Topology Auditor</div>
+                <div className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-blue-700 animate-pulse">3. Alert Correlator</div>
+                <div className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-400">4. Diagnosis Reasoner</div>
+                <div className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-400">5. Orchestrator</div>
+              </div>
+            </div>
+          )}
+
+          {/* State 2: Failed */}
+          {executionStatus === "failed" && (
+            <div className="border border-red-300 bg-red-50 dark:bg-red-950/20 dark:border-red-800 p-6 space-y-3">
+              <h3 className="text-lg font-bold text-red-800 dark:text-red-300">
+                Diagnostic Execution Failed
+              </h3>
+              <p className="text-sm text-red-700 dark:text-red-400">
+                {runErrorMessage || "An unexpected error occurred while communicating with the diagnostic backend."}
+              </p>
+              {onRunDiagnosis && (
+                <button
+                  onClick={onRunDiagnosis}
+                  className="px-4 py-2 bg-red-700 hover:bg-red-800 text-white text-xs font-bold uppercase tracking-wider"
+                >
+                  Retry Network Diagnosis
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* State 3: No diagnosis executed yet */}
+          {!lastRunId && executionStatus === "idle" && (
+            <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-12 text-center space-y-4 shadow-sm">
+              <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-bold text-xl">
+                ?
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                No diagnosis has been executed yet. Select a scenario and run network diagnosis.
+              </h3>
+              <p className="text-sm text-slate-500 max-w-md mx-auto">
+                Execution results will appear here with unique run identifiers, timestamps, agent findings, calibrated confidence, and recommended remediation plans.
+              </p>
+              {onRunDiagnosis && (
+                <button
+                  onClick={onRunDiagnosis}
+                  className="px-6 py-2.5 bg-[#0B2545] hover:bg-[#133E87] text-white text-sm font-semibold tracking-wide transition-colors shadow-sm"
+                >
+                  Run Network Diagnosis Now &rarr;
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* State 4: Diagnosis Completed with Results */}
+          {lastRunId && executionStatus !== "running" && (
+            <div className="space-y-6">
+              {/* Provenance Card */}
+              <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+                  <div>
+                    <span className="text-xs uppercase font-bold text-slate-500">Live Execution Provenance</span>
+                    <h3 className="text-xl font-bold text-[#0B2545] dark:text-slate-100 mt-1">
+                      Execution Run: <span className="font-mono text-blue-700 dark:text-blue-400">{lastRunId}</span>
+                    </h3>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-3 py-1 bg-emerald-50 border border-emerald-300 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 text-xs font-bold uppercase tracking-wider">
+                      Status: COMPLETED
+                    </span>
+                    <span className="text-xs text-slate-500 font-mono">
+                      Timestamp: {new Date(lastRunTimestamp || Date.now()).toUTCString()}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-4 text-sm">
+                  <div className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+                    <span className="text-xs uppercase font-semibold text-slate-500">Selected Scenario</span>
+                    <div className="font-bold font-mono text-sm mt-1 text-slate-900 dark:text-slate-100">{selectedScenario}</div>
+                  </div>
+                  <div className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+                    <span className="text-xs uppercase font-semibold text-slate-500">Calibrated Confidence</span>
+                    <div className="font-bold text-2xl mt-1 text-emerald-700 dark:text-emerald-400">{confidencePct}%</div>
+                  </div>
+                  <div className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+                    <span className="text-xs uppercase font-semibold text-slate-500">Epistemic Uncertainty</span>
+                    <div className="font-bold text-2xl mt-1 text-slate-700 dark:text-slate-300">{uncertaintyPct}%</div>
+                  </div>
+                  <div className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+                    <span className="text-xs uppercase font-semibold text-slate-500">Affected Switches</span>
+                    <div className="font-bold font-mono text-xs mt-1 text-slate-900 dark:text-slate-100">
+                      {affectedDevices.join(", ")}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Root Cause Assessment */}
+              <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <h4 className="text-base font-bold text-[#0B2545] dark:text-slate-100">
+                    Diagnosed Root Cause Assessment
+                  </h4>
+                  <span className="px-2.5 py-0.5 border border-red-600/30 bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300 text-xs uppercase font-bold tracking-wider">
+                    {probableCause}
+                  </span>
+                </div>
+                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                  Synthesized across telemetry, hardware tail-drop logs, and topology discovery agents. Heavy burst traffic on spine switch egress exceeds capacity threshold, causing tail-drop queue starvation on downstream distribution links.
+                </p>
+
+                {/* Conformal Prediction Set */}
+                <div className="p-4 border border-blue-200 bg-blue-50/60 dark:bg-blue-950/20 dark:border-blue-800 text-sm space-y-1.5">
+                  <div className="font-bold text-xs uppercase text-[#0B2545] dark:text-blue-300">
+                    Conformal Prediction Set (95.0% Coverage Guarantee)
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-1 font-mono text-xs">
+                    {((report as any)?.conformal_prediction_set || ["INTERFACE_SATURATION_QUEUE_OVERFLOW", "ECMP_HASH_IMBALANCE"]).map(
+                      (item: string) => (
+                        <span key={item} className="px-2.5 py-1 bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-200 font-semibold">
+                          {item}
+                        </span>
+                      )
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Participating Agents & Findings */}
+              <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-4 shadow-sm">
+                <h4 className="text-base font-bold text-[#0B2545] dark:text-slate-100">
+                  Participating Agents &amp; Progress Findings
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {agentContributions.map((agent) => (
+                    <div key={agent.agent} className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-1.5 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900 dark:text-slate-100">{agent.agent}</span>
+                        <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold">
+                          {agent.status}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-500 uppercase">{agent.role}</div>
+                      <p className="text-xs text-slate-700 dark:text-slate-300 pt-1 leading-relaxed">
+                        {agent.finding}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Supporting Telemetry Evidence */}
+              <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+                <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-base font-bold text-[#0B2545] dark:text-slate-100">
+                      Supporting Evidence &amp; Measurements
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5">Observed metric values compared against nominal fabric baselines.</p>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 text-xs uppercase font-bold text-slate-500">
+                      <tr>
+                        <th className="p-3.5">Metric Name</th>
+                        <th className="p-3.5">Observed Value</th>
+                        <th className="p-3.5">Nominal Baseline</th>
+                        <th className="p-3.5">Delta</th>
+                        <th className="p-3.5">Telemetry Source</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                      {telemetryData.map((m) => (
+                        <tr key={m.name} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                          <td className="p-3.5 font-semibold text-slate-900 dark:text-slate-100">{m.name}</td>
+                          <td className="p-3.5 font-bold font-mono text-[#0B2545] dark:text-blue-400">{m.value}</td>
+                          <td className="p-3.5 text-slate-500 text-xs font-mono">{m.nominal}</td>
+                          <td className="p-3.5 font-bold font-mono text-red-600 text-xs">{m.delta}</td>
+                          <td className="p-3.5 text-xs text-slate-500">{m.source}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Recommended Actions */}
+              <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div>
+                    <h4 className="text-base font-bold text-[#0B2545] dark:text-slate-100">
+                      Recommended Remediation Actions
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5">Automated mitigation plan validated through sandboxed simulation.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={onLaunchSimulation}
+                      className="px-4 py-2 bg-[#0B2545] hover:bg-[#133E87] text-white text-xs font-bold uppercase tracking-wider transition-colors"
+                    >
+                      Test Recommended Fix (Simulation)
+                    </button>
+                    <button
+                      onClick={onOpenHitlQueue}
+                      className="px-4 py-2 border border-[#0B2545] text-[#0B2545] dark:text-blue-400 hover:bg-[#0B2545]/10 text-xs font-bold uppercase tracking-wider transition-colors"
+                    >
+                      Review Pending Approvals
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-2 text-sm">
+                  <div className="font-bold text-[#0B2545] dark:text-blue-300">
+                    Plan 1: ECMP Re-weighting &amp; Dynamic Transit Reroute
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Reroute 40% of egress flow from congested port <code className="font-mono">spine-01:et-0/0/1</code> across redundant path <code className="font-mono">spine-02:et-0/0/2</code>. Zero traffic drop during transition. Rollback verified.
+                  </p>
+                </div>
+
+                {/* Collapsible Raw Report */}
+                <div className="pt-2">
+                  <button
+                    onClick={() => setShowRawReport(!showRawReport)}
+                    className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline"
+                  >
+                    {showRawReport ? "Hide Unified Diagnostic Report Contract" : "View Unified Diagnostic Report Contract (JSON)"}
+                  </button>
+                  {showRawReport && report && (
+                    <pre className="mt-3 p-4 bg-slate-950 text-emerald-400 font-mono text-xs overflow-x-auto max-h-72">
+                      {JSON.stringify(report, null, 2)}
+                    </pre>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ----------------------------------------------------------------- */}
+      {/* TAB 2: Incident Investigation                                     */}
+      {/* ----------------------------------------------------------------- */}
+      {activeMainTab === "incident_investigation" && (
+        <div className="space-y-6">
+          {/* Incident Selector Bar */}
+          <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <span className="text-xs uppercase font-bold text-slate-500">Incident Record Selection</span>
+                <div className="flex items-center gap-3">
                   <select
                     value={selectedIncidentId}
                     onChange={(e) => setSelectedIncidentId(e.target.value)}
-                    className="bg-[#F8FAFC] dark:bg-[#0F0F10] border border-[#E2E8F0] dark:border-[#2A2A2D] px-2 py-1 text-xs font-mono outline-none"
+                    className="p-2.5 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-mono text-sm font-bold text-[#0B2545] dark:text-blue-400 outline-none"
                   >
                     {incidents.map((inc) => (
                       <option key={inc.incident_id} value={inc.incident_id}>
-                        {inc.incident_id} ({inc.status})
+                        {inc.incident_id} ({inc.status.toUpperCase()})
                       </option>
                     ))}
+                    {incidents.length === 0 && (
+                      <option value="inc-link-congestion-42">inc-link-congestion-42 (DIAGNOSED)</option>
+                    )}
                   </select>
+
+                  <span className={`px-2.5 py-1 border text-xs uppercase font-bold tracking-wider ${
+                    selectedIncident?.status === "diagnosed"
+                      ? "border-emerald-600/30 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
+                      : "border-amber-600/30 bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                  }`}>
+                    {selectedIncident?.status || "DIAGNOSED"}
+                  </span>
                 </div>
-              )}
+              </div>
+
+              <div className="flex flex-col sm:items-end text-xs text-slate-500">
+                <div>Severity: <span className="font-bold text-red-600 uppercase">Critical (Egress Buffer Saturation)</span></div>
+                <div>Affected Switches: <span className="font-mono text-slate-800 dark:text-slate-200 font-semibold">{affectedDevices.join(", ")}</span></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Investigation History & Timeline */}
+          <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-5 shadow-sm">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div>
+                <h4 className="text-base font-bold text-[#0B2545] dark:text-slate-100">
+                  Agent Findings &amp; Collaboration Timeline
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">Chronological record of multi-agent investigation messages.</p>
+              </div>
               <button
-                onClick={() => setActiveTab("explanation")}
-                className="w-full px-4 py-2 bg-[#0B2545] hover:bg-[#133E87] text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-sm"
+                onClick={() => setShowTechnicalMessages(!showTechnicalMessages)}
+                className="px-3.5 py-1.5 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                View Investigation &rarr;
+                {showTechnicalMessages ? "Collapse Technical Messages" : "View Technical Messages"}
               </button>
             </div>
-          </div>
-        </div>
 
-        {linkMsg && (
-          <div className="mt-4 p-3 bg-[#EEF4FB] border border-[#133E87]/30 text-[#0B2545] text-xs">
-            {linkMsg}
-          </div>
-        )}
-      </div>
-
-      {/* 4-Level Progressive Disclosure Navigation Bar */}
-      <div className="flex border-b border-[#E2E8F0] dark:border-[#2A2A2D] gap-2 overflow-x-auto text-sm">
-        {[
-          { id: "summary", label: "1. Incident Summary — What is wrong?" },
-          { id: "explanation", label: "2. Investigation Details — Why did it happen?" },
-          { id: "evidence", label: "3. Evidence & Measurements — What supports the diagnosis?" },
-          { id: "action", label: "4. Recommended Actions — What should happen next?" },
-          { id: "tickets", label: `Linked Support Tickets (${linkedTickets.length})` },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`px-4 py-3 font-semibold whitespace-nowrap border-b-2 transition-colors ${
-              activeTab === tab.id
-                ? "border-[#0B2545] dark:border-[#3A86FF] text-[#0B2545] dark:text-[#3A86FF] bg-[#EEF4FB]/50 dark:bg-[#161618]"
-                : "border-transparent text-[#475569] dark:text-[#888884] hover:text-[#0B2545] dark:hover:text-[#EDEDEA]"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ----------------------------------------------------------------- */}
-      {/* LEVEL 1: Incident Summary — What is wrong?                        */}
-      {/* ----------------------------------------------------------------- */}
-      {activeTab === "summary" && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="p-5 border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] space-y-2">
-              <span className="text-xs uppercase font-bold text-[#B45309]">What is Wrong?</span>
-              <h3 className="text-base font-bold text-[#0B2545] dark:text-[#EDEDEA]">Egress Buffer Saturation</h3>
-              <p className="text-sm text-[#475569] dark:text-[#888884] leading-relaxed">
-                Heavy traffic load between Core Spine switch and Distribution Leaf has exceeded interface queue thresholds, causing tail drops and packet loss.
-              </p>
-            </div>
-
-            <div className="p-5 border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] space-y-2">
-              <span className="text-xs uppercase font-bold text-[#0B2545] dark:text-[#94A3B8]">Why Did It Happen?</span>
-              <h3 className="text-base font-bold text-[#0F172A] dark:text-[#EDEDEA]">ECMP Flow Imbalance</h3>
-              <p className="text-sm text-[#475569] dark:text-[#888884] leading-relaxed">
-                Elephant flow hash collision routed redundant data transfers through a single link while spine-02 remained underutilized at 28.1%.
-              </p>
-            </div>
-
-            <div className="p-5 border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] space-y-2">
-              <span className="text-xs uppercase font-bold text-[#15803D]">What Should Be Done?</span>
-              <h3 className="text-base font-bold text-[#15803D]">Rebalance ECMP Weights</h3>
-              <p className="text-sm text-[#475569] dark:text-[#888884] leading-relaxed">
-                Execute safe simulated remediation proposal <code className="font-mono text-xs">act-rebalance-ecmp-01</code> to divert 40% of peak traffic to the alternate spine path.
-              </p>
-            </div>
-          </div>
-
-          <div className="p-5 border border-[#133E87]/30 bg-[#EEF4FB] dark:bg-[#0B132B] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="font-bold text-sm text-[#0B2545] dark:text-[#F1F5F9]">
-                Step 2: Deep Dive Investigation Available
-              </div>
-              <div className="text-xs text-[#475569] dark:text-[#94A3B8]">
-                Explore participating agent observations or review calibrated telemetry evidence.
-              </div>
-            </div>
-            <button
-              onClick={() => setActiveTab("explanation")}
-              className="px-5 py-2.5 bg-[#0B2545] hover:bg-[#133E87] text-white font-bold text-xs uppercase tracking-wider transition-colors shadow-sm"
-            >
-              View Investigation Details &rarr;
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ----------------------------------------------------------------- */}
-      {/* LEVEL 2: Investigation Details — Why did it happen?               */}
-      {/* ----------------------------------------------------------------- */}
-      {activeTab === "explanation" && (
-        <div className="space-y-6">
-          {/* Agent Contributions Grid */}
-          <div className="border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618]">
-            <div className="p-5 border-b border-[#E2E8F0] dark:border-[#2A2A2D]">
-              <h3 className="text-base font-bold text-[#0B2545] dark:text-[#F1F5F9]">Participating Domain Agents</h3>
-              <p className="text-xs text-[#475569] dark:text-[#888884]">
-                Domain findings and hypotheses contributed by isolated specialized agents.
-              </p>
-            </div>
-            <div className="divide-y divide-[#E2E8F0] dark:divide-[#2A2A2D]">
-              {agentContributions.map((agent) => (
-                <div key={agent.agent} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm">{agent.agent}</span>
-                      <span className="text-[#475569] dark:text-[#888884] text-xs">&bull; {agent.role}</span>
-                      <span className="px-2 py-0.5 border border-[#15803D]/40 text-[#15803D] bg-[#F0FDF4] text-xs font-semibold">
-                        {agent.status}
-                      </span>
-                    </div>
-                    <div className="text-xs text-[#475569] dark:text-[#888884] mt-1">{agent.finding}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Collaboration Timeline & Collapsible Technical Messages */}
-          <div className="border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618]">
-            <div className="p-5 border-b border-[#E2E8F0] dark:border-[#2A2A2D] flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-base font-bold text-[#0B2545] dark:text-[#F1F5F9]">
-                  Inter-Agent Collaboration Timeline
-                </h3>
-                <p className="text-xs text-[#475569] dark:text-[#888884]">
-                  Protocol v1.0 message envelopes. Raw JSON payloads are collapsed under technical messages.
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-[#475569] dark:text-[#888884]">
-                  {envelopes.length} Messages Exchanged
-                </span>
-                <button
-                  onClick={() => setShowTechnicalMessages((prev) => !prev)}
-                  className="px-3 py-1 border border-[#133E87] text-[#133E87] hover:bg-[#EEF4FB] text-xs font-semibold transition-colors"
-                >
-                  {showTechnicalMessages ? "Hide Technical Messages" : "View Technical Messages"}
-                </button>
-              </div>
-            </div>
-
-            <div className="divide-y divide-[#E2E8F0] dark:divide-[#2A2A2D]">
-              {loadingEnvelopes && (
-                <div className="p-4 text-xs text-[#475569] text-center">
-                  Loading protocol message envelopes...
-                </div>
-              )}
-              {envelopes.map((env) => (
-                <div key={env.message_id} className="p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 border border-[#133E87]/30 bg-[#EEF4FB] text-[#133E87] text-xs font-mono font-semibold">
-                        {env.message_type}
-                      </span>
-                      <span className="font-bold text-xs">{env.sender}</span>
-                      <span className="text-[#475569]">&rarr;</span>
-                      <span className="font-bold text-xs">{env.recipient}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-[#475569] font-mono">
+            {loadingEnvelopes ? (
+              <div className="p-6 text-center text-sm text-slate-500">Loading investigation timeline...</div>
+            ) : (
+              <div className="space-y-3">
+                {envelopes.slice(0, 4).map((env) => (
+                  <div key={env.message_id} className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-1.5 text-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-xs text-[#0B2545] dark:text-blue-400">{env.sender}</span>
+                        <span className="text-slate-400 text-xs">&rarr;</span>
+                        <span className="font-mono text-xs text-slate-600 dark:text-slate-400">{env.recipient}</span>
+                      </div>
+                      <span className="text-xs font-mono text-slate-400">
                         {new Date(env.timestamp_utc).toLocaleTimeString()}
                       </span>
-                      {showTechnicalMessages && (
+                    </div>
+                    <div className="text-xs font-bold uppercase text-slate-500">{env.message_type}</div>
+                    <p className="text-xs text-slate-700 dark:text-slate-300">
+                      {env.payload?.finding || env.payload?.probable_cause || "Metric observation dispatched."}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Expandable Technical Envelopes */}
+            {showTechnicalMessages && (
+              <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                <h5 className="text-xs font-bold uppercase text-slate-500">Raw Protocol Envelopes</h5>
+                <div className="space-y-2">
+                  {envelopes.map((env) => (
+                    <div key={env.message_id} className="p-3 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs space-y-2">
+                      <div className="flex items-center justify-between font-mono">
+                        <span className="font-bold">{env.message_id}</span>
                         <button
-                          onClick={() =>
-                            setExpandedPayloadId(
-                              expandedPayloadId === env.message_id ? null : env.message_id
-                            )
-                          }
-                          className="px-2 py-0.5 border border-[#E2E8F0] text-xs font-semibold hover:border-[#0B2545]"
+                          onClick={() => setExpandedPayloadId(expandedPayloadId === env.message_id ? null : env.message_id)}
+                          className="text-blue-600 dark:text-blue-400 hover:underline"
                         >
-                          {expandedPayloadId === env.message_id ? "Hide JSON" : "Inspect JSON"}
+                          {expandedPayloadId === env.message_id ? "Hide JSON" : "Show JSON"}
                         </button>
+                      </div>
+                      {expandedPayloadId === env.message_id && (
+                        <pre className="p-3 bg-slate-950 text-emerald-400 font-mono text-xs overflow-x-auto max-h-48">
+                          {JSON.stringify(env, null, 2)}
+                        </pre>
                       )}
                     </div>
-                  </div>
-
-                  <div className="text-xs text-[#475569] dark:text-[#888884]">
-                    {env.payload?.finding || env.payload?.probable_cause || "Message envelope processed cleanly."}
-                  </div>
-
-                  {/* Expandable Raw JSON Payload */}
-                  {showTechnicalMessages && expandedPayloadId === env.message_id && (
-                    <div className="p-3 bg-[#F8FAFC] dark:bg-[#0B132B] border border-[#E2E8F0] dark:border-[#2A2A2D] mt-2 overflow-x-auto">
-                      <pre className="text-xs font-mono text-[#0B2545] dark:text-[#3A86FF]">
-                        {JSON.stringify(env.payload, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ----------------------------------------------------------------- */}
-      {/* LEVEL 3: Evidence & Measurements — What supports the diagnosis?    */}
-      {/* ----------------------------------------------------------------- */}
-      {activeTab === "evidence" && (
-        <div className="space-y-6">
-          <div className="border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5">
-            <h3 className="text-base font-bold text-[#0B2545] dark:text-[#F1F5F9] mb-1">
-              Calibrated Telemetry Measurements
-            </h3>
-            <p className="text-xs text-[#475569] dark:text-[#888884] mb-4">
-              Observed telemetry compared to nominal operational baselines with data source and timestamp verification.
-            </p>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#F8FAFC] dark:bg-[#0F0F10] border-b border-[#E2E8F0] dark:border-[#2A2A2D] text-[#475569] uppercase font-bold text-[11px]">
-                  <tr>
-                    <th className="p-3">Measurement</th>
-                    <th className="p-3">Observed Value</th>
-                    <th className="p-3">Baseline</th>
-                    <th className="p-3">Difference</th>
-                    <th className="p-3">Data Source</th>
-                    <th className="p-3">Explanation</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E2E8F0] dark:divide-[#2A2A2D]">
-                  {primaryTelemetry.map((item) => (
-                    <tr key={item.name} className="hover:bg-[#F8FAFC] dark:hover:bg-[#0F0F10]">
-                      <td className="p-3 font-semibold text-[#0F172A] dark:text-[#EDEDEA]">{item.name}</td>
-                      <td className="p-3 font-mono font-bold text-[#DC2626]">{item.value}</td>
-                      <td className="p-3 font-mono text-[#475569]">{item.nominal}</td>
-                      <td className="p-3">
-                        <span className="px-2 py-0.5 border border-[#DC2626]/30 bg-[#FEF2F2] text-[#DC2626] font-bold text-[11px]">
-                          {item.delta}
-                        </span>
-                      </td>
-                      <td className="p-3 text-[#475569] font-mono text-[11px]">{item.source}</td>
-                      <td className="p-3 text-[#475569] text-xs max-w-xs">{item.explanation}</td>
-                    </tr>
                   ))}
-                  {showAllEvidence &&
-                    secondaryTelemetry.map((item) => (
-                      <tr key={item.name} className="hover:bg-[#F8FAFC] dark:hover:bg-[#0F0F10]">
-                        <td className="p-3 font-semibold text-[#0F172A] dark:text-[#EDEDEA]">{item.name}</td>
-                        <td className="p-3 font-mono font-bold">{item.value}</td>
-                        <td className="p-3 font-mono text-[#475569]">{item.nominal}</td>
-                        <td className="p-3">
-                          <span className="px-2 py-0.5 border border-[#E2E8F0] bg-[#F8FAFC] text-[#475569] font-semibold text-[11px]">
-                            {item.delta}
-                          </span>
-                        </td>
-                        <td className="p-3 text-[#475569] font-mono text-[11px]">{item.source}</td>
-                        <td className="p-3 text-[#475569] text-xs max-w-xs">{item.explanation}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-
-            <button
-              onClick={() => setShowAllEvidence(!showAllEvidence)}
-              className="mt-4 text-xs text-[#133E87] dark:text-[#3A86FF] font-bold hover:underline"
-            >
-              {showAllEvidence ? "Collapse Supporting Metrics" : "View All Supporting Metrics & Telemetry &rarr;"}
-            </button>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Statistical Uncertainty & Conformal Prediction */}
-          <div className="border border-[#15803D]/30 bg-[#F0FDF4] dark:bg-[#0B132B] p-5 space-y-2">
-            <span className="text-xs uppercase font-bold text-[#15803D]">
-              Split Conformal Prediction Set &amp; Statistical Bounds
-            </span>
-            <div className="text-sm text-[#0F172A] dark:text-[#EDEDEA] space-y-1">
-              <div>Coverage Guarantee: <strong>95.0% Validated (alpha = 0.05)</strong></div>
+          {/* Linked Support Tickets Section */}
+          <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-5 shadow-sm">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
               <div>
-                Prediction Set: <code className="font-mono text-xs bg-[#FFFFFF] px-2 py-0.5 border border-[#15803D]/30 font-bold">&#123;&quot;INTERFACE_SATURATION_QUEUE_OVERFLOW&quot;, &quot;ECMP_HASH_IMBALANCE&quot;&#125;</code>
-              </div>
-              <div className="text-xs text-[#475569] dark:text-[#94A3B8] leading-relaxed">
-                The non-empty conformal prediction set provides exact multi-label coverage under exchangeability, guaranteeing that the true network fault is included within the predicted set with 95% statistical confidence.
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ----------------------------------------------------------------- */}
-      {/* LEVEL 4: Recommended Actions — What should happen next?           */}
-      {/* ----------------------------------------------------------------- */}
-      {activeTab === "action" && (
-        <div className="space-y-6">
-          <div className="border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-6 space-y-5">
-            <div className="flex items-center justify-between pb-4 border-b border-[#E2E8F0] dark:border-[#2A2A2D]">
-              <div>
-                <span className="text-xs uppercase font-bold text-[#15803D]">Recommended Action Proposal</span>
-                <h3 className="text-lg font-bold font-mono text-[#0B2545] dark:text-[#F1F5F9]">
-                  act-rebalance-ecmp-01
-                </h3>
-              </div>
-              <span className="px-3 py-1 border border-[#15803D] bg-[#F0FDF4] text-[#15803D] text-xs font-bold uppercase tracking-wider">
-                SIMULATION SAFEGUARD ACTIVE
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div className="p-4 border border-[#E2E8F0] dark:border-[#2A2A2D] space-y-1 bg-[#F8FAFC] dark:bg-[#0F0F10]">
-                <span className="text-xs text-[#475569] uppercase font-bold">Target Device</span>
-                <div className="text-sm font-bold text-[#0F172A] dark:text-[#EDEDEA]">spine-01 (port et-0/0/1)</div>
-                <div className="text-xs text-[#475569]">Operational Risk: LOW (Traffic load diversion)</div>
-              </div>
-              <div className="p-4 border border-[#E2E8F0] dark:border-[#2A2A2D] space-y-1 bg-[#F8FAFC] dark:bg-[#0F0F10]">
-                <span className="text-xs text-[#475569] uppercase font-bold">Required Authorization</span>
-                <div className="text-sm font-bold text-[#0F172A] dark:text-[#EDEDEA]">Human-in-the-Loop (HITL)</div>
-                <div className="text-xs text-[#475569]">Zero production mutation guarantee &bull; Dry-run sandbox</div>
+                <h4 className="text-base font-bold text-[#0B2545] dark:text-slate-100">
+                  Linked Support Tickets ({linkedTickets.length})
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  End-user customer reports mapped to this specific network diagnostic incident.
+                </p>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <span className="text-xs uppercase font-bold text-[#0B2545] dark:text-[#94A3B8]">
-                Proposed Remediation Syntax (Simulated Dry-Run)
-              </span>
-              <div className="p-4 bg-[#F8FAFC] dark:bg-[#0B132B] border border-[#E2E8F0] dark:border-[#2A2A2D] font-mono text-xs">
-                <code>
-                  configure terminal<br />
-                  router bgp 65001<br />
-                  address-family ipv4 unicast<br />
-                  maximum-paths 2<br />
-                  load-balance flow hash-seed 42<br />
-                  commit
-                </code>
-              </div>
-            </div>
-
-            <div className="space-y-1 text-xs text-[#475569]">
-              <strong>Rollback Procedure:</strong> Reverting to previous configuration via <code className="font-mono">rollback configuration 1</code> restores default ECMP hash-seeds with zero configuration drift.
-            </div>
-
-            {/* Renamed Actions: Test Recommended Fix (Simulation) & Review Pending Approvals */}
-            <div className="flex flex-wrap items-center gap-3 pt-3">
-              <button
-                onClick={onLaunchSimulation}
-                className="px-5 py-2.5 bg-[#0B2545] hover:bg-[#133E87] text-white font-bold text-xs uppercase tracking-wider transition-colors shadow-sm"
-              >
-                Test Recommended Fix (Simulation)
-              </button>
-
-              <button
-                onClick={onOpenHitlQueue}
-                className="px-5 py-2.5 border border-[#133E87] text-[#133E87] dark:text-[#3A86FF] hover:bg-[#EEF4FB] font-bold text-xs uppercase tracking-wider transition-colors"
-              >
-                Review Pending Approvals
-              </button>
-
-              {onNavigate && (
-                <button
-                  onClick={() => onNavigate("topology")}
-                  className="px-5 py-2.5 border border-[#E2E8F0] hover:bg-[#F8FAFC] text-[#0F172A] dark:text-[#EDEDEA] font-semibold text-xs uppercase tracking-wider transition-colors"
-                >
-                  Inspect Topology
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ----------------------------------------------------------------- */}
-      {/* TAB 5: Linked Support Tickets Integration                         */}
-      {/* ----------------------------------------------------------------- */}
-      {activeTab === "tickets" && (
-        <div className="space-y-6">
-          <div className="border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5">
-            <h3 className="text-base font-bold text-[#0B2545] dark:text-[#F1F5F9] mb-1">
-              Support Tickets Linked to {selectedIncidentId}
-            </h3>
-            <p className="text-xs text-[#475569] dark:text-[#888884] mb-4">
-              Real-world customer tickets mapped directly to this root-cause diagnostic investigation.
-            </p>
 
             {linkedTickets.length === 0 ? (
-              <div className="p-6 text-center text-xs text-[#475569] border border-dashed border-[#E2E8F0]">
-                No support tickets currently linked to this incident.
+              <div className="p-6 text-center text-sm text-slate-500 border border-dashed border-slate-300 dark:border-slate-700">
+                No support tickets currently linked to incident {selectedIncidentId}.
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#F8FAFC] dark:bg-[#0F0F10] border-b border-[#E2E8F0] dark:border-[#2A2A2D] text-[#475569] uppercase font-bold text-[11px]">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 text-xs uppercase font-bold text-slate-500">
                     <tr>
-                      <th className="p-3">Ticket ID</th>
-                      <th className="p-3">Title</th>
-                      <th className="p-3">Location</th>
-                      <th className="p-3">Priority</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3">Created</th>
+                      <th className="p-3.5">Ticket ID</th>
+                      <th className="p-3.5">Title</th>
+                      <th className="p-3.5">Location</th>
+                      <th className="p-3.5">Priority</th>
+                      <th className="p-3.5">Status</th>
+                      <th className="p-3.5">Created</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E2E8F0] dark:divide-[#2A2A2D]">
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                     {linkedTickets.map((t) => (
-                      <tr key={t.ticket_id}>
-                        <td className="p-3 font-mono font-bold text-[#0B2545]">{t.ticket_id}</td>
-                        <td className="p-3 font-semibold">{t.title}</td>
-                        <td className="p-3 text-[#475569]">{t.location}</td>
-                        <td className="p-3 uppercase font-semibold text-[11px]">{t.priority}</td>
-                        <td className="p-3">
-                          <span className="px-2 py-0.5 border border-[#15803D]/30 bg-[#F0FDF4] text-[#15803D] font-bold text-[11px]">
+                      <tr key={t.ticket_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                        <td className="p-3.5 font-mono font-bold text-[#0B2545] dark:text-blue-400">{t.ticket_id}</td>
+                        <td className="p-3.5 font-semibold text-slate-900 dark:text-slate-100">{t.title}</td>
+                        <td className="p-3.5 text-slate-600 dark:text-slate-400">{t.location}</td>
+                        <td className="p-3.5 uppercase text-xs font-semibold">{t.priority}</td>
+                        <td className="p-3.5">
+                          <span className="px-2 py-0.5 border border-emerald-600/30 bg-emerald-50 text-emerald-800 text-xs font-bold">
                             {t.status}
                           </span>
                         </td>
-                        <td className="p-3 text-[#475569] font-mono text-[11px]">
+                        <td className="p-3.5 text-xs text-slate-500 font-mono">
                           {new Date(t.created_at).toLocaleDateString()}
                         </td>
                       </tr>
@@ -755,28 +807,33 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
                 </table>
               </div>
             )}
-          </div>
 
-          {/* Associate Support Ticket Form */}
-          <div className="border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5">
-            <h4 className="text-sm font-bold uppercase tracking-wider mb-2">
-              Associate Campus Support Ticket to Incident
-            </h4>
-            <form onSubmit={handleLinkTicket} className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="text"
-                placeholder="Enter Ticket ID (e.g. TICK-2026-0001)"
-                value={linkTicketId}
-                onChange={(e) => setLinkTicketId(e.target.value)}
-                className="flex-1 px-3 py-2 text-xs border border-[#E2E8F0] dark:border-[#2A2A2D] bg-[#F8FAFC] dark:bg-[#0F0F10] focus:border-[#133E87] outline-none font-mono"
-              />
-              <button
-                type="submit"
-                className="px-5 py-2 bg-[#0B2545] hover:bg-[#133E87] text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-sm"
-              >
-                Link to Incident
-              </button>
-            </form>
+            {/* Form to Associate Ticket to this Incident */}
+            <div className="p-5 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-3">
+              <h5 className="text-xs font-bold uppercase text-slate-700 dark:text-slate-300">
+                Link Additional Campus Support Ticket to Incident {selectedIncidentId}
+              </h5>
+              {linkMsg && (
+                <div className="p-2.5 bg-blue-50 border border-blue-200 text-blue-800 text-xs">
+                  {linkMsg}
+                </div>
+              )}
+              <form onSubmit={handleLinkTicket} className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  placeholder="Enter Support Ticket ID (e.g. TICK-2026-0001)"
+                  value={linkTicketId}
+                  onChange={(e) => setLinkTicketId(e.target.value)}
+                  className="flex-1 p-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono outline-none"
+                />
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-[#0B2545] hover:bg-[#133E87] text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-sm"
+                >
+                  Link Ticket to Incident
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       )}

@@ -301,21 +301,21 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
   });
 
   return (
-    <div className="space-y-6 font-mono text-[#111111] dark:text-[#EDEDEA]">
+    <div className="space-y-6 font-sans text-slate-800 dark:text-slate-100">
       {/* Platform Executive Header */}
-      <div className="border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#161618] p-5">
+      <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 border border-[#475569] text-[#475569] dark:text-[#94A3B8]">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-xs uppercase font-bold tracking-wider px-2.5 py-0.5 border border-[#0B2545]/20 bg-blue-50 text-[#0B2545] dark:bg-blue-950/40 dark:text-blue-300">
                 Platform SRE &amp; Security Administration
               </span>
-              <span className="text-[10px] text-[#6B6B66] dark:text-[#888884]">
+              <span className="text-sm text-slate-500 dark:text-slate-400">
                 Session ID: plat-adm-{currentAuthUser?.username || "root"}
               </span>
             </div>
-            <h2 className="text-xl font-bold tracking-tight">Executive Platform Assurance</h2>
-            <p className="text-xs text-[#6B6B66] dark:text-[#888884] mt-0.5">
+            <h2 className="text-2xl font-bold tracking-tight text-[#0B2545] dark:text-slate-100">Executive Platform Assurance</h2>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
               Live observability, server-side RBAC governance, and multi-agent health oversight.
             </p>
           </div>
@@ -323,7 +323,7 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
             <button
               onClick={fetchPlatformData}
               disabled={loading}
-              className="px-3 py-1.5 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FAFAF9] dark:bg-[#0F0F10] hover:border-[#111111] dark:hover:border-[#EDEDEA] text-xs font-semibold uppercase tracking-wider transition-colors"
+              className="px-4 py-2 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-slate-500 text-xs font-semibold uppercase tracking-wider transition-colors"
             >
               {loading ? "Refreshing..." : "Refresh Status"}
             </button>
@@ -332,7 +332,7 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
                 setActiveTab("users");
                 setShowCreateUserModal(true);
               }}
-              className="px-3 py-1.5 bg-[#475569] hover:bg-[#334155] text-white text-xs font-semibold uppercase tracking-wider transition-colors shadow-sm"
+              className="px-4 py-2 bg-[#0B2545] hover:bg-[#133E87] text-white text-xs font-semibold uppercase tracking-wider transition-colors shadow-sm"
             >
               + Create User
             </button>
