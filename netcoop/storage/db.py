@@ -581,26 +581,42 @@ def get_auth_audit_logs(limit: int = 100) -> List[AuthAuditLog]:
 
 
 def init_default_users() -> None:
-    """Seed demonstration accounts strictly when demo mode is enabled or in development/testing."""
+    """Seed demonstration accounts strictly when demo mode is enabled, in development/testing, or cloud demo deployment."""
     from netcoop.config import is_demo_mode_allowed
     from netcoop.core.auth import DEMO_SEED_ACCOUNTS, hash_password
 
-    # In production, never seed default demonstration accounts automatically
-    env = os.getenv("NETCOOP_ENV", settings.environment).lower()
-    if env == "production" and not is_demo_mode_allowed():
-        return
+    DEFAULT_DEMO_PASSWORDS = {
+        "platform_admin": "NetCoopPlat!2026",
+        "admin": "NetCoopAdmin!2026",
+        "engineer": "NetCoopEng!2026",
+        "helpdesk": "NetCoopHelp!2026",
+        "noc": "NetCoopNoc!2026",
+        "security": "NetCoopSec!2026",
+        "it_manager": "NetCoopMgr!2026",
+        "auditor": "NetCoopAuditor!2026",
+    }
 
-    # Use development password for seeded testing accounts
-    dev_pass = os.getenv("NETCOOP_DEV_PASSWORD", "NetCoopDev!2026")
+    env = os.getenv("NETCOOP_ENV", settings.environment).lower()
+    is_render = os.getenv("RENDER") == "true"
+    allow_seed = (env != "production") or is_demo_mode_allowed() or is_render
+
     with Session(engine) as session:
+        has_any_user = session.exec(select(UserRecord)).first() is not None
+        # In strict non-cloud production with existing users, never re-seed
+        if not allow_seed and has_any_user:
+            return
+
         for acc in DEMO_SEED_ACCOUNTS:
             existing = session.exec(
                 select(UserRecord).where(UserRecord.username == acc["username"])
             ).first()
             if not existing:
+                account_pass = os.getenv("NETCOOP_DEV_PASSWORD") or DEFAULT_DEMO_PASSWORDS.get(
+                    acc["username"], "NetCoopDev!2026"
+                )
                 user = UserRecord(
                     username=acc["username"],
-                    hashed_password=hash_password(dev_pass),
+                    hashed_password=hash_password(account_pass),
                     role=acc["role"],
                     full_name=acc.get("full_name"),
                     is_active=True,

@@ -215,8 +215,12 @@ FEATURE_REMEDIATION_SIM: bool = settings.feature_remediation_sim
 
 def is_demo_mode_allowed() -> bool:
     """Check whether demo authentication is permitted in the current runtime environment."""
+    demo_env = os.getenv("NETCOOP_DEMO_MODE", "").lower()
+    if demo_env in ("true", "1", "yes"):
+        return True
+    if os.getenv("RENDER") == "true":
+        return True
     env = os.getenv("NETCOOP_ENV", settings.environment).lower()
     if env == "production":
         return False
-    demo_env = os.getenv("NETCOOP_DEMO_MODE", str(settings.demo_mode)).lower()
-    return demo_env in ("true", "1", "yes")
+    return str(settings.demo_mode).lower() in ("true", "1", "yes")

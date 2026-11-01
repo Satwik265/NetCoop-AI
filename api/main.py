@@ -161,6 +161,7 @@ from storage.db import (
     get_auth_audit_logs,
 
     init_default_users,
+    init_default_tickets,
 
     revoke_token,
 
@@ -318,12 +319,10 @@ def _envelope_stream_hook(envelope: AgentEnvelope) -> None:
 @app.on_event("startup")
 
 def on_startup() -> None:
-
     """Initialize database and register envelope listeners."""
-
     init_db()
-
     init_default_users()
+    init_default_tickets()
 
     try:
 
