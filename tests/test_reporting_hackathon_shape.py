@@ -12,13 +12,29 @@ from netcoop.reporting.builder import export_hackathon_report_json
 
 
 @pytest.fixture(autouse=True)
-def setup_in_process_mode() -> None:
+def setup_in_process_mode():
+    old_env = {k: os.environ.get(k) for k in ("AGENTS_MODE", "IN_PROCESS_FALLBACK", "ALLOW_DEV_IN_PROCESS_FALLBACK")}
+    old_mode = settings.agents_mode
+    old_fb = settings.in_process_fallback
+    old_allow = settings.allow_dev_in_process_fallback
+
     os.environ["AGENTS_MODE"] = "in_process"
     os.environ["IN_PROCESS_FALLBACK"] = "true"
     os.environ["ALLOW_DEV_IN_PROCESS_FALLBACK"] = "true"
     settings.agents_mode = "in_process"
     settings.in_process_fallback = True
     settings.allow_dev_in_process_fallback = True
+
+    yield
+
+    for k, v in old_env.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+    settings.agents_mode = old_mode
+    settings.in_process_fallback = old_fb
+    settings.allow_dev_in_process_fallback = old_allow
 
 
 def test_hackathon_required_report_json_exact_key_set() -> None:
