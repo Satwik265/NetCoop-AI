@@ -1,0 +1,428 @@
+{
+  "A. Normal operation": {
+    "file": "data/scenarios/normal_operation.json",
+    "sha256": "a81113d59ddf73f56b40c0302589371a79e46da78fdd4526f4144be4b55bce8a",
+    "http_status": 200,
+    "elapsed_ms": 308.1,
+    "status": "benign",
+    "probable_cause": "Normal Operation",
+    "confidence": 1.0,
+    "evidence_count": 0,
+    "remediation_actions_count": 0,
+    "alternatives": [],
+    "sample_evidence": []
+  },
+  "B. Link congestion": {
+    "file": "data/scenarios/link_congestion.json",
+    "sha256": "0337e9704cd60a7ed94255b3f86afe87b9cb64250093e3481ec5e81c6234c637",
+    "http_status": 200,
+    "elapsed_ms": 303.0,
+    "status": "diagnosed",
+    "probable_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
+    "confidence": 0.969,
+    "evidence_count": 9,
+    "remediation_actions_count": 2,
+    "alternatives": [],
+    "sample_evidence": [
+      {
+        "evidence_id": "evi-obs-c12c6b3f",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "core-rtr-01 latency_ms: observed 131.1 ms",
+        "interpretation": "core-rtr-01 latency_ms: observed 131.1 ms",
+        "entity": "core-rtr-01",
+        "metric_name": "latency_ms",
+        "metric": "latency_ms",
+        "value": 131.1,
+        "unit": "ms",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-c12c6b3f",
+        "message_id": "824827fa-073c-4601-aaad-ec3a8c72e2a1",
+        "correlation_id": "inc-link-congestion-42",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-link-congestion-42",
+          "message_id": "824827fa-073c-4601-aaad-ec3a8c72e2a1"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-7c0240a3",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "core-rtr-01 jitter_ms: observed 25.6 ms",
+        "interpretation": "core-rtr-01 jitter_ms: observed 25.6 ms",
+        "entity": "core-rtr-01",
+        "metric_name": "jitter_ms",
+        "metric": "jitter_ms",
+        "value": 25.6,
+        "unit": "ms",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-7c0240a3",
+        "message_id": "824827fa-073c-4601-aaad-ec3a8c72e2a1",
+        "correlation_id": "inc-link-congestion-42",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-link-congestion-42",
+          "message_id": "824827fa-073c-4601-aaad-ec3a8c72e2a1"
+        }
+      }
+    ]
+  },
+  "C. Weak Wi-Fi": {
+    "file": "data/scenarios/weak_wifi_signal.json",
+    "sha256": "768af7ee515c73e0edd481853e1f48e6c9a0e6c31a2885e360678022eab088e8",
+    "http_status": 200,
+    "elapsed_ms": 525.3,
+    "status": "diagnosed",
+    "probable_cause": "Hostel access point RF attenuation causing high retransmissions and packet loss",
+    "confidence": 0.9,
+    "evidence_count": 4,
+    "remediation_actions_count": 1,
+    "alternatives": [],
+    "sample_evidence": [
+      {
+        "evidence_id": "evi-obs-5e77d833",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "ap-hostel-b1 wifi_rssi_dbm: observed -87.4 dbm",
+        "interpretation": "ap-hostel-b1 wifi_rssi_dbm: observed -87.4 dbm",
+        "entity": "ap-hostel-b1",
+        "metric_name": "wifi_rssi_dbm",
+        "metric": "wifi_rssi_dbm",
+        "value": -87.4,
+        "unit": "dbm",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-5e77d833",
+        "message_id": "e882a47d-8b80-4802-be34-e20b0d7c754b",
+        "correlation_id": "inc-weak-wifi-signal-42",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-weak-wifi-signal-42",
+          "message_id": "e882a47d-8b80-4802-be34-e20b0d7c754b",
+          "corroborating_sources": [
+            "wifi_services_agent"
+          ]
+        }
+      },
+      {
+        "evidence_id": "evi-obs-1991b24a",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "ap-hostel-b1 wifi_retransmission_pct: observed 32.7 percent",
+        "interpretation": "ap-hostel-b1 wifi_retransmission_pct: observed 32.7 percent",
+        "entity": "ap-hostel-b1",
+        "metric_name": "wifi_retransmission_pct",
+        "metric": "wifi_retransmission_pct",
+        "value": 32.7,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-1991b24a",
+        "message_id": "e882a47d-8b80-4802-be34-e20b0d7c754b",
+        "correlation_id": "inc-weak-wifi-signal-42",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-weak-wifi-signal-42",
+          "message_id": "e882a47d-8b80-4802-be34-e20b0d7c754b",
+          "corroborating_sources": [
+            "wifi_services_agent"
+          ]
+        }
+      }
+    ]
+  },
+  "D. Ethernet fault": {
+    "file": "data/scenarios/ethernet_interface_fault.json",
+    "sha256": "490aa43516427921730937c00147dee9b9a5f6220c52aa36c4aabeb31a76ff0a",
+    "http_status": 200,
+    "elapsed_ms": 358.2,
+    "status": "diagnosed",
+    "probable_cause": "Physical layer Ethernet interface CRC errors and flapping transitions",
+    "confidence": 0.923,
+    "evidence_count": 2,
+    "remediation_actions_count": 2,
+    "alternatives": [],
+    "sample_evidence": [
+      {
+        "evidence_id": "evi-obs-0e7b6fc6",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dept-sw-cs-01 interface_errors: observed 5262 packets",
+        "interpretation": "dept-sw-cs-01 interface_errors: observed 5262 packets",
+        "entity": "dept-sw-cs-01",
+        "metric_name": "interface_errors",
+        "metric": "interface_errors",
+        "value": 5262,
+        "unit": "packets",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-0e7b6fc6",
+        "message_id": "4d2a095a-527d-4e3c-877e-614c36931607",
+        "correlation_id": "inc-ethernet-interface-fault-42",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ethernet-interface-fault-42",
+          "message_id": "4d2a095a-527d-4e3c-877e-614c36931607"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-fd0b4f10",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dept-sw-cs-01 link_flaps: observed 10 count",
+        "interpretation": "dept-sw-cs-01 link_flaps: observed 10 count",
+        "entity": "dept-sw-cs-01",
+        "metric_name": "link_flaps",
+        "metric": "link_flaps",
+        "value": 10,
+        "unit": "count",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-fd0b4f10",
+        "message_id": "4d2a095a-527d-4e3c-877e-614c36931607",
+        "correlation_id": "inc-ethernet-interface-fault-42",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ethernet-interface-fault-42",
+          "message_id": "4d2a095a-527d-4e3c-877e-614c36931607"
+        }
+      }
+    ]
+  },
+  "E. DNS failure": {
+    "file": "data/scenarios/dns_failure.json",
+    "sha256": "1bfee148ad5ca44693dc7a2d42bebe9166689ed4955930b69500bb242f6e76e3",
+    "http_status": 200,
+    "elapsed_ms": 359.4,
+    "status": "diagnosed",
+    "probable_cause": "DNS resolution service outage with high query timeout failure rate",
+    "confidence": 0.957,
+    "evidence_count": 16,
+    "remediation_actions_count": 1,
+    "alternatives": [],
+    "sample_evidence": [
+      {
+        "evidence_id": "evi-obs-7f80f665",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "core-rtr-01 dns_failure_pct: observed 89.2 percent",
+        "interpretation": "core-rtr-01 dns_failure_pct: observed 89.2 percent",
+        "entity": "core-rtr-01",
+        "metric_name": "dns_failure_pct",
+        "metric": "dns_failure_pct",
+        "value": 89.2,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-7f80f665",
+        "message_id": "72a8242f-d73e-4363-a435-268950ab87c3",
+        "correlation_id": "inc-dns-failure-42",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-dns-failure-42",
+          "message_id": "72a8242f-d73e-4363-a435-268950ab87c3",
+          "corroborating_sources": [
+            "wifi_services_agent"
+          ]
+        }
+      },
+      {
+        "evidence_id": "evi-obs-906b39e4",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dist-sw-core dns_failure_pct: observed 92.0 percent",
+        "interpretation": "dist-sw-core dns_failure_pct: observed 92.0 percent",
+        "entity": "dist-sw-core",
+        "metric_name": "dns_failure_pct",
+        "metric": "dns_failure_pct",
+        "value": 92.0,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-906b39e4",
+        "message_id": "72a8242f-d73e-4363-a435-268950ab87c3",
+        "correlation_id": "inc-dns-failure-42",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-dns-failure-42",
+          "message_id": "72a8242f-d73e-4363-a435-268950ab87c3",
+          "corroborating_sources": [
+            "wifi_services_agent"
+          ]
+        }
+      }
+    ]
+  },
+  "E2. DHCP failure": {
+    "file": "data/scenarios/dhcp_failure.json",
+    "sha256": "cc8ce4c81e4fa0d5d89058d638e01bcbba8533a895f48aee1a58406aae4c47fa",
+    "http_status": 200,
+    "elapsed_ms": 284.5,
+    "status": "diagnosed",
+    "probable_cause": "DHCP scope exhaustion or relay failure preventing lease assignment",
+    "confidence": 0.936,
+    "evidence_count": 2,
+    "remediation_actions_count": 1,
+    "alternatives": [],
+    "sample_evidence": [
+      {
+        "evidence_id": "evi-obs-cd4178a8",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "host-cs-lab-01 dhcp_failure_pct: observed 91.7 percent",
+        "interpretation": "host-cs-lab-01 dhcp_failure_pct: observed 91.7 percent",
+        "entity": "host-cs-lab-01",
+        "metric_name": "dhcp_failure_pct",
+        "metric": "dhcp_failure_pct",
+        "value": 91.7,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-cd4178a8",
+        "message_id": "bb24f169-0783-48af-a2d8-7187647dbd7c",
+        "correlation_id": "inc-dhcp-failure-42",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-dhcp-failure-42",
+          "message_id": "bb24f169-0783-48af-a2d8-7187647dbd7c",
+          "corroborating_sources": [
+            "wifi_services_agent"
+          ]
+        }
+      },
+      {
+        "evidence_id": "evi-obs-f7b2efa4",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "host-student-01 dhcp_failure_pct: observed 80.9 percent",
+        "interpretation": "host-student-01 dhcp_failure_pct: observed 80.9 percent",
+        "entity": "host-student-01",
+        "metric_name": "dhcp_failure_pct",
+        "metric": "dhcp_failure_pct",
+        "value": 80.9,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-f7b2efa4",
+        "message_id": "bb24f169-0783-48af-a2d8-7187647dbd7c",
+        "correlation_id": "inc-dhcp-failure-42",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-dhcp-failure-42",
+          "message_id": "bb24f169-0783-48af-a2d8-7187647dbd7c",
+          "corroborating_sources": [
+            "wifi_services_agent"
+          ]
+        }
+      }
+    ]
+  },
+  "G. Compound/Conflicting": {
+    "file": "data/scenarios/ambiguous_multi_fault.json",
+    "sha256": "2da72e8ef8b1fb061c5cd9db172f4f3e79862701083774d0041299e245930d47",
+    "http_status": 200,
+    "elapsed_ms": 312.4,
+    "status": "insufficient_evidence",
+    "probable_cause": null,
+    "confidence": 0.0,
+    "evidence_count": 0,
+    "remediation_actions_count": 0,
+    "alternatives": [],
+    "sample_evidence": []
+  },
+  "H. Insufficient evidence": {
+    "file": "data/scenarios/05_insufficient_evidence_sparse.json",
+    "sha256": "a9ce1da02d877d3a903f7d98bd999c3521ae30f5fb28e5078adaa8f2118c67d0",
+    "http_status": 200,
+    "elapsed_ms": 276.6,
+    "status": "insufficient_evidence",
+    "probable_cause": null,
+    "confidence": 0.0,
+    "evidence_count": 0,
+    "remediation_actions_count": 0,
+    "alternatives": [],
+    "sample_evidence": []
+  },
+  "F1. Malformed JSON": {
+    "file": "data/scenarios/interop_malformed_json.json",
+    "sha256": "1a6827d6c904767fb768639569901592af1f44fa6b0555bf4da605f08d07f092",
+    "http_status": 422,
+    "elapsed_ms": 1.2,
+    "response": {
+      "detail": [
+        {
+          "type": "json_invalid",
+          "loc": [
+            "body",
+            5
+          ],
+          "msg": "JSON decode error",
+          "input": {},
+          "ctx": {
+            "error": "Expecting property name enclosed in double quotes"
+          }
+        }
+      ]
+    }
+  },
+  "F2. Missing fields": {
+    "file": "data/scenarios/interop_missing_fields.json",
+    "sha256": "b14a0575c5edfff29a426df316973122c49fb737a97888212125d92b05849f7f",
+    "http_status": 200,
+    "elapsed_ms": 344.1,
+    "status": "diagnosed",
+    "probable_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
+    "confidence": 0.969
+  },
+  "F3. Renamed fields": {
+    "file": "data/scenarios/interop_renamed_fields.json",
+    "sha256": "92bf49d5331f7f763c831a405ef24bbcb46e7ab917339a10d91df49f6467051f",
+    "http_status": 200,
+    "elapsed_ms": 340.4,
+    "status": "diagnosed",
+    "probable_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
+    "confidence": 0.969
+  },
+  "API Export Run": {
+    "http_status": 200,
+    "incident_id": "inc-link-congestion-42",
+    "status": "diagnosed",
+    "supporting_evidence_count": 9,
+    "recommended_actions_count": 2
+  },
+  "Simulated Remediation Flow": {
+    "action_id": "act-rebalance-ap-hostel-b1",
+    "approve_status": 200,
+    "execute_status": 403,
+    "safety_invariant_verified": true,
+    "detail": "Real production remediation execution is strictly disabled. NetCoop-AI operates in simulation-only mode."
+  },
+  "CLI Run": {
+    "command": "python -m netcoop.cli diagnose data/scenarios/link_congestion.json",
+    "exit_code": 0,
+    "output_snippet": "\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 NetCoop AI Orchestrator \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 Starting Multi-Agent Diagnosis                                              \u2502\n\u2502 Incident ID: inc-link-congestion-42                                         \u2502\n\u2502 Network ID: iit-bbs-campus-fabric                                           \u2502\n\u2502 Description: Synthetic incident telemetry for scenario 'link_congestion'    \u2502\n"
+  }
+}
