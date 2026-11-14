@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { apiFetch } from "../../auth/AuthContext";
 import { UnifiedDiagnosticReport } from "../../types/protocol";
+import { formatDateTime, SupportedTimezone } from "../../utils/i18n";
 
 interface IncidentSummaryItem {
   incident_id: string;
@@ -49,6 +50,7 @@ export interface EngineerViewProps {
   previousRunId?: string | null;
   onRunDiagnosis?: () => void;
   onCompareRuns?: () => void;
+  timezone?: SupportedTimezone;
 }
 
 export const EngineerView: React.FC<EngineerViewProps> = ({
@@ -64,6 +66,7 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
   previousRunId,
   onRunDiagnosis,
   onCompareRuns,
+  timezone = "UTC",
 }) => {
   // Top-level independent navigation: Diagnosis Results vs Incident Investigation
   const [activeMainTab, setActiveMainTab] = useState<"diagnosis_results" | "incident_investigation">(
@@ -472,7 +475,7 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
                       Status: COMPLETED
                     </span>
                     <span className="text-xs text-slate-500 font-mono">
-                      Timestamp: {new Date(lastRunTimestamp || Date.now()).toUTCString()}
+                      Timestamp: {formatDateTime(lastRunTimestamp || new Date().toISOString(), timezone)}
                     </span>
                   </div>
                 </div>
@@ -799,7 +802,7 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
                           </span>
                         </td>
                         <td className="p-3.5 text-xs text-slate-500 font-mono">
-                          {new Date(t.created_at).toLocaleDateString()}
+                          {formatDateTime(t.created_at, timezone, { includeSeconds: false })}
                         </td>
                       </tr>
                     ))}

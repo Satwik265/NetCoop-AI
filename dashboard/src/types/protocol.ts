@@ -1,3 +1,10 @@
+export type DataProvenance =
+  | "LIVE"
+  | "SYNTHETIC_DEMO"
+  | "ORGANIZER_SAMPLE"
+  | "CACHED_STALE"
+  | "OFFLINE";
+
 export interface EvidenceItem {
   evidence_id?: string;
   source_agent: string;

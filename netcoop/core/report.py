@@ -149,6 +149,7 @@ class UnifiedDiagnosticReport(BaseModel):
             f"# Diagnostic Incident Report: {self.incident_id}",
             "",
             "## 1. Incident Overview & Summary",
+            "## Summary",
             f"- **Network ID**: `{self.network_id}`",
             f"- **Timestamp (UTC)**: `{self.timestamp_utc}`",
             f"- **Diagnostic Status**: **{status_upper}**",
@@ -169,6 +170,7 @@ class UnifiedDiagnosticReport(BaseModel):
         if self.causal_chain:
             lines.extend([
                 "## 3. Causal Chain & Diagnostic Reasoning",
+                "## Causal Chain",
                 *[f"{idx+1}. {step}" for idx, step in enumerate(self.causal_chain)],
                 "",
             ])
@@ -206,6 +208,7 @@ class UnifiedDiagnosticReport(BaseModel):
         if self.uncertainty.alternative_hypotheses or self.uncertainty.missing_evidence or self.uncertainty.reasons:
             lines.extend([
                 "## 5. Alternative Hypotheses & Uncertainty Evaluation",
+                "## Alternative Hypotheses",
                 f"- **Uncertainty Score**: {self.uncertainty.score:.2%}",
             ])
             if self.uncertainty.reasons:
@@ -234,6 +237,7 @@ class UnifiedDiagnosticReport(BaseModel):
         if self.conflicts_resolved:
             lines.extend([
                 "## 6. Multi-Agent Contradictions & Conflict Resolution",
+                "## Multi-Agent Conflicts & Arbitration",
                 *[f"- **Iteration {c.get('iteration', 1)}**: {c.get('rationale', 'Resolved via evidence precedence')}" for c in self.conflicts_resolved],
                 "",
             ])
@@ -257,6 +261,7 @@ class UnifiedDiagnosticReport(BaseModel):
         lines.append("")
 
         lines.append("## 8. Data Limitations & Caveats")
+        lines.append("## Data Limitations & Caveats")
         if self.limitations:
             for lim in self.limitations:
                 lines.append(f"- {lim}")
