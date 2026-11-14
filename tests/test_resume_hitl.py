@@ -321,7 +321,7 @@ def test_fastapi_endpoints_pause_resume_and_hitl():
     assert resumed_data["status"] == "diagnosed"
 
     # 5. Pending remediation list endpoint
-    pending_res = client.get("/api/remediation/pending")
+    pending_res = client.get("/api/remediation/pending", headers=eng_headers)
     assert pending_res.status_code == 200
     pending_items = pending_res.json()
     assert any(item["action_id"] == action_id for item in pending_items)
@@ -347,7 +347,7 @@ def test_fastapi_endpoints_pause_resume_and_hitl():
     assert appr_res.json()["simulation"]["success"] is True
 
     # 8. List actions with filters
-    actions_res = client.get(f"/api/remediation/actions?incident_id={test_id}")
+    actions_res = client.get(f"/api/remediation/actions?incident_id={test_id}", headers=eng_headers)
     assert actions_res.status_code == 200
     assert len(actions_res.json()) >= 1
 

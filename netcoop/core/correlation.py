@@ -126,7 +126,7 @@ class OfflineCorrelationEngine:
             candidate_hypotheses.append(stp_hyp)
 
         # Subsumption hierarchy: Root cause failure signatures subsume downstream symptom hypotheses
-        if optic_hyp:
+        if optic_hyp and optic_hyp.is_sufficient:
             candidate_hypotheses = [h for h in candidate_hypotheses if h.cause_key != "ETHERNET_INTERFACE_FAULT"]
         if stp_hyp:
             candidate_hypotheses = [h for h in candidate_hypotheses if h.cause_key != "DEVICE_CPU_OVERLOAD"]
@@ -403,7 +403,7 @@ class OfflineCorrelationEngine:
         err_factor = min(1.0, max(0.0, (max_err - 500.0) / 2000.0))
         flap_factor = min(1.0, len(flaps) * 0.1)
 
-        raw_score = round(min(0.95, 0.65 + 0.20 * err_factor + 0.10 * flap_factor), 3) if is_sufficient else 0.45
+        raw_score = round(min(0.95, 0.70 + 0.15 * err_factor + 0.10 * flap_factor), 3) if is_sufficient else 0.45
         final_confidence = raw_score if is_sufficient else 0.45
 
         return DiagnosticHypothesis(

@@ -101,6 +101,7 @@ class TelemetryAgent(BaseAgent):
                 lat = item.get("latency_ms")
                 jit = item.get("jitter_ms")
                 errs = item.get("interface_errors")
+                crc = item.get("crc_errors")
                 flaps = item.get("link_flaps")
                 rssi = item.get("wifi_rssi_dbm")
                 retx = item.get("wifi_retransmission_pct")
@@ -197,6 +198,19 @@ class TelemetryAgent(BaseAgent):
                             observed_value=errs,
                             unit="packets",
                             severity=Severity.CRITICAL,
+                            timestamp_start=ts,
+                            context={"agent_domain": "telemetry_agent", "device_id": dev},
+                        )
+                    )
+                if crc is not None and crc > 0:
+                    observations.append(
+                        Observation(
+                            category=ObservationCategory.METRIC_ANOMALY,
+                            entity=dev,
+                            metric_name="crc_errors",
+                            observed_value=crc,
+                            unit="count",
+                            severity=Severity.CRITICAL if crc > 100 else Severity.WARNING,
                             timestamp_start=ts,
                             context={"agent_domain": "telemetry_agent", "device_id": dev},
                         )

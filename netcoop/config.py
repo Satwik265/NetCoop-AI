@@ -6,6 +6,28 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from netcoop.core.envelope import AgentRole
 
 
+def get_runtime_environment(configured_env: Optional[str] = None) -> str:
+    """Resolve runtime environment with clear precedence:
+    1. NETCOOP_ENV environment variable
+    2. ENVIRONMENT environment variable
+    3. Configured settings environment
+    Defaults to 'development'.
+    """
+    env = (
+        os.getenv("NETCOOP_ENV")
+        or os.getenv("ENVIRONMENT")
+        or configured_env
+        or "development"
+    )
+    return env.strip().lower()
+
+
+def is_production_mode(configured_env: Optional[str] = None, enforce_service_auth: bool = False) -> bool:
+    """Return True if running in production mode or if service auth enforcement is active."""
+    env = get_runtime_environment(configured_env)
+    return env in ("production", "prod") or enforce_service_auth
+
+
 class Settings(BaseSettings):
     """Runtime application settings for NetCoop AI."""
 
@@ -104,8 +126,7 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         """Return True if operating in production mode or if auth enforcement is enabled."""
-        env = (self.environment or "").strip().lower()
-        return env in ("production", "prod") or self.enforce_service_auth
+        return is_production_mode(self.environment, self.enforce_service_auth)
 
     def validate_service_token_strength(self, token: Optional[str]) -> Tuple[bool, str]:
         """Validate whether an internal service authentication token meets production security standards."""
@@ -114,8 +135,12 @@ class Settings(BaseSettings):
         cleaned = token.strip()
         if len(cleaned) < 16:
             return False, f"INTERNAL_SERVICE_TOKEN length ({len(cleaned)}) is less than required minimum of 16 characters"
-        weak_tokens = {'test', 'default', 'secret', 'token', 'changeme', 'password', 'admin', '12345678', 'development'}
-        if cleaned.lower() in weak_tokens:
+        weak_tokens = {
+            'test', 'default', 'secret', 'token', 'changeme', 'change-me',
+            'password', 'admin', '12345678', 'development', 'netcoop',
+            'netcoop-service-token', 'service-token',
+        }
+        if cleaned.lower() in weak_tokens or any(kw in cleaned.lower() for kw in ('change-me', 'changeme', 'placeholder')):
             return False, "INTERNAL_SERVICE_TOKEN uses an insecure common default keyword"
         return True, "OK"
 
@@ -215,8 +240,7 @@ FEATURE_REMEDIATION_SIM: bool = settings.feature_remediation_sim
 
 def is_demo_mode_allowed() -> bool:
     """Check whether demo authentication is permitted in the current runtime environment."""
-    env = os.getenv("NETCOOP_ENV", settings.environment).lower()
-    if env == "production":
+    if is_production_mode(settings.environment, settings.enforce_service_auth):
         return False
-    demo_env = os.getenv("NETCOOP_DEMO_MODE", str(settings.demo_mode)).lower()
+    demo_env = os.getenv("NETCOOP_DEMO_MODE", str(settings.demo_mode)).strip().lower()
     return demo_env in ("true", "1", "yes")
