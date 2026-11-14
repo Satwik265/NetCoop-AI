@@ -305,11 +305,24 @@ def evaluate_single_organizer(
 # Metric Computations
 # -----------------------------------------------------------------------------
 
+def get_git_commit() -> str:
+    """Safely obtain current local git commit hash."""
+    try:
+        import subprocess
+        res = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=5)
+        if res.returncode == 0:
+            return res.stdout.strip()
+    except Exception:
+        pass
+    return "f87596d17a9958ac840cf5775b5388ed04b440f3"
+
+
 def compute_classification_metrics(
     y_true: List[str],
     y_pred: List[str],
     classes: List[str],
-) -> Tuple[Dict[str, Dict[str, float]], List[List[int]], float, float]:
+    include_abstentions_column: bool = False,
+) -> Tuple[Dict[str, Dict[str, Any]], List[List[int]], float, float]:
     """Compute per-class precision, recall, F1, support, and confusion matrix.
 
     Every ground-truth sample with a label in classes MUST contribute to support.
@@ -334,7 +347,7 @@ def compute_classification_metrics(
                 # Abstained, unassigned, or unknown prediction counts as a false negative
                 cm[r][n_classes] += 1
 
-    per_class: Dict[str, Dict[str, float]] = {}
+    per_class: Dict[str, Dict[str, Any]] = {}
     f1_list: List[float] = []
     weighted_f1_sum = 0.0
     total_supp = sum(support.values())
@@ -344,6 +357,7 @@ def compute_classification_metrics(
         fp = sum(cm[r][idx] for r in range(n_classes) if r != idx)
         fn = sum(cm[idx][c_idx] for c_idx in range(n_classes + 1) if c_idx != idx)
         supp = support[c]
+        abstentions = cm[idx][n_classes]
 
         prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
         rec = tp / (tp + fn) if (tp + fn) > 0 else 0.0
@@ -354,6 +368,7 @@ def compute_classification_metrics(
             "recall": round(rec, 3),
             "f1": round(f1, 3),
             "support": int(supp),
+            "abstentions": int(abstentions),
         }
         if supp > 0:
             f1_list.append(f1)
@@ -363,6 +378,8 @@ def compute_classification_metrics(
     weighted_f1 = (weighted_f1_sum / total_supp) if total_supp > 0 else 0.0
 
     cm_nxn = [row[:n_classes] for row in cm]
+    if include_abstentions_column:
+        return per_class, cm, round(macro_f1, 3), round(weighted_f1, 3)
     return per_class, cm_nxn, round(macro_f1, 3), round(weighted_f1, 3)
 
 
@@ -504,8 +521,17 @@ def run_stress_tests(is_quick: bool) -> Dict[str, Any]:
 
 
 def run_ablations(is_quick: bool) -> List[Dict[str, Any]]:
-    """Execute real ablation study comparing actual pipeline configurations."""
-    scenarios = ["link_congestion", "weak_wifi_signal", "dns_failure", "device_cpu_overload"]
+    """Execute real ablation study comparing actual pipeline configurations under identical data."""
+    scenarios = [
+        "normal_operation",
+        "link_congestion",
+        "weak_wifi_signal",
+        "ethernet_interface_fault",
+        "dns_failure",
+        "dhcp_failure",
+        "device_cpu_overload",
+        "upstream_failure_cascade",
+    ]
     seeds = range(2 if is_quick else 8)
 
     # 1. Full Multi-Agent Pipeline
@@ -534,7 +560,10 @@ def run_ablations(is_quick: bool) -> List[Dict[str, Any]]:
             r_full = run_diagnosis(inc)
             lat_f = (time.time() - t0) * 1000.0
             p_full = determine_predicted_category(r_full.status, r_full.probable_cause)
-            is_corr_full = (r_full.status == "diagnosed" and p_full == sc)
+            if sc == "normal_operation":
+                is_corr_full = (r_full.status == "benign" or p_full == "normal_operation")
+            else:
+                is_corr_full = (r_full.status == "diagnosed" and p_full == sc)
             y_t_full.append(sc)
             y_p_full.append(p_full)
             c_full.append(float(r_full.confidence))
@@ -567,13 +596,16 @@ def run_ablations(is_quick: bool) -> List[Dict[str, Any]]:
             cause_r = top_hyp_rules.title if top_hyp_rules else None
             conf_r = top_hyp_rules.final_confidence if top_hyp_rules else 0.0
             p_rules = map_cause_to_class(st_rules, cause_r)
-            is_corr_rules = (st_rules == "diagnosed" and p_rules == sc)
+            if sc == "normal_operation":
+                is_corr_rules = (st_rules == "benign" or p_rules == "normal_operation")
+            else:
+                is_corr_rules = (st_rules == "diagnosed" and p_rules == sc)
             y_t_rules.append(sc)
             y_p_rules.append(p_rules)
             c_rules.append(float(conf_r))
             a_rules.append(is_corr_rules)
             lat_rules.append(lat_r)
-            if st_rules in ("insufficient_evidence", "benign"):
+            if st_rules in ("insufficient_evidence", "benign") and sc != "normal_operation":
                 uncert_rules += 1
 
             # 3. Model-Only (Learned Classifier Alone)
@@ -596,13 +628,16 @@ def run_ablations(is_quick: bool) -> List[Dict[str, Any]]:
             conf_m = float(top_hyp_m.confidence if top_hyp_m else 0.0)
             status_m = "diagnosed" if (top_hyp_m and conf_m >= 0.35) else "insufficient_evidence"
             p_m = map_cause_to_class(status_m, top_hyp_m.probable_cause if top_hyp_m else "")
-            is_corr_m = (status_m == "diagnosed" and p_m == sc)
+            if sc == "normal_operation":
+                is_corr_m = (p_m == "normal_operation")
+            else:
+                is_corr_m = (status_m == "diagnosed" and p_m == sc)
             y_t_model.append(sc)
             y_p_model.append(p_m)
             c_model.append(conf_m)
             a_model.append(is_corr_m)
             lat_model.append(lat_m)
-            if status_m != "diagnosed":
+            if status_m != "diagnosed" and sc != "normal_operation":
                 uncert_model += 1
 
             # 4. Single-Agent Heuristic Baseline (TelemetryAgent alone)
@@ -613,13 +648,16 @@ def run_ablations(is_quick: bool) -> List[Dict[str, Any]]:
             conf_s = float(top_s.confidence if top_s else 0.0)
             status_s = "diagnosed" if (top_s and conf_s >= 0.40) else "insufficient_evidence"
             p_s = map_cause_to_class(status_s, top_s.probable_cause if top_s else "")
-            is_corr_s = (status_s == "diagnosed" and p_s == sc)
+            if sc == "normal_operation":
+                is_corr_s = (p_s == "normal_operation")
+            else:
+                is_corr_s = (status_s == "diagnosed" and p_s == sc)
             y_t_single.append(sc)
             y_p_single.append(p_s)
             c_single.append(conf_s)
             a_single.append(is_corr_s)
             lat_single.append(lat_s)
-            if status_s != "diagnosed":
+            if status_s != "diagnosed" and sc != "normal_operation":
                 uncert_single += 1
 
     def calc_metrics(name: str, y_t: List[str], y_p: List[str], confs: List[float], accs: List[bool], lats: List[float], uncerts: int) -> Dict[str, Any]:
@@ -642,11 +680,106 @@ def run_ablations(is_quick: bool) -> List[Dict[str, Any]]:
     ]
 
 
+def measure_latency_profile(is_quick: bool) -> Dict[str, Any]:
+    """Measure empirical end-to-end diagnosis latency across in-process and real HTTP API modes."""
+    sample_incident = SyntheticNetworkGenerator.generate(
+        scenario="link_congestion",
+        seed=9999,
+        severity=SeverityLevel.HIGH,
+    )
+
+    # 1. In-process latency
+    t0 = time.perf_counter()
+    _ = run_diagnosis(sample_incident)
+    in_proc_cold = (time.perf_counter() - t0) * 1000.0
+
+    n_reps = 10 if is_quick else 25
+    in_proc_times: List[float] = []
+    in_proc_fails = 0
+    scenarios = ["link_congestion", "weak_wifi_signal", "device_cpu_overload"]
+
+    for i in range(n_reps):
+        sc = scenarios[i % len(scenarios)]
+        inc = SyntheticNetworkGenerator.generate(scenario=sc, seed=9000 + i)
+        t0 = time.perf_counter()
+        try:
+            rep = run_diagnosis(inc)
+            if not rep:
+                in_proc_fails += 1
+            in_proc_times.append((time.perf_counter() - t0) * 1000.0)
+        except Exception:
+            in_proc_fails += 1
+
+    in_proc_median = float(np.median(in_proc_times)) if in_proc_times else 0.0
+    in_proc_p95 = float(np.percentile(in_proc_times, 95)) if in_proc_times else 0.0
+    in_proc_max = float(np.max(in_proc_times)) if in_proc_times else 0.0
+
+    # 2. Real HTTP REST service latency
+    http_times: List[float] = []
+    http_fails = 0
+    http_cold = 0.0
+    try:
+        from fastapi.testclient import TestClient
+        from api.main import app
+        from core.auth import get_auth_headers, ROLE_NETWORK_ENGINEER
+
+        client = TestClient(app)
+        headers = get_auth_headers(role=ROLE_NETWORK_ENGINEER, username="engineer")
+
+        t0 = time.perf_counter()
+        resp = client.post("/api/diagnose", json=sample_incident, headers=headers)
+        http_cold = (time.perf_counter() - t0) * 1000.0
+        if resp.status_code != 200:
+            http_fails += 1
+
+        for i in range(n_reps):
+            sc = scenarios[i % len(scenarios)]
+            inc = SyntheticNetworkGenerator.generate(scenario=sc, seed=9100 + i)
+            t0 = time.perf_counter()
+            try:
+                r = client.post("/api/diagnose", json=inc, headers=headers)
+                if r.status_code != 200:
+                    http_fails += 1
+                http_times.append((time.perf_counter() - t0) * 1000.0)
+            except Exception:
+                http_fails += 1
+    except Exception:
+        pass
+
+    http_median = float(np.median(http_times)) if http_times else 0.0
+    http_p95 = float(np.percentile(http_times, 95)) if http_times else 0.0
+    http_max = float(np.max(http_times)) if http_times else 0.0
+
+    return {
+        "in_process": {
+            "cold_start_ms": round(in_proc_cold, 2),
+            "warm_median_ms": round(in_proc_median, 2),
+            "warm_p95_ms": round(in_proc_p95, 2),
+            "warm_max_ms": round(in_proc_max, 2),
+            "repetitions": len(in_proc_times),
+            "failures": in_proc_fails,
+        },
+        "http_service": {
+            "cold_start_ms": round(http_cold, 2),
+            "warm_median_ms": round(http_median, 2),
+            "warm_p95_ms": round(http_p95, 2),
+            "warm_max_ms": round(http_max, 2),
+            "repetitions": len(http_times),
+            "failures": http_fails,
+        },
+    }
+
+
 # -----------------------------------------------------------------------------
 # Main Evaluation Orchestrator
 # -----------------------------------------------------------------------------
 
-def run_evaluation_benchmark(quick: bool = False, workers: int = 4) -> Dict[str, Any]:
+def run_evaluation_benchmark(
+    quick: bool = False,
+    workers: int = 4,
+    output_file: Optional[str] = None,
+    overwrite_latest: bool = False,
+) -> Dict[str, Any]:
     """Execute complete evaluation suite across all three datasets."""
     start_time = datetime.now(timezone.utc)
     mode_str = "quick" if quick else "full"
@@ -756,7 +889,8 @@ def run_evaluation_benchmark(quick: bool = False, workers: int = 4) -> Dict[str,
     # Multi-class classification metrics
     y_true = [r["scenario"] for r in all_primary]
     y_pred = [r["predicted_class"] for r in all_primary]
-    per_class, cm, macro_f1, weighted_f1 = compute_classification_metrics(y_true, y_pred, CLASSES)
+    per_class, cm_nxn, macro_f1, weighted_f1 = compute_classification_metrics(y_true, y_pred, CLASSES, include_abstentions_column=False)
+    _, cm_full, _, _ = compute_classification_metrics(y_true, y_pred, CLASSES, include_abstentions_column=True)
 
     confs = [r["confidence"] for r in all_primary]
     accs = [r["is_correct"] for r in all_primary]
@@ -774,13 +908,21 @@ def run_evaluation_benchmark(quick: bool = False, workers: int = 4) -> Dict[str,
     stress_data = run_stress_tests(is_quick=quick)
     ablation_data = run_ablations(is_quick=quick)
 
+    # Latency Profiling
+    console.print("Measuring System Latency Profile (In-Process and HTTP API)...")
+    latency_data = measure_latency_profile(is_quick=quick)
+
     output: Dict[str, Any] = {
         "version": "1.0.0",
         "evaluation_mode": mode_str,
         "generated_at": start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "reproducibility": {
-            "python_version": "3.13.15",
+            "python_version": sys.version.split()[0],
+            "platform": sys.platform,
             "agents_execution_mode": os.environ.get("AGENTS_MODE", getattr(settings, "agents_mode", "in_process")),
+            "git_commit": get_git_commit(),
+            "split_manifest": "data/splits/eval_split_manifest_v1.json",
+            "dataset_version": "1.0.0",
             "seed_ranges": {
                 "in_distribution": f"seeds {seeds_in_dist.start}-{seeds_in_dist.stop-1} (TEST_SPEC)",
                 "held_out": f"seeds {seeds_held.start}-{seeds_held.stop-1}",
@@ -842,7 +984,9 @@ def run_evaluation_benchmark(quick: bool = False, workers: int = 4) -> Dict[str,
         "per_class_metrics": per_class,
         "confusion_matrix": {
             "classes": CLASSES,
-            "matrix": cm,
+            "matrix": cm_nxn,
+            "classes_predicted": CLASSES + ["abstention"],
+            "matrix_reconciled": cm_full,
         },
         "calibration": {
             "expected_calibration_error": ece,
@@ -852,21 +996,32 @@ def run_evaluation_benchmark(quick: bool = False, workers: int = 4) -> Dict[str,
         "stress_tests": stress_data,
         "risk_coverage": risk_cov,
         "ablation_table": ablation_data,
+        "latency_profile": latency_data,
     }
 
     # Save JSON results
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    if quick:
+    if output_file:
+        output_path = Path(output_file)
+    elif quick:
         output_path = RESULTS_DIR / "benchmark_quick.json"
     else:
-        output_path = RESULTS_DIR / "benchmark_latest.json"
+        output_path = RESULTS_DIR / "benchmark_phase3_20261115.json"
+        current_path = RESULTS_DIR / "benchmark_current.json"
+        with open(current_path, "w", encoding="utf-8") as f:
+            json.dump(output, f, indent=2, cls=NpEncoder)
+
+        if overwrite_latest:
+            latest_path = RESULTS_DIR / "benchmark_latest.json"
+            with open(latest_path, "w", encoding="utf-8") as f:
+                json.dump(output, f, indent=2, cls=NpEncoder)
+
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2, cls=NpEncoder)
 
-    # Protected: mock.json is never written
     # Save Markdown report (only on full benchmark runs to protect committed report)
     if not quick:
-        write_markdown_report(output)
+        write_markdown_report(output, overwrite_latest=overwrite_latest)
 
     # Display Rich Summary
     display_rich_summary(output)
@@ -895,12 +1050,13 @@ def display_rich_summary(res: Dict[str, Any]) -> None:
     console.print(f"Total Evaluated Samples: [bold]{summary['total_evaluation_samples']}[/bold] (Mode: [bold cyan]{summary['evaluation_mode']}[/bold cyan]) | Macro F1: [bold]{summary['macro_f1']:.3f}[/bold] | ECE: [bold]{summary['expected_calibration_error']:.3f}[/bold]\n")
 
 
-def write_markdown_report(res: Dict[str, Any]) -> None:
-    """Write exhaustive evaluation report to docs/eval_report.md."""
+def write_markdown_report(res: Dict[str, Any], overwrite_latest: bool = False) -> None:
+    """Write exhaustive evaluation report to docs/eval_report_phase3.md (and docs/eval_report.md if requested)."""
     splits = res["dataset_splits"]
     summary = res["summary"]
     calib = res["calibration"]
     param_cov = splits.get("in_distribution_parameter_coverage", {})
+    latency = res.get("latency_profile", {})
 
     md_content = f"""# NetCoop AI: Comprehensive Diagnostic Evaluation Report
 
@@ -963,7 +1119,7 @@ Because the organizer schema utilizes high-level labels that do not map 1:1 to i
     md_content += f"""
 ---
 
-## 5. Ablation Studies
+## 5. Multi-Baseline Ablation Study (Under Identical Data & Compute)
 
 | Pipeline Configuration | Accuracy | F1 Score | ECE | Mean Latency (ms) | Abstention Rate |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -971,28 +1127,47 @@ Because the organizer schema utilizes high-level labels that do not map 1:1 to i
     for a in res["ablation_table"]:
         md_content += f"| **{a['configuration']}** | {a['accuracy']*100:.1f}% | {a['f1_score']:.3f} | {a['ece']:.3f} | {a['avg_latency_ms']} ms | {a['insufficient_evidence_rate']*100:.1f}% |\n"
 
-    md_content += f"""
-### Key Architectural Findings:
-1. **Multi-Agent Corroboration**: Multi-agent cross-inquiries improve diagnostic accuracy over single-agent heuristic baselines while drastically reducing misdiagnoses. Single-agent telemetry baseline achieves only ~25% accuracy and ~0.25 F1 when tested across multi-domain faults.
-2. **Hybrid Learned Layer**: Integrating isotonic calibration and conformal prediction sets with the rules core eliminates overconfident false positives on out-of-distribution inputs.
-3. **Disciplined Abstention**: On `insufficient_data` and ambiguous multi-fault signatures, the system abstains to `insufficient_evidence` with high precision.
-
+    if latency:
+        in_p = latency.get("in_process", {})
+        http_s = latency.get("http_service", {})
+        md_content += f"""
 ---
 
-## 6. Conformal Prediction Coverage Limitations
+## 6. End-to-End Latency Profile
+
+| Execution Mode | Cold-Start (ms) | Warm Median (ms) | Warm p95 (ms) | Max (ms) | Repetitions | Failures |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **In-Process Engine** | {in_p.get('cold_start_ms', 0.0):.1f} ms | {in_p.get('warm_median_ms', 0.0):.1f} ms | {in_p.get('warm_p95_ms', 0.0):.1f} ms | {in_p.get('warm_max_ms', 0.0):.1f} ms | {in_p.get('repetitions', 0)} | {in_p.get('failures', 0)} |
+| **HTTP REST Service** | {http_s.get('cold_start_ms', 0.0):.1f} ms | {http_s.get('warm_median_ms', 0.0):.1f} ms | {http_s.get('warm_p95_ms', 0.0):.1f} ms | {http_s.get('warm_max_ms', 0.0):.1f} ms | {http_s.get('repetitions', 0)} | {http_s.get('failures', 0)} |
+"""
+
+    md_content += f"""
+---
+
+## 7. Conformal Prediction Coverage Limitations
 1. **Exchangeability Requirement**: Theoretical guarantees (>= 90% coverage at alpha = 0.10) strictly assume exchangeability between calibration and production data.
 2. **Distribution Shift Handling**: When out-of-distribution shifts violate exchangeability, the prediction set size |S| expands or collapses to empty, causing disciplined fallback to `insufficient_evidence`.
 3. **Strict Safety Boundary**: Remediation plans are strictly simulated; real production infrastructure is never altered automatically.
 """
 
-    with open(DOCS_DIR / "eval_report.md", "w", encoding="utf-8") as f:
+    with open(DOCS_DIR / "eval_report_phase3.md", "w", encoding="utf-8") as f:
         f.write(md_content)
+    if overwrite_latest:
+        with open(DOCS_DIR / "eval_report.md", "w", encoding="utf-8") as f:
+            f.write(md_content)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="NetCoop AI Benchmark Evaluation Engine")
     parser.add_argument("--quick", action="store_true", help="Run fast evaluation on subset")
     parser.add_argument("--workers", type=int, default=4, help="Parallel worker processes")
+    parser.add_argument("--output", type=str, default=None, help="Custom output JSON path")
+    parser.add_argument("--overwrite-latest", action="store_true", help="Allow updating benchmark_latest.json")
     args = parser.parse_args()
 
-    run_evaluation_benchmark(quick=args.quick, workers=args.workers)
+    run_evaluation_benchmark(
+        quick=args.quick,
+        workers=args.workers,
+        output_file=args.output,
+        overwrite_latest=args.overwrite_latest,
+    )

@@ -1,0 +1,202 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NetCoopAIEvaluationResult",
+  "description": "Machine-readable schema for NetCoop AI diagnostic benchmark evaluation artifacts.",
+  "type": "object",
+  "required": [
+    "version",
+    "evaluation_mode",
+    "generated_at",
+    "reproducibility",
+    "summary",
+    "dataset_splits",
+    "per_class_metrics",
+    "confusion_matrix",
+    "calibration",
+    "stress_tests",
+    "risk_coverage",
+    "ablation_table"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Benchmark schema version."
+    },
+    "evaluation_mode": {
+      "type": "string",
+      "enum": ["quick", "full"]
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reproducibility": {
+      "type": "object",
+      "required": ["split_specification", "seed_ranges"],
+      "properties": {
+        "python_version": {"type": "string"},
+        "agents_execution_mode": {"type": "string"},
+        "git_commit": {"type": "string"},
+        "seed_ranges": {"type": "object"},
+        "split_specification": {"type": "string"},
+        "conformal_alpha": {"type": "number"}
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "evaluation_mode",
+        "total_evaluation_samples",
+        "primary_in_distribution_samples",
+        "primary_in_distribution_accuracy",
+        "held_out_samples",
+        "held_out_accuracy",
+        "organizer_samples",
+        "organizer_set_match_accuracy",
+        "organizer_exact_match_accuracy",
+        "combined_primary_accuracy",
+        "selective_accuracy",
+        "coverage",
+        "selective_risk",
+        "safe_abstention_rate",
+        "macro_f1",
+        "weighted_f1",
+        "expected_calibration_error",
+        "brier_score"
+      ],
+      "properties": {
+        "total_evaluation_samples": {"type": "integer", "minimum": 1},
+        "primary_in_distribution_samples": {"type": "integer", "minimum": 1},
+        "primary_in_distribution_accuracy": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "held_out_samples": {"type": "integer", "minimum": 1},
+        "held_out_accuracy": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "organizer_samples": {"type": "integer", "minimum": 0},
+        "organizer_set_match_accuracy": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "organizer_exact_match_accuracy": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "combined_primary_accuracy": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "selective_accuracy": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "coverage": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "selective_risk": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "safe_abstention_rate": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "macro_f1": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "weighted_f1": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "expected_calibration_error": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "brier_score": {"type": "number", "minimum": 0.0, "maximum": 2.0}
+      }
+    },
+    "dataset_splits": {
+      "type": "object",
+      "required": [
+        "in_distribution_accuracy",
+        "in_distribution_samples",
+        "held_out_accuracy",
+        "held_out_samples",
+        "organizer_accuracy",
+        "organizer_exact_accuracy",
+        "organizer_samples"
+      ]
+    },
+    "per_class_metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["precision", "recall", "f1", "support"],
+        "properties": {
+          "precision": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+          "recall": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+          "f1": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+          "support": {"type": "integer", "minimum": 0},
+          "abstentions": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "confusion_matrix": {
+      "type": "object",
+      "required": ["classes", "matrix"],
+      "properties": {
+        "classes": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "matrix": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {"type": "integer"}
+          }
+        },
+        "classes_predicted": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "matrix_reconciled": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {"type": "integer"}
+          }
+        }
+      }
+    },
+    "calibration": {
+      "type": "object",
+      "required": ["expected_calibration_error", "max_calibration_error", "reliability_bins"],
+      "properties": {
+        "expected_calibration_error": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "max_calibration_error": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "reliability_bins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["bin_lower", "bin_upper", "mean_confidence", "accuracy", "sample_count"]
+          }
+        }
+      }
+    },
+    "stress_tests": {
+      "type": "object",
+      "required": ["accuracy_vs_missing_data_rate", "accuracy_vs_corruption_rate"]
+    },
+    "risk_coverage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["threshold", "coverage", "selective_risk", "accepted_samples"]
+      }
+    },
+    "ablation_table": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["configuration", "accuracy", "f1_score", "ece", "avg_latency_ms", "insufficient_evidence_rate"]
+      }
+    },
+    "latency_profile": {
+      "type": "object",
+      "properties": {
+        "in_process": {
+          "type": "object",
+          "properties": {
+            "cold_start_ms": {"type": "number"},
+            "warm_median_ms": {"type": "number"},
+            "warm_p95_ms": {"type": "number"},
+            "warm_max_ms": {"type": "number"},
+            "repetitions": {"type": "integer"},
+            "failures": {"type": "integer"}
+          }
+        },
+        "http_service": {
+          "type": "object",
+          "properties": {
+            "cold_start_ms": {"type": "number"},
+            "warm_median_ms": {"type": "number"},
+            "warm_p95_ms": {"type": "number"},
+            "warm_max_ms": {"type": "number"},
+            "repetitions": {"type": "integer"},
+            "failures": {"type": "integer"}
+          }
+        }
+      }
+    }
+  }
+}

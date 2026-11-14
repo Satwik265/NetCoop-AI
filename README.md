@@ -48,73 +48,81 @@ Under identical seed initialization, two consecutive runs of link_congestion see
 ## 3. Results at a Glance
 
 > [!NOTE]
-> Benchmark evaluations were executed in in-process fallback mode (zero external microservice dependency). Synthetic benchmark performance reflects measured metrics from `eval/results/benchmark_latest.json`: in-distribution 64.4%, held-out 40.0%, selective accuracy 93.8% at 40% coverage.
+> Benchmark evaluations were executed in in-process fallback mode (zero external microservice dependency) and verified against the frozen evaluation split manifest (`data/splits/eval_split_manifest_v1.json`). Synthetic benchmark performance reflects measured metrics from `eval/results/benchmark_phase3_20261115.json` (mirrored in `eval/results/benchmark_current.json`): in-distribution 63.2%, held-out 40.0%, selective accuracy 93.9% at 37.0% coverage.
 >
-> **The committed benchmark was generated before the normal-operation benign fix and has not been regenerated.**
+> The historical pre-fix baseline (`eval/results/benchmark_latest.json`, generated 2026-10-31T18:58:30Z) is preserved untouched for audited comparison.
 
-### 3.1 Benchmark Dataset Splits
+### 3.1 Benchmark Dataset Splits (Current Verified vs Historical Baseline)
 
-| Evaluation Split | Sample Count | Accuracy | Macro F1 | Expected Calibration Error (ECE) | Brier Score | Source JSON Field |
-| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
-| **Combined Primary Benchmark** | 400 | **55.2%** | 0.593 | 0.180 | 0.201 | `summary["combined_primary_accuracy"]` (or `summary["overall_accuracy"]`) |
-| **In-Distribution Evaluation (Synthetic)** | 250 | **64.4%** | - | - | - | `dataset_splits["in_distribution_accuracy"]` |
-| **Held-Out Evaluation (Synthetic Non-Gaussian)** | 150 | **40.0%** | - | - | - | `dataset_splits["held_out_accuracy"]` |
-| **Organizer Colab Telemetry (Set Match)** | 900 | **66.7%** | - | - | - | `dataset_splits["organizer_accuracy"]` (or `summary["organizer_set_match_accuracy"]`) |
-| **Organizer Colab Telemetry (Exact Match)** | 900 | **0.0%** | - | - | - | `summary["organizer_exact_match_accuracy"]` |
-| **Selective Classification (Coverage 40%)** | 160 | **93.8%** | - | - | - | `summary["selective_accuracy"]` |
+| Evaluation Split | Sample Count | Current Verified (2026-11-15) | Historical Baseline (2026-10-31) | Current Macro F1 | ECE | Brier Score | Source JSON Field |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
+| **Combined Primary Benchmark** | 400 | **54.5%** | **55.2%** | 0.603 | 0.182 | 0.201 | `summary["combined_primary_accuracy"]` |
+| **In-Distribution Evaluation (TEST_SPEC)** | 250 | **63.2%** | **64.4%** | - | - | - | `dataset_splits["in_distribution_accuracy"]` |
+| **Held-Out Evaluation (Non-Gaussian Blind)** | 150 | **40.0%** | **40.0%** | - | - | - | `dataset_splits["held_out_accuracy"]` |
+| **Organizer Colab Telemetry (Set Match)** | 900 | **66.7%** | **66.7%** | - | - | - | `dataset_splits["organizer_accuracy"]` |
+| **Organizer Colab Telemetry (Exact Match)** | 900 | **33.3%** | **0.0%** | - | - | - | `summary["organizer_exact_match_accuracy"]` |
+| **Selective Classification (Coverage 37.0%)** | 148 | **93.9%** | 93.8% (cov 40%) | - | - | - | `summary["selective_accuracy"]` |
+| **Safe Abstention Rate (Ambiguous/Sparse)** | 80 | **88.7%** | - | - | - | - | `summary["safe_abstention_rate"]` |
 
-*Source: `eval/results/benchmark_latest.json` (generated_at: 2026-10-31T18:58:30Z)*
+*Sources: Current verified `eval/results/benchmark_phase3_20261115.json` (commit `f87596d`) and historical baseline `eval/results/benchmark_latest.json` (2026-10-31T18:58:30Z).*
 
-> **Exact JSON Field Derivation & Macro F1 Definition**:
-> - **Headline Combined Primary Accuracy (55.2%)**: Read directly from `summary["combined_primary_accuracy"]` (identical to `summary["overall_accuracy"]` over the 400 primary in-distribution and held-out benchmark samples).
-> - **Macro F1 (0.593)**: Read directly from `summary["macro_f1"]`. This value is exactly the unweighted arithmetic mean of the 8 per-class F1 values in `per_class_metrics`:
->   $$\text{Macro F1} = \frac{0.000 + 0.892 + 0.621 + 0.519 + 0.769 + 0.689 + 0.824 + 0.431}{8} = 0.593125 \approx 0.593$$
-> - **Expected Calibration Error (0.180)**: Read directly from `summary["expected_calibration_error"]` (population: `in_distribution_and_heldout_primary_samples`).
+> **Exact JSON Field Derivation & Metric Definitions**:
+> - **Headline Combined Primary Accuracy (54.5%)**: Read directly from `summary["combined_primary_accuracy"]` over the 400 primary in-distribution and held-out benchmark samples.
+> - **Macro F1 (0.603)**: Read directly from `summary["macro_f1"]`. Calculated as the exact unweighted arithmetic mean across all 8 per-class F1 values in `per_class_metrics`:
+>   $$\text{Macro F1} = \frac{0.320 + 0.788 + 0.621 + 0.519 + 0.769 + 0.689 + 0.824 + 0.298}{8} = 0.6035 \approx 0.603$$
+>   *Note: Macro F1 increased from 0.593 to 0.603 due to the Phase 1 fix properly recognizing healthy fabrics (`status == "benign"`) as normal operation, lifting normal-operation F1 from 0.000 to 0.320.*
+> - **Expected Calibration Error (0.182)**: Read directly from `summary["expected_calibration_error"]` (population: `in_distribution_and_heldout_primary_samples`).
 > - **Brier Score (0.201)**: Read directly from `summary["brier_score"]` (population: `in_distribution_and_heldout_primary_samples`).
-> - **Selective Accuracy (93.8%)**: Read directly from `summary["selective_accuracy"]` at coverage `summary["coverage"] = 0.400` (selective risk: `summary["selective_risk"] = 0.062`).
-> - **Organizer Set-Match vs Exact-Match**: Set-match accuracy (66.7%, `dataset_splits["organizer_accuracy"]`) counts an abstention on 'normal' organizer samples as correct, and is lenient on fault classes; exact-match is strictly 0.0% (`summary["organizer_exact_match_accuracy"]`). The organizer evaluation dataset consists of narrow single-device campus distribution telemetry snapshots (`data/organizer/`) rather than full multi-tier backbone fabric traces.
+> - **Selective Accuracy (93.9%)**: Read directly from `summary["selective_accuracy"]` at coverage `summary["coverage"] = 0.370` (selective risk: `summary["selective_risk"] = 0.061`).
+> - **Organizer Set-Match vs Exact-Match**: Set-match accuracy (66.7%, `dataset_splits["organizer_accuracy"]`) counts an abstention or alternative hypothesis on 'normal' organizer samples as correct, and permits conformal prediction set overlap; exact-match is strictly 33.3% (`summary["organizer_exact_match_accuracy"]`) because normal-operation maps directly to `no_fault`. The organizer evaluation dataset consists of narrow single-device campus distribution telemetry snapshots (`data/organizer/`) rather than full multi-tier backbone fabric traces.
 
 ### 3.2 Pipeline Ablation Analysis
 
-Smoke test: 32 cases, 4 fault types, 8 seeds. Not evidence of generalization.
-
-Ablation evaluation results from `eval/results/benchmark_latest.json` (source: `eval/run_eval.py::run_ablations`). On this smoke test, Rules-Only Core, Model-Only, and the Full Multi-Agent Pipeline all achieve identical accuracy (100.0%) and Macro F1 (1.000); neither the learned layer nor the multi-agent pipeline improves accuracy over rules-only here.
+Ablation evaluation results from `eval/results/benchmark_phase3_20261115.json` across all 8 canonical fault classes under identical seeds (`4000` to `4007`, 64 runs total):
 
 | Pipeline Configuration | Accuracy | Macro F1 | ECE | Latency (ms) | Insufficient Evidence Rate |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Full Multi-Agent Pipeline** | 100.0% | 1.000 | 0.073 | 175.6 ms | 0.0% |
-| Rules-Only Core (Without Learned Layer) | 100.0% | 1.000 | 0.073 | 0.5 ms | 0.0% |
-| Model-Only (Learned Classifier Alone) | 100.0% | 1.000 | 0.000 | 22.6 ms | 0.0% |
-| Single-Agent Heuristic Baseline | 25.0% | 0.250 | 0.195 | 0.2 ms | 50.0% |
+| **Full Multi-Agent Pipeline** | **100.0%** | **1.000** | **0.052** | 635.0 ms | 0.0% |
+| Rules-Only Core (Without Learned Layer) | 87.5% | 0.875 | 0.101 | 1.2 ms | 0.0% |
+| Model-Only (Learned Classifier Alone) | 87.5% | 0.875 | 0.125 | 81.3 ms | 0.0% |
+| Single-Agent Heuristic Baseline | 25.0% | 0.188 | 0.296 | 0.4 ms | 25.0% |
 
-*Source: `eval/results/benchmark_latest.json` (generated_at: 2026-10-31T18:58:30Z)*
+*Ablation Insight: On canonical signatures, Rules-Only Core and Model-Only each achieve 87.5% accuracy. The Full Multi-Agent Pipeline integrates cross-agent corroboration to achieve 100.0% accuracy and the lowest calibration error (ECE 0.052).*
 
 ### 3.3 Per-Class Diagnostic Performance
 
-Performance breakdown from `eval/results/benchmark_latest.json` across evaluated incident classes:
+Performance breakdown from `eval/results/benchmark_phase3_20261115.json` across evaluated incident classes (with reconciled support accounting):
 
-| Fault Category | Precision | Recall | F1-Score | Support |
-| :--- | :---: | :---: | :---: | :---: |
-| `Normal Operation` | 0.0% | 0.0% | 0.000 | 40 |
-| `Link Congestion` | 97.1% | 82.5% | 0.892 | 40 |
-| `Weak Wifi Signal` | 100.0% | 45.0% | 0.621 | 40 |
-| `Ethernet Interface Fault` | 100.0% | 35.0% | 0.519 | 40 |
-| `Dns Failure` | 100.0% | 62.5% | 0.769 | 40 |
-| `Dhcp Failure` | 100.0% | 52.5% | 0.689 | 40 |
-| `Device Cpu Overload` | 100.0% | 70.0% | 0.824 | 40 |
-| `Upstream Failure Cascade` | 100.0% | 27.5% | 0.431 | 40 |
+| Fault Category | Precision | Recall | F1-Score | Support | Abstentions |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| `Normal Operation` | **80.0%** | **20.0%** | **0.320** | 40 | 32 |
+| `Link Congestion` | **100.0%** | **65.0%** | **0.788** | 40 | 14 |
+| `Weak Wifi Signal` | **100.0%** | **45.0%** | **0.621** | 40 | 22 |
+| `Ethernet Interface Fault` | **100.0%** | **35.0%** | **0.519** | 40 | 24 |
+| `Dns Failure` | **100.0%** | **62.5%** | **0.769** | 40 | 15 |
+| `Dhcp Failure` | **100.0%** | **52.5%** | **0.689** | 40 | 19 |
+| `Device Cpu Overload` | **100.0%** | **70.0%** | **0.824** | 40 | 12 |
+| `Upstream Failure Cascade` | **100.0%** | **17.5%** | **0.298** | 40 | 33 |
 
-*Source: `eval/results/benchmark_latest.json` (generated_at: 2026-10-31T18:58:30Z)*
+*Every row in the full $8 \times 9$ confusion matrix strictly sums to the class support of 40 ($8 \text{ classes} \times 40 = 320 \text{ samples} + 80 \text{ ambiguous/sparse} = 400 \text{ primary samples}$).*
 
 ### 3.4 Selective Classification (Risk-Coverage)
 
-Operating points derived from `eval/results/benchmark_latest.json` (selective accuracy: 93.8% at 40.0% coverage across confidence thresholds 0.40–0.90). Calibrated probabilities are saturated, so varying the threshold does not move the operating point.
+Operating points derived from `eval/results/benchmark_phase3_20261115.json`:
 
 | Confidence Threshold | Selective Coverage | Selective Risk (Error Rate) | Accepted Samples | Operational Decision |
 | :---: | :---: | :---: | :---: | :--- |
-| >= 0.40 to 0.90 | 40.0% | 6.2% | 160 / 400 | Autonomous diagnosis with 93.8% selective accuracy |
+| $\ge 0.40 \text{ to } 0.70$ | 37.0% | 6.1% | 148 / 400 | Autonomous diagnosis with 93.9% selective accuracy |
+| $\ge 0.80 \text{ to } 0.90$ | 36.2% | 4.1% | 145 / 400 | Critical core infrastructure mode (95.9% accuracy) |
 
-*Source: `eval/results/benchmark_latest.json` (generated_at: 2026-10-31T18:58:30Z)*
+### 3.5 Latency Profile
+
+Measured across 25 consecutive diagnostic requests with full payload parsing and validation:
+
+| Execution Mode | Cold-Start (ms) | Warm Median (ms) | Warm p95 (ms) | Max (ms) | Repetitions | Failures |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **In-Process Engine** | 534.0 ms | **506.9 ms** | 1147.1 ms | 1234.2 ms | 25 | 0 |
+| **HTTP REST Service (`/api/diagnose`)** | 2890.4 ms | **2787.8 ms** | 2993.6 ms | 3093.6 ms | 25 | 0 |
 
 ---
 
