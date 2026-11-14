@@ -1,0 +1,549 @@
+{
+  "version": "1.0.0",
+  "evaluation_mode": "full",
+  "generated_at": "2026-11-14T19:56:41Z",
+  "reproducibility": {
+    "python_version": "3.13.15",
+    "platform": "win32",
+    "agents_execution_mode": "in_process",
+    "git_commit": "f87596d17a9958ac840cf5775b5388ed04b440f3",
+    "split_manifest": "data/splits/eval_split_manifest_v1.json",
+    "dataset_version": "1.0.0",
+    "seed_ranges": {
+      "in_distribution": "seeds 301-325 (TEST_SPEC)",
+      "held_out": "seeds 501-515",
+      "organizer": "seeds 6000-6149 (windowed), 7000-7149 (single-snapshot)",
+      "stress_missing": "seeds 3000-3009",
+      "stress_corruption": "seeds 3500-3509",
+      "ablations": "seeds 4000-4007"
+    },
+    "split_specification": "DatasetSplitter.TEST_SPEC",
+    "conformal_alpha": 0.1
+  },
+  "summary": {
+    "evaluation_mode": "full",
+    "total_evaluation_samples": 1300,
+    "primary_in_distribution_samples": 250,
+    "primary_in_distribution_accuracy": 0.632,
+    "held_out_samples": 150,
+    "held_out_accuracy": 0.4,
+    "organizer_samples": 900,
+    "organizer_set_match_accuracy": 0.667,
+    "organizer_exact_match_accuracy": 0.333,
+    "combined_primary_accuracy": 0.545,
+    "selective_accuracy": 0.939,
+    "coverage": 0.37,
+    "selective_risk": 0.061,
+    "safe_abstention_rate": 0.887,
+    "macro_f1": 0.603,
+    "weighted_f1": 0.603,
+    "macro_f1_classes": [
+      "normal_operation",
+      "link_congestion",
+      "weak_wifi_signal",
+      "ethernet_interface_fault",
+      "dns_failure",
+      "dhcp_failure",
+      "device_cpu_overload",
+      "upstream_failure_cascade"
+    ],
+    "macro_f1_population": "in_distribution_and_heldout_primary_samples",
+    "expected_calibration_error": 0.182,
+    "ece_population": "in_distribution_and_heldout_primary_samples",
+    "brier_score": 0.201,
+    "brier_score_population": "in_distribution_and_heldout_primary_samples",
+    "total_samples": 1300,
+    "primary_benchmark_samples": 400,
+    "overall_accuracy": 0.545
+  },
+  "dataset_splits": {
+    "in_distribution_accuracy": 0.632,
+    "in_distribution_samples": 250,
+    "in_distribution_parameter_coverage": {
+      "missing_rate_min": 0.2312,
+      "missing_rate_max": 0.5924,
+      "missing_rate_mean": 0.4241,
+      "onset_offset_min": 62.58,
+      "onset_offset_max": 179.2,
+      "onset_offset_mean": 125.75
+    },
+    "held_out_accuracy": 0.4,
+    "held_out_samples": 150,
+    "organizer_accuracy": 0.667,
+    "organizer_exact_accuracy": 0.333,
+    "organizer_samples": 900,
+    "organizer_single_snapshot_accuracy": 0.667,
+    "organizer_windowed_accuracy": 0.667
+  },
+  "per_class_metrics": {
+    "normal_operation": {
+      "precision": 0.8,
+      "recall": 0.2,
+      "f1": 0.32,
+      "support": 40,
+      "abstentions": 32
+    },
+    "link_congestion": {
+      "precision": 1.0,
+      "recall": 0.65,
+      "f1": 0.788,
+      "support": 40,
+      "abstentions": 14
+    },
+    "weak_wifi_signal": {
+      "precision": 1.0,
+      "recall": 0.45,
+      "f1": 0.621,
+      "support": 40,
+      "abstentions": 22
+    },
+    "ethernet_interface_fault": {
+      "precision": 1.0,
+      "recall": 0.35,
+      "f1": 0.519,
+      "support": 40,
+      "abstentions": 24
+    },
+    "dns_failure": {
+      "precision": 1.0,
+      "recall": 0.625,
+      "f1": 0.769,
+      "support": 40,
+      "abstentions": 15
+    },
+    "dhcp_failure": {
+      "precision": 1.0,
+      "recall": 0.525,
+      "f1": 0.689,
+      "support": 40,
+      "abstentions": 19
+    },
+    "device_cpu_overload": {
+      "precision": 1.0,
+      "recall": 0.7,
+      "f1": 0.824,
+      "support": 40,
+      "abstentions": 12
+    },
+    "upstream_failure_cascade": {
+      "precision": 1.0,
+      "recall": 0.175,
+      "f1": 0.298,
+      "support": 40,
+      "abstentions": 33
+    }
+  },
+  "confusion_matrix": {
+    "classes": [
+      "normal_operation",
+      "link_congestion",
+      "weak_wifi_signal",
+      "ethernet_interface_fault",
+      "dns_failure",
+      "dhcp_failure",
+      "device_cpu_overload",
+      "upstream_failure_cascade"
+    ],
+    "matrix": [
+      [
+        8,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        26,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        18,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        0,
+        14,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        25,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        21,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        28,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        7
+      ]
+    ],
+    "classes_predicted": [
+      "normal_operation",
+      "link_congestion",
+      "weak_wifi_signal",
+      "ethernet_interface_fault",
+      "dns_failure",
+      "dhcp_failure",
+      "device_cpu_overload",
+      "upstream_failure_cascade",
+      "abstention"
+    ],
+    "matrix_reconciled": [
+      [
+        8,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        32
+      ],
+      [
+        0,
+        26,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        14
+      ],
+      [
+        0,
+        0,
+        18,
+        0,
+        0,
+        0,
+        0,
+        0,
+        22
+      ],
+      [
+        2,
+        0,
+        0,
+        14,
+        0,
+        0,
+        0,
+        0,
+        24
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        25,
+        0,
+        0,
+        0,
+        15
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        21,
+        0,
+        0,
+        19
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        28,
+        0,
+        12
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        7,
+        33
+      ]
+    ]
+  },
+  "calibration": {
+    "expected_calibration_error": 0.182,
+    "max_calibration_error": 0.293,
+    "reliability_bins": [
+      {
+        "bin_lower": 0.0,
+        "bin_upper": 0.2,
+        "mean_confidence": 0.0,
+        "accuracy": 0.293,
+        "sample_count": 242
+      },
+      {
+        "bin_lower": 0.2,
+        "bin_upper": 0.4,
+        "mean_confidence": 0.3,
+        "accuracy": 0.0,
+        "sample_count": 0
+      },
+      {
+        "bin_lower": 0.4,
+        "bin_upper": 0.6,
+        "mean_confidence": 0.5,
+        "accuracy": 0.0,
+        "sample_count": 0
+      },
+      {
+        "bin_lower": 0.6,
+        "bin_upper": 0.8,
+        "mean_confidence": 0.716,
+        "accuracy": 0.667,
+        "sample_count": 3
+      },
+      {
+        "bin_lower": 0.8,
+        "bin_upper": 1.0,
+        "mean_confidence": 0.946,
+        "accuracy": 0.935,
+        "sample_count": 155
+      }
+    ]
+  },
+  "stress_tests": {
+    "accuracy_vs_missing_data_rate": [
+      {
+        "missing_rate": 0.0,
+        "accuracy": 1.0,
+        "samples": 30
+      },
+      {
+        "missing_rate": 0.1,
+        "accuracy": 1.0,
+        "samples": 30
+      },
+      {
+        "missing_rate": 0.2,
+        "accuracy": 0.967,
+        "samples": 30
+      },
+      {
+        "missing_rate": 0.3,
+        "accuracy": 0.8,
+        "samples": 30
+      },
+      {
+        "missing_rate": 0.4,
+        "accuracy": 0.733,
+        "samples": 30
+      },
+      {
+        "missing_rate": 0.5,
+        "accuracy": 0.5,
+        "samples": 30
+      },
+      {
+        "missing_rate": 0.6,
+        "accuracy": 0.467,
+        "samples": 30
+      },
+      {
+        "missing_rate": 0.7,
+        "accuracy": 0.367,
+        "samples": 30
+      }
+    ],
+    "accuracy_vs_corruption_rate": [
+      {
+        "corruption_rate": 0.0,
+        "accuracy": 1.0,
+        "samples": 30
+      },
+      {
+        "corruption_rate": 0.1,
+        "accuracy": 1.0,
+        "samples": 30
+      },
+      {
+        "corruption_rate": 0.2,
+        "accuracy": 1.0,
+        "samples": 30
+      },
+      {
+        "corruption_rate": 0.3,
+        "accuracy": 1.0,
+        "samples": 30
+      },
+      {
+        "corruption_rate": 0.4,
+        "accuracy": 1.0,
+        "samples": 30
+      },
+      {
+        "corruption_rate": 0.5,
+        "accuracy": 1.0,
+        "samples": 30
+      },
+      {
+        "corruption_rate": 0.6,
+        "accuracy": 1.0,
+        "samples": 30
+      }
+    ]
+  },
+  "risk_coverage": [
+    {
+      "threshold": 0.4,
+      "coverage": 0.395,
+      "selective_risk": 0.07,
+      "accepted_samples": 158
+    },
+    {
+      "threshold": 0.5,
+      "coverage": 0.395,
+      "selective_risk": 0.07,
+      "accepted_samples": 158
+    },
+    {
+      "threshold": 0.6,
+      "coverage": 0.395,
+      "selective_risk": 0.07,
+      "accepted_samples": 158
+    },
+    {
+      "threshold": 0.7,
+      "coverage": 0.395,
+      "selective_risk": 0.07,
+      "accepted_samples": 158
+    },
+    {
+      "threshold": 0.8,
+      "coverage": 0.388,
+      "selective_risk": 0.065,
+      "accepted_samples": 155
+    },
+    {
+      "threshold": 0.85,
+      "coverage": 0.388,
+      "selective_risk": 0.065,
+      "accepted_samples": 155
+    },
+    {
+      "threshold": 0.9,
+      "coverage": 0.347,
+      "selective_risk": 0.043,
+      "accepted_samples": 139
+    }
+  ],
+  "ablation_table": [
+    {
+      "configuration": "Full Multi-Agent Pipeline",
+      "accuracy": 1.0,
+      "f1_score": 1.0,
+      "ece": 0.052,
+      "avg_latency_ms": 635.0,
+      "insufficient_evidence_rate": 0.0
+    },
+    {
+      "configuration": "Rules-Only Core (Without Learned Layer)",
+      "accuracy": 0.875,
+      "f1_score": 0.875,
+      "ece": 0.101,
+      "avg_latency_ms": 1.2,
+      "insufficient_evidence_rate": 0.0
+    },
+    {
+      "configuration": "Model-Only (Learned Classifier Alone)",
+      "accuracy": 0.875,
+      "f1_score": 0.875,
+      "ece": 0.125,
+      "avg_latency_ms": 81.3,
+      "insufficient_evidence_rate": 0.0
+    },
+    {
+      "configuration": "Single-Agent Heuristic Baseline",
+      "accuracy": 0.25,
+      "f1_score": 0.188,
+      "ece": 0.296,
+      "avg_latency_ms": 0.4,
+      "insufficient_evidence_rate": 0.25
+    }
+  ],
+  "latency_profile": {
+    "in_process": {
+      "cold_start_ms": 533.97,
+      "warm_median_ms": 506.92,
+      "warm_p95_ms": 1147.08,
+      "warm_max_ms": 1234.15,
+      "repetitions": 25,
+      "failures": 0
+    },
+    "http_service": {
+      "cold_start_ms": 2890.45,
+      "warm_median_ms": 2787.79,
+      "warm_p95_ms": 2993.61,
+      "warm_max_ms": 3093.56,
+      "repetitions": 25,
+      "failures": 0
+    }
+  }
+}
