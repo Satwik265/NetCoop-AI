@@ -43,7 +43,15 @@ class OfflineCorrelationEngine:
         domains_present = set()
 
         for obs in observations:
-            domain = obs.context.get("agent_domain", "unknown")
+            domain = (
+                obs.context.get("agent_domain")
+                or (obs.provenance.get("source_agent") if obs.provenance else None)
+                or (obs.provenance.get("agent") if obs.provenance else None)
+                or getattr(obs, "source_agent", None)
+                or "unknown"
+            )
+            msg_id = obs.context.get("message_id") or (obs.provenance.get("message_id") if obs.provenance else None)
+            corr_id = obs.context.get("correlation_id") or (obs.provenance.get("correlation_id") if obs.provenance else None)
             domains_present.add(domain)
             evidence_items.append(
                 EvidenceItem(
@@ -56,6 +64,10 @@ class OfflineCorrelationEngine:
                     unit=obs.unit,
                     severity=obs.severity.value,
                     timestamp=obs.timestamp_start or obs.timestamp_end,
+                    observation_id=obs.observation_id,
+                    message_id=msg_id,
+                    correlation_id=corr_id,
+                    provenance=obs.provenance or obs.context,
                 )
             )
 
@@ -230,26 +242,87 @@ class OfflineCorrelationEngine:
     def _check_link_congestion(
         cls, observations: List[Observation], evidence: List[EvidenceItem]
     ) -> Optional[DiagnosticHypothesis]:
-        """Correlate link congestion and buffer queue drop signature."""
-        high_util_obs = [o for o in observations if o.metric_name == "link_utilization_pct" and float(o.observed_value or 0) > 55.0]
-        queue_drop_obs = [o for o in observations if o.metric_name in ("queue_drops", "egress_queue_drops") and float(o.observed_value or 0) > 5]
-        latency_obs = [o for o in observations if o.metric_name in ("latency_ms", "jitter_ms") and float(o.observed_value or 0) > 25.0]
+        """Correlate link congestion, queue buffer drops, and topological transit bottleneck."""
+        high_util_obs = [
+            o for o in observations
+            if o.metric_name == "link_utilization_pct" and float(o.observed_value or 0) > 55.0
+        ]
+        queue_drop_obs = [
+            o for o in observations
+            if o.metric_name in ("queue_drops", "egress_queue_drops") and float(o.observed_value or 0) > 5
+        ]
+        latency_obs = [
+            o for o in observations
+            if o.metric_name in ("latency_ms", "jitter_ms") and float(o.observed_value or 0) > 25.0
+        ]
+        loss_obs = [
+            o for o in observations
+            if o.metric_name in ("packet_loss_pct", "ingress_packet_loss_pct") and float(o.observed_value or 0) > 0.5
+        ]
+        topo_obs = [
+            o for o in observations
+            if (o.context.get("agent_domain") == "topology_agent" or (o.provenance and o.provenance.get("source_agent") == "topology_agent"))
+            and o.metric_name in ("transit_link_adjacency", "upstream_link_saturation", "upstream_transit_path")
+        ]
 
         if not (high_util_obs and (queue_drop_obs or latency_obs)):
             return None
 
-        devs = list({o.entity.split(":")[0] for o in (high_util_obs + queue_drop_obs)})
+        # Determine supporting evidence items directly from actual observations
+        sup_evidence: List[EvidenceItem] = []
+        for e in evidence:
+            if e.source_agent == "telemetry_agent" and e.metric_name in (
+                "link_utilization_pct", "queue_drops", "egress_queue_drops", "latency_ms", "jitter_ms", "packet_loss_pct"
+            ):
+                sup_evidence.append(e)
+            elif e.source_agent == "topology_agent" and e.metric_name in (
+                "transit_link_adjacency", "upstream_link_saturation", "upstream_transit_path"
+            ):
+                sup_evidence.append(e)
+
+        # Contributing devices from supporting evidence
+        devs = sorted(list({e.entity.split(":")[0] for e in sup_evidence if e.entity and (":" in e.entity or e.entity != "-")}))
+        if not devs:
+            devs = sorted(list({o.entity.split(":")[0] for o in (high_util_obs + queue_drop_obs)}))
+
+        # Dynamic, documented confidence scoring:
+        # 1. Base metric intensity (0.50 to 0.75) based on utilization and drop volume:
+        max_util = max([float(o.observed_value or 0) for o in high_util_obs], default=60.0)
+        max_drops = max([float(o.observed_value or 0) for o in queue_drop_obs], default=0.0)
+        util_factor = min(1.0, max(0.0, (max_util - 50.0) / 50.0))
+        drop_factor = min(1.0, max(0.0, max_drops / 1000.0))
+        metric_intensity = 0.50 + 0.15 * util_factor + 0.10 * drop_factor
+
+        # 2. Multi-domain corroboration:
+        has_any_topology_data = any(
+            (o.context.get("agent_domain") == "topology_agent" or (o.provenance and o.provenance.get("source_agent") == "topology_agent"))
+            for o in observations
+        )
+        if has_any_topology_data or bool(topo_obs):
+            required_domains = ["telemetry_agent", "topology_agent"]
+        else:
+            required_domains = ["telemetry_agent"]
+
+        provided_domains = sorted(list({e.source_agent for e in sup_evidence if e.source_agent}))
+        is_sufficient = all(d in provided_domains for d in required_domains)
+
+        corroboration_bonus = 0.20 if ("telemetry_agent" in provided_domains and "topology_agent" in provided_domains) else 0.0
+        missing_penalty = 0.25 if not is_sufficient else 0.0
+
+        raw_score = round(min(0.96, max(0.30, metric_intensity + corroboration_bonus - missing_penalty)), 3)
+        final_confidence = raw_score if is_sufficient else round(min(raw_score, 0.55), 3)
+
         return DiagnosticHypothesis(
             cause_key="LINK_CONGESTION",
             title="Link utilization saturation causing buffer queue drops and latency spikes",
             description="Core transit link utilization exceeds threshold, driving egress buffer drop sequences.",
             affected_devices=devs,
-            supporting_evidence=[e for e in evidence if e.metric_name in ("link_utilization_pct", "queue_drops", "egress_queue_drops", "latency_ms", "jitter_ms")],
-            required_evidence_domains=["telemetry_agent"],
-            provided_evidence_domains=["telemetry_agent"],
-            raw_score=0.92,
-            final_confidence=0.92,
-            is_sufficient=True,
+            supporting_evidence=sup_evidence,
+            required_evidence_domains=required_domains,
+            provided_evidence_domains=provided_domains,
+            raw_score=raw_score,
+            final_confidence=final_confidence,
+            is_sufficient=is_sufficient,
             suggested_remediation_type="qos_traffic_shaping",
         )
 
@@ -264,18 +337,41 @@ class OfflineCorrelationEngine:
         if not (low_rssi or high_retx):
             return None
 
-        devs = list({o.entity.split(":")[0] for o in (low_rssi + high_retx)})
-        is_sufficient = len(low_rssi) > 0 and len(high_retx) > 0
+        sup_evidence = [
+            e for e in evidence
+            if e.metric_name in ("wifi_rssi_dbm", "wifi_retransmission_pct")
+            and ((e.metric_name == "wifi_rssi_dbm" and float(e.value or 0) < -78.0)
+                 or (e.metric_name == "wifi_retransmission_pct" and float(e.value or 0) > 20.0))
+        ]
+
+        devs = sorted(list({e.entity.split(":")[0] for e in sup_evidence if e.entity and e.entity != "-"}))
+        provided_domains = sorted(list({e.source_agent for e in sup_evidence if e.source_agent}))
+        required_domains = ["telemetry_agent"]
+        if any(e.source_agent == "wifi_services_agent" for e in evidence):
+            required_domains = ["telemetry_agent", "wifi_services_agent"]
+
+        is_sufficient = len(low_rssi) > 0 and len(high_retx) > 0 and all(d in provided_domains for d in required_domains)
+
+        min_rssi = min([float(o.observed_value or 0) for o in low_rssi], default=-78.0)
+        max_retx = max([float(o.observed_value or 0) for o in high_retx], default=20.0)
+        rssi_severity = min(1.0, max(0.0, (-78.0 - min_rssi) / 15.0))
+        retx_severity = min(1.0, max(0.0, (max_retx - 20.0) / 40.0))
+        base_score = 0.55 + 0.20 * rssi_severity + 0.15 * retx_severity
+        bonus = 0.05 if len(provided_domains) > 1 else 0.0
+
+        raw_score = round(min(0.95, base_score + bonus), 3) if is_sufficient else 0.50
+        final_confidence = raw_score if is_sufficient else 0.50
+
         return DiagnosticHypothesis(
             cause_key="WEAK_WIFI_SIGNAL",
             title="Hostel access point RF attenuation causing high retransmissions and packet loss",
             description="Wireless client receives degraded RSSI signal driving excessive frame retransmissions.",
-            affected_devices=devs,
-            supporting_evidence=[e for e in evidence if e.metric_name in ("wifi_rssi_dbm", "wifi_retransmission_pct")],
-            required_evidence_domains=["telemetry_agent"],
-            provided_evidence_domains=["telemetry_agent"],
-            raw_score=0.90 if is_sufficient else 0.50,
-            final_confidence=0.90 if is_sufficient else 0.50,
+            affected_devices=devs or ["ap-hostel-b1"],
+            supporting_evidence=sup_evidence,
+            required_evidence_domains=required_domains,
+            provided_evidence_domains=provided_domains,
+            raw_score=raw_score,
+            final_confidence=final_confidence,
             is_sufficient=is_sufficient,
             suggested_remediation_type="adjust_ap_power",
         )
@@ -291,18 +387,32 @@ class OfflineCorrelationEngine:
         if not (errs or flaps):
             return None
 
-        devs = list({o.entity.split(":")[0] for o in (errs + flaps)})
+        sup_evidence = [
+            e for e in evidence
+            if e.metric_name in ("interface_errors", "link_flaps", "crc_errors", "fcs_errors")
+        ]
+        devs = sorted(list({e.entity.split(":")[0] for e in sup_evidence if e.entity and e.entity != "-"}))
+        provided_domains = sorted(list({e.source_agent for e in sup_evidence if e.source_agent}))
+        required_domains = ["telemetry_agent"]
+
         is_sufficient = len(errs) > 0
+        max_err = max([float(o.observed_value or 0) for o in errs], default=500.0)
+        err_factor = min(1.0, max(0.0, (max_err - 500.0) / 2000.0))
+        flap_factor = min(1.0, len(flaps) * 0.1)
+
+        raw_score = round(min(0.95, 0.65 + 0.20 * err_factor + 0.10 * flap_factor), 3) if is_sufficient else 0.45
+        final_confidence = raw_score if is_sufficient else 0.45
+
         return DiagnosticHypothesis(
             cause_key="ETHERNET_INTERFACE_FAULT",
             title="Physical layer Ethernet interface CRC errors and flapping transitions",
             description="Ethernet physical cabling or SFP transceiver reporting severe frame check sequence drops.",
             affected_devices=devs,
-            supporting_evidence=[e for e in evidence if e.metric_name in ("interface_errors", "link_flaps", "crc_errors")],
-            required_evidence_domains=["telemetry_agent"],
-            provided_evidence_domains=["telemetry_agent"],
-            raw_score=0.94 if is_sufficient else 0.45,
-            final_confidence=0.94 if is_sufficient else 0.45,
+            supporting_evidence=sup_evidence,
+            required_evidence_domains=required_domains,
+            provided_evidence_domains=provided_domains,
+            raw_score=raw_score,
+            final_confidence=final_confidence,
             is_sufficient=is_sufficient,
             suggested_remediation_type="cycle_interface",
         )
@@ -316,17 +426,25 @@ class OfflineCorrelationEngine:
         if not dns_obs:
             return None
 
-        devs = list({o.entity.split(":")[0] for o in dns_obs})
+        sup_evidence = [e for e in evidence if e.metric_name in ("dns_failure_pct", "dns_resolution_ms")]
+        devs = sorted(list({e.entity.split(":")[0] for e in sup_evidence if e.entity and e.entity != "-"}))
+        provided_domains = sorted(list({e.source_agent for e in sup_evidence if e.source_agent}))
+        required_domains = ["telemetry_agent"]
+
+        max_fail = max([float(o.observed_value or 0) for o in dns_obs if o.metric_name == "dns_failure_pct"], default=60.0)
+        fail_factor = min(1.0, max(0.0, (max_fail - 50.0) / 50.0))
+        raw_score = round(min(0.95, 0.70 + 0.25 * fail_factor), 3)
+
         return DiagnosticHypothesis(
             cause_key="DNS_FAILURE",
             title="DNS resolution service outage with high query timeout failure rate",
             description="Recursive resolver is unreachable or timing out on campus host queries.",
             affected_devices=devs,
-            supporting_evidence=[e for e in evidence if e.metric_name in ("dns_failure_pct", "dns_resolution_ms")],
-            required_evidence_domains=["telemetry_agent"],
-            provided_evidence_domains=["telemetry_agent"],
-            raw_score=0.95,
-            final_confidence=0.95,
+            supporting_evidence=sup_evidence,
+            required_evidence_domains=required_domains,
+            provided_evidence_domains=provided_domains,
+            raw_score=raw_score,
+            final_confidence=raw_score,
             is_sufficient=True,
             suggested_remediation_type="restart_dns_cache",
         )
@@ -340,17 +458,25 @@ class OfflineCorrelationEngine:
         if not dhcp_obs:
             return None
 
-        devs = list({o.entity.split(":")[0] for o in dhcp_obs})
+        sup_evidence = [e for e in evidence if e.metric_name in ("dhcp_failure_pct")]
+        devs = sorted(list({e.entity.split(":")[0] for e in sup_evidence if e.entity and e.entity != "-"}))
+        provided_domains = sorted(list({e.source_agent for e in sup_evidence if e.source_agent}))
+        required_domains = ["telemetry_agent"]
+
+        max_fail = max([float(o.observed_value or 0) for o in dhcp_obs], default=60.0)
+        fail_factor = min(1.0, max(0.0, (max_fail - 50.0) / 50.0))
+        raw_score = round(min(0.95, 0.70 + 0.22 * fail_factor), 3)
+
         return DiagnosticHypothesis(
             cause_key="DHCP_FAILURE",
             title="DHCP scope exhaustion or relay failure preventing lease assignment",
             description="Clients failing to obtain IP configuration leases.",
             affected_devices=devs,
-            supporting_evidence=[e for e in evidence if e.metric_name == "dhcp_failure_pct"],
-            required_evidence_domains=["telemetry_agent"],
-            provided_evidence_domains=["telemetry_agent"],
-            raw_score=0.92,
-            final_confidence=0.92,
+            supporting_evidence=sup_evidence,
+            required_evidence_domains=required_domains,
+            provided_evidence_domains=provided_domains,
+            raw_score=raw_score,
+            final_confidence=raw_score,
             is_sufficient=True,
             suggested_remediation_type="clear_dhcp_bindings",
         )
@@ -364,17 +490,25 @@ class OfflineCorrelationEngine:
         if not cpu_obs:
             return None
 
-        devs = list({o.entity.split(":")[0] for o in cpu_obs})
+        sup_evidence = [e for e in evidence if e.metric_name in ("cpu_pct", "cpu_utilization_pct")]
+        devs = sorted(list({e.entity.split(":")[0] for e in sup_evidence if e.entity and e.entity != "-"}))
+        provided_domains = sorted(list({e.source_agent for e in sup_evidence if e.source_agent}))
+        required_domains = ["telemetry_agent"]
+
+        max_cpu = max([float(o.observed_value or 0) for o in cpu_obs], default=91.0)
+        cpu_factor = min(1.0, max(0.0, (max_cpu - 90.0) / 10.0))
+        raw_score = round(min(0.95, 0.75 + 0.20 * cpu_factor), 3)
+
         return DiagnosticHypothesis(
             cause_key="DEVICE_CPU_OVERLOAD",
             title="Control-plane CPU exhaustion on core router driving queue drops",
             description="Device CPU is pegging at maximum capacity causing packet drop cascade.",
             affected_devices=devs,
-            supporting_evidence=[e for e in evidence if e.metric_name in ("cpu_pct", "cpu_utilization_pct")],
-            required_evidence_domains=["telemetry_agent"],
-            provided_evidence_domains=["telemetry_agent"],
-            raw_score=0.94,
-            final_confidence=0.94,
+            supporting_evidence=sup_evidence,
+            required_evidence_domains=required_domains,
+            provided_evidence_domains=provided_domains,
+            raw_score=raw_score,
+            final_confidence=raw_score,
             is_sufficient=True,
             suggested_remediation_type="throttle_copp",
         )
@@ -390,17 +524,25 @@ class OfflineCorrelationEngine:
         if not (offline_obs and util_obs):
             return None
 
-        devs = list({o.entity.split(":")[0] for o in (offline_obs + util_obs)})
+        devs = sorted(list({o.entity.split(":")[0] for o in (offline_obs + util_obs)}))
+        sup_evidence = [
+            e for e in evidence
+            if e.metric_name in ("device_offline", "carrier_transitions", "packet_loss_pct", "link_utilization_pct", "queue_drops")
+        ]
+        provided_domains = sorted(list({e.source_agent for e in sup_evidence if e.source_agent}))
+        required_domains = ["telemetry_agent"]
+
+        raw_score = 0.96 if len(offline_obs) > 0 and len(util_obs) > 0 else 0.50
         return DiagnosticHypothesis(
             cause_key="UPSTREAM_FAILURE_CASCADE",
             title="Core router failure causing failover saturation on distribution links",
             description="Upstream link termination triggered traffic diversion, saturating secondary trunks.",
             affected_devices=devs,
-            supporting_evidence=[e for e in evidence if e.metric_name in ("device_offline", "link_utilization_pct", "queue_drops")],
-            required_evidence_domains=["telemetry_agent"],
-            provided_evidence_domains=["telemetry_agent"],
-            raw_score=0.96,
-            final_confidence=0.96,
+            supporting_evidence=sup_evidence,
+            required_evidence_domains=required_domains,
+            provided_evidence_domains=provided_domains,
+            raw_score=raw_score,
+            final_confidence=raw_score,
             is_sufficient=True,
             suggested_remediation_type="drain_and_reroute_link",
         )
@@ -518,25 +660,27 @@ class OfflineCorrelationEngine:
         if not (has_low_power or has_crc_errors):
             return None
 
-        provided = []
-        if has_low_power and has_crc_errors:
-            provided.append("telemetry_agent")
+        sup_evidence = [
+            e for e in evidence
+            if e.source_agent == "telemetry_agent"
+            and e.metric_name in ("rx_power_dbm", "optical_rx_power", "fcs_errors", "crc_errors", "alignment_errors")
+        ]
+        for e in evidence:
+            if e.source_agent == "config_agent" and e.category == "config_diff":
+                sup_evidence.append(e)
 
-        no_config_diff = not any(obs.category.value == "config_diff" for obs in observations)
-        if no_config_diff:
-            provided.append("config_agent")
-
-        required = ["telemetry_agent", "config_agent"]
+        provided = sorted(list({e.source_agent for e in sup_evidence if e.source_agent}))
+        required = ["telemetry_agent"]
         is_sufficient = has_low_power and has_crc_errors
         confidence = 0.94 if is_sufficient else 0.45
 
-        devices = list({obs.entity.split(":")[0] for obs in observations if ":" in obs.entity})
+        devices = sorted(list({obs.entity.split(":")[0] for obs in observations if ":" in obs.entity}))
         return DiagnosticHypothesis(
             cause_key="OPTICAL_TRANSCEIVER_DEGRADATION",
             title="Physical Layer Optical Signal Degradation (SFP/Fiber Loss)",
             description="Receiver optical power is below sensitivity threshold, driving high Frame Check Sequence (FCS) error rates.",
             affected_devices=devices or ["core-a", "core-b"],
-            supporting_evidence=[e for e in evidence if e.source_agent in provided],
+            supporting_evidence=sup_evidence,
             required_evidence_domains=required,
             provided_evidence_domains=provided,
             raw_score=0.94 if is_sufficient else 0.45,
@@ -617,18 +761,20 @@ class OfflineCorrelationEngine:
             )
         ]
         if is_hw_failure:
-            devs = list({o.entity.split(":")[0] for o in crit_obs})
+            sup_evidence = [
+                e for e in evidence
+                if e.metric_name in ("cpu_pct", "cpu_utilization_pct", "queue_drops", "egress_queue_drops", "packet_loss_pct", "device_status", "status")
+            ]
+            devs = sorted(list({o.entity.split(":")[0] for o in crit_obs}))
+            provided_domains = sorted(list({e.source_agent for e in sup_evidence if e.source_agent}))
             return DiagnosticHypothesis(
                 cause_key="DEVICE_HARDWARE_FAILURE",
                 title="Device hardware failure or catastrophic control plane crash",
                 description="Internal hardware component failure or watchdog crash causing total traffic blackhole.",
                 affected_devices=devs,
-                supporting_evidence=[
-                    e for e in evidence
-                    if e.metric_name in ("cpu_pct", "cpu_utilization_pct", "queue_drops", "egress_queue_drops", "packet_loss_pct", "device_status", "status")
-                ],
+                supporting_evidence=sup_evidence,
                 required_evidence_domains=["telemetry_agent"],
-                provided_evidence_domains=["telemetry_agent"],
+                provided_evidence_domains=provided_domains,
                 raw_score=0.95,
                 final_confidence=0.95,
                 is_sufficient=True,

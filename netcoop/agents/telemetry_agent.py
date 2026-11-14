@@ -56,6 +56,23 @@ class TelemetryAgent(BaseAgent):
                 inq.answer = f"Telemetry inquiry processed across {len(raw_telemetry)} records."
 
         response.payload.inquiries = inquiries
+        corr_id = envelope.header.correlation_id
+        msg_id = envelope.header.message_id
+        for obs in observations:
+            obs.context.setdefault("correlation_id", corr_id)
+            obs.context.setdefault("message_id", msg_id)
+            obs.context.setdefault("agent_domain", "telemetry_agent")
+            if not obs.provenance:
+                obs.provenance = {
+                    "source_agent": "telemetry_agent",
+                    "correlation_id": corr_id,
+                    "message_id": msg_id,
+                }
+            else:
+                obs.provenance.setdefault("source_agent", "telemetry_agent")
+                obs.provenance.setdefault("correlation_id", corr_id)
+                obs.provenance.setdefault("message_id", msg_id)
+
         response.payload.observations = observations
         if limitations:
             response.context["limitations"] = limitations
@@ -334,6 +351,23 @@ class TelemetryAgent(BaseAgent):
                             context={"agent_domain": "telemetry_agent", "device_id": device},
                         )
                     )
+
+        corr_id = envelope.header.correlation_id
+        msg_id = envelope.header.message_id
+        for obs in observations:
+            obs.context.setdefault("correlation_id", corr_id)
+            obs.context.setdefault("message_id", msg_id)
+            obs.context.setdefault("agent_domain", "telemetry_agent")
+            if not obs.provenance:
+                obs.provenance = {
+                    "source_agent": "telemetry_agent",
+                    "correlation_id": corr_id,
+                    "message_id": msg_id,
+                }
+            else:
+                obs.provenance.setdefault("source_agent", "telemetry_agent")
+                obs.provenance.setdefault("correlation_id", corr_id)
+                obs.provenance.setdefault("message_id", msg_id)
 
         response.payload.observations = observations
 

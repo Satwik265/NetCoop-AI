@@ -16,7 +16,7 @@ class EvidenceConfidenceLevel(str, Enum):
 
 
 class EvidenceItem(BaseModel):
-    """Single verified evidence datum with provenance."""
+    """Single verified evidence datum with complete observation provenance and lineage."""
 
     source_agent: str
     category: str
@@ -28,6 +28,10 @@ class EvidenceItem(BaseModel):
     severity: str = "warning"
     timestamp: Optional[str] = None
     weight: float = 1.0
+    observation_id: Optional[str] = None
+    message_id: Optional[str] = None
+    correlation_id: Optional[str] = None
+    provenance: Optional[Dict[str, Any]] = None
 
 
 class DiagnosticHypothesis(BaseModel):

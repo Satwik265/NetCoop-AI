@@ -95,8 +95,8 @@ from netcoop.core.envelope import ObservationCategory, Severity
 
 
 def _deduplicate_observations(observations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Remove identical observations while preserving evidence order and provenance."""
-    seen: Set[Tuple[Any, Any, Any, Any]] = set()
+    """Remove identical observations while preserving evidence order, provenance, and lineage."""
+    seen: Dict[Tuple[Any, Any, Any, Any], Dict[str, Any]] = {}
     deduped: List[Dict[str, Any]] = []
     for obs in observations:
         key = (
@@ -106,8 +106,18 @@ def _deduplicate_observations(observations: List[Dict[str, Any]]) -> List[Dict[s
             obs.get("unit"),
         )
         if key not in seen:
-            seen.add(key)
+            seen[key] = obs
             deduped.append(obs)
+        else:
+            # Preserve additional provenance/lineage if this duplicate came from another agent or message
+            existing = seen[key]
+            existing_prov = existing.setdefault("provenance", {})
+            dup_prov = obs.get("provenance") or {}
+            dup_src = dup_prov.get("source_agent")
+            if dup_src and dup_src != existing_prov.get("source_agent"):
+                corroborating = existing_prov.setdefault("corroborating_sources", [])
+                if dup_src not in corroborating:
+                    corroborating.append(dup_src)
     return deduped
 
 
@@ -473,7 +483,21 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
 
         for obs in response_env.payload.observations:
             d = obs.model_dump()
-            d.setdefault("provenance", {"source_agent": role.value})
+            prov = d.get("provenance")
+            if not isinstance(prov, dict):
+                prov = {}
+                d["provenance"] = prov
+            prov.setdefault("source_agent", role.value)
+            prov.setdefault("message_id", response_env.header.message_id)
+            prov.setdefault("correlation_id", response_env.header.correlation_id)
+
+            ctx = d.get("context")
+            if not isinstance(ctx, dict):
+                ctx = {}
+                d["context"] = ctx
+            ctx.setdefault("agent_domain", role.value)
+            ctx.setdefault("message_id", response_env.header.message_id)
+            ctx.setdefault("correlation_id", response_env.header.correlation_id)
             all_obs.append(d)
 
         for hyp in response_env.payload.hypotheses:
