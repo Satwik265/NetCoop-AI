@@ -272,7 +272,12 @@ class TelemetryAgent(BaseAgent):
                 device = item.get("device", "unknown")
                 interface = item.get("interface", "system")
                 metric = item.get("metric", "")
-                raw_val = item.get("value", 0)
+                raw_val = item.get("value")
+                if raw_val is None:
+                    lim_msg = f"missing telemetry metric value for '{metric}' on {device}"
+                    if lim_msg not in limitations:
+                        limitations.append(lim_msg)
+                    continue
                 raw_unit = item.get("unit", "count")
                 ts = item.get("timestamp_utc")
 

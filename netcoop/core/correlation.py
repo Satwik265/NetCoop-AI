@@ -168,11 +168,11 @@ class OfflineCorrelationEngine:
             )
             return "insufficient_evidence", None, uncertainty
 
-        # Ambiguity check: if multiple distinct strong hypotheses compete within 0.10 margin
+        # Ambiguity check: if multiple distinct strong hypotheses compete within ambiguity margin
         if len(candidate_hypotheses) >= 2:
             top = candidate_hypotheses[0]
             second = candidate_hypotheses[1]
-            if top.cause_key != second.cause_key and abs(top.final_confidence - second.final_confidence) <= 0.05:
+            if top.cause_key != second.cause_key and abs(top.final_confidence - second.final_confidence) <= 0.15:
                 # Ambiguous multi-fault condition
                 uncertainty = UncertaintyEvaluation(
                     score=0.75,
@@ -345,9 +345,12 @@ class OfflineCorrelationEngine:
         ]
 
         devs = sorted(list({e.entity.split(":")[0] for e in sup_evidence if e.entity and e.entity != "-"}))
-        provided_domains = sorted(list({e.source_agent for e in sup_evidence if e.source_agent}))
+        provided_domains = sorted(list(
+            {e.source_agent for e in sup_evidence if e.source_agent}
+            | {src for e in sup_evidence if isinstance(e.provenance, dict) for src in e.provenance.get("corroborating_sources", [])}
+        ))
         required_domains = ["telemetry_agent"]
-        if any(e.source_agent == "wifi_services_agent" for e in evidence):
+        if "wifi_services_agent" in provided_domains or any(e.source_agent == "wifi_services_agent" for e in sup_evidence):
             required_domains = ["telemetry_agent", "wifi_services_agent"]
 
         is_sufficient = len(low_rssi) > 0 and len(high_retx) > 0 and all(d in provided_domains for d in required_domains)

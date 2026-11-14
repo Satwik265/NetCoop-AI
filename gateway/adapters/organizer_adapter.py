@@ -319,9 +319,35 @@ class OrganizerAdapter:
                         transformations.append("fuzzy_field_matching")
                     mapped[matched] = v
                 else:
-                    if k_clean not in ("metrics", "configurations", "logs", "topology", "status"):
+                    if k_clean not in (
+                        "metrics", "configurations", "logs", "topology", "status", "routing_state",
+                        "raw_source", "is_canonical", "raw_timestamp", "timestamp_utc", "timestamp",
+                        "interface", "unit", "value", "schema_version", "incident_id", "network_id",
+                        "description", "data_quality", "windows", "detected_format", "clock_skew_detected",
+                    ):
                         quarantined.append(k_clean)
+                        errors.append(
+                            TypedValidationError(
+                                code="ERR_UNSUPPORTED_FIELD",
+                                field=k_clean,
+                                explanation=f"Field '{k_clean}' is not recognized in canonical schema or known aliases.",
+                                suggested_fix="Ensure metric names conform to schemas/telemetry.json.",
+                            )
+                        )
                     mapped[k] = v
+
+        raw_unit = raw.get("unit")
+        if raw_unit is not None and str(raw_unit).strip():
+            u_clean = str(raw_unit).strip().lower()
+            if not TelemetryNormalizer.is_known_unit(u_clean):
+                errors.append(
+                    TypedValidationError(
+                        code="ERR_UNKNOWN_UNIT",
+                        field="unit",
+                        explanation=f"Unit '{raw_unit}' is not a recognized telemetry metric unit.",
+                        suggested_fix="Use recognized units (e.g., ms, s, bps, kbps, mbps, percent, dbm, packets).",
+                    )
+                )
 
         # 3. Extract or infer device_id
         raw_dev = mapped.get("device_id")
@@ -444,9 +470,6 @@ class OrganizerAdapter:
                     if "ambiguous_unit_flagged" not in transformations:
                         transformations.append("ambiguous_unit_flagged")
 
-        elif not is_organizer_format:
-            lat = 5.0
-
         # 8. Throughput & Bandwidth: kbps vs Mbps
         tput = None
         if "throughput_kbps" in mapped:
@@ -461,15 +484,13 @@ class OrganizerAdapter:
             tput = cls.clean_numeric_value(
                 mapped.get("throughput_mbps"), "throughput_mbps", errors, quarantined, allow_negative=False
             )
-            if tput is not None and "throughput_kbps" not in mapped and not str(merged_raw.get("throughput", "")).endswith("mbps"):
-                # Use ValueUnitInferencer decision tree
+            raw_tput_key = "throughput" if "throughput" in merged_raw else ("tput" if "tput" in merged_raw else None)
+            if tput is not None and raw_tput_key and not str(merged_raw.get(raw_tput_key, "")).lower().endswith("mbps"):
                 u_infer, _ = cls.get_unit_inferencer().infer_throughput_unit([tput])
                 if u_infer == "kbps" and tput > 5000.0:
                     tput = round(tput / 1000.0, 2)
                     if "unit_inference" not in transformations:
                         transformations.append("unit_inference")
-        elif not is_organizer_format:
-            tput = 100.0
 
         bw = None
         if "bandwidth_kbps" in mapped:
@@ -484,8 +505,6 @@ class OrganizerAdapter:
             bw = cls.clean_numeric_value(
                 mapped.get("bandwidth_mbps"), "bandwidth_mbps", errors, quarantined, allow_negative=False
             )
-        elif not is_organizer_format:
-            bw = 1000.0
 
         # Other metrics: if absent in raw, leave absent (None)
         jit = None
@@ -493,8 +512,6 @@ class OrganizerAdapter:
             jit = cls.clean_numeric_value(
                 mapped.get("jitter_ms"), "jitter_ms", errors, quarantined, allow_negative=False
             )
-            if jit is None and not is_organizer_format:
-                jit = 1.0
 
         loss = None
         if "packet_loss_pct" in mapped:
@@ -563,6 +580,7 @@ class OrganizerAdapter:
 
         record: Dict[str, Any] = {
             "timestamp": timestamp_str,
+            "raw_timestamp": str(raw_ts) if raw_ts is not None else None,
             "device_id": device_id,
             "device_type": dev_type,
             "device_status": device_status,
@@ -582,6 +600,8 @@ class OrganizerAdapter:
             "dns_resolution_ms": dns_res,
             "dns_failure_pct": dns_fail,
             "dhcp_failure_pct": dhcp_fail,
+            "raw_source": dict(raw),
+            "is_canonical": True,
         }
         return record
 
@@ -615,8 +635,17 @@ class OrganizerAdapter:
         return "unknown"
 
     @classmethod
+    def to_internal_telemetry(cls, raw_data: Union[str, Dict[str, Any], List[Any]]) -> Dict[str, Any]:
+        """Convert arbitrary or external telemetry into canonical NetCoop schema."""
+        return cls.adapt_dataset(raw_data)
+
+    @classmethod
     def adapt_dataset(cls, raw_data: Union[str, Dict[str, Any], List[Any]]) -> Dict[str, Any]:
         """Adapt a full incident or telemetry dataset into NetCoop format with data quality scoring."""
+        # Fast path: idempotency contract ensures safe repeated calls
+        if isinstance(raw_data, dict) and raw_data.get("is_normalized") is True:
+            return raw_data
+
         all_validation_errors: List[TypedValidationError] = []
         global_transformations: List[str] = []
 
@@ -700,6 +729,18 @@ class OrganizerAdapter:
                     suggested_fix="Migrate schema to 1.0.0 standard.",
                 )
             )
+
+        if isinstance(data, dict):
+            for req_field in ("incident_id", "network_id"):
+                if req_field not in data and not is_organizer:
+                    all_validation_errors.append(
+                        TypedValidationError(
+                            code="ERR_MISSING_REQUIRED_FIELD",
+                            field=req_field,
+                            explanation=f"Required container field '{req_field}' is missing.",
+                            suggested_fix=f"Include '{req_field}' at the payload root.",
+                        )
+                    )
 
         # 6. Adapt each record and track per-source quality
         adapted_records: List[Dict[str, Any]] = []
@@ -864,7 +905,8 @@ class OrganizerAdapter:
         res_dict = {
             "incident_id": incident_id,
             "network_id": network_id,
-            "schema_version": "1.0.0",
+            "schema_version": schema_version,
+            "is_normalized": True,
             "detected_format": format_detected,
             "clock_skew_detected": clock_skew_flag,
             "record_count": len(unique_records),
@@ -881,6 +923,7 @@ class OrganizerAdapter:
             "logs": container.get("logs", []),
             "routing_state": container.get("routing_state", {}),
             "description": container.get("description", ""),
+            "raw_input": dict(container) if isinstance(container, dict) else container,
         }
         for k, v in container.items():
             if k not in res_dict:

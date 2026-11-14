@@ -957,7 +957,7 @@ def assign_incident_endpoint(
 
 @app.post("/api/ingest")
 def ingest_data_endpoint(raw_payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Gateway Ingestion: translate, unit-convert, and canonicalize arbitrary telemetry via Gateway HTTP microservice."""
+    """Gateway Ingestion: translate, unit-convert, and canonicalize arbitrary telemetry via Gateway HTTP microservice or in-process normalizer."""
     gateway_url = settings.get_gateway_url()
     try:
         with httpx.Client(timeout=10.0) as client:
@@ -975,11 +975,10 @@ def ingest_data_endpoint(raw_payload: Dict[str, Any]) -> Dict[str, Any]:
                     status_code=resp.status_code,
                     detail=f"Gateway service returned HTTP {resp.status_code}: {resp.text}",
                 )
-    except (httpx.ConnectError, httpx.TimeoutException) as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Gateway service on port {settings.gateway_port} unavailable over HTTP: {str(exc)}",
-        )
+    except (httpx.ConnectError, httpx.TimeoutException):
+        # Fall back to authoritative in-process normalizer
+        from gateway.adapters.organizer_adapter import OrganizerAdapter
+        return OrganizerAdapter.adapt_dataset(raw_payload)
     except HTTPException:
         raise
     except Exception as e:
@@ -1126,6 +1125,7 @@ def run_diagnosis_endpoint(
 ) -> UnifiedDiagnosticReport:
     """Execute end-to-end multi-agent network fault diagnosis."""
     try:
+        canonical_data = None
         gateway_url = settings.get_gateway_url()
         try:
             with httpx.Client(timeout=10.0) as client:
@@ -1135,16 +1135,16 @@ def run_diagnosis_endpoint(
                 elif resp.status_code == 422:
                     detail = resp.json().get("detail", "Gateway normalization failure")
                     raise HTTPException(status_code=422, detail=detail)
-                else:
-                    raise HTTPException(
-                        status_code=resp.status_code,
-                        detail=f"Gateway normalization failed: {resp.text}",
-                    )
-        except (httpx.ConnectError, httpx.TimeoutException) as exc:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Gateway service on port {settings.gateway_port} unavailable over HTTP: {str(exc)}",
-            )
+                elif resp.status_code == 400:
+                    detail = resp.json().get("detail", "Malformed payload")
+                    raise HTTPException(status_code=400, detail=detail)
+        except (httpx.ConnectError, httpx.TimeoutException):
+            pass
+
+        if canonical_data is None:
+            from gateway.adapters.organizer_adapter import OrganizerAdapter
+            canonical_data = OrganizerAdapter.adapt_dataset(incident_data)
+
         report = run_diagnosis(canonical_data)
         return report
     except HTTPException:
@@ -1164,6 +1164,7 @@ def run_diagnosis_export_endpoint(
     Keep both in sync.
     """
     try:
+        canonical_data = None
         gateway_url = settings.get_gateway_url()
         try:
             with httpx.Client(timeout=10.0) as client:
@@ -1173,16 +1174,16 @@ def run_diagnosis_export_endpoint(
                 elif resp.status_code == 422:
                     detail = resp.json().get("detail", "Gateway normalization failure")
                     raise HTTPException(status_code=422, detail=detail)
-                else:
-                    raise HTTPException(
-                        status_code=resp.status_code,
-                        detail=f"Gateway normalization failed: {resp.text}",
-                    )
-        except (httpx.ConnectError, httpx.TimeoutException) as exc:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Gateway service on port {settings.gateway_port} unavailable over HTTP: {str(exc)}",
-            )
+                elif resp.status_code == 400:
+                    detail = resp.json().get("detail", "Malformed payload")
+                    raise HTTPException(status_code=400, detail=detail)
+        except (httpx.ConnectError, httpx.TimeoutException):
+            pass
+
+        if canonical_data is None:
+            from gateway.adapters.organizer_adapter import OrganizerAdapter
+            canonical_data = OrganizerAdapter.adapt_dataset(incident_data)
+
         report = run_diagnosis(canonical_data)
         return export_hackathon_report_json(report)
     except HTTPException:

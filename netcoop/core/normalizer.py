@@ -40,11 +40,20 @@ class TelemetryNormalizer:
         "dbm": ("dbm", 1.0),
         # Percentage
         "percent": ("percent", 1.0),
+        "%": ("percent", 1.0),
+        "pct": ("percent", 1.0),
         "ratio": ("percent", 100.0),
         # Flaps
         "flaps_per_minute": ("flaps_per_minute", 1.0),
         "flaps_per_second": ("flaps_per_minute", 60.0),
     }
+
+    @classmethod
+    def is_known_unit(cls, raw_unit: str) -> bool:
+        """Check if raw_unit is in the recognized UNIT_CONVERSIONS table."""
+        if not raw_unit or not isinstance(raw_unit, str):
+            return False
+        return raw_unit.strip().lower() in cls.UNIT_CONVERSIONS
 
     @classmethod
     def normalize_metric(
@@ -82,7 +91,10 @@ class TelemetryNormalizer:
         if cleaned.endswith("Z"):
             cleaned = cleaned[:-1] + "+00:00"
         try:
-            return datetime.fromisoformat(cleaned)
+            dt = datetime.fromisoformat(cleaned)
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc)
         except (ValueError, TypeError):
             pass
 

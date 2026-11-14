@@ -51,7 +51,15 @@ async def ingest_endpoint(request: Request) -> Dict[str, Any]:
 
     try:
         canonical_data = OrganizerAdapter.adapt_dataset(raw_body)
+        val_errors = canonical_data.get("data_quality", {}).get("validation_errors", [])
+        if any(e.get("code") == "ERR_MALFORMED_JSON" and "Unrecoverable" in e.get("explanation", "") for e in val_errors):
+            raise HTTPException(
+                status_code=400,
+                detail="Malformed JSON payload: unrecoverable syntax error",
+            )
         return canonical_data
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=422,
