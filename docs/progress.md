@@ -12,7 +12,7 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 | **Ingestion Gateway (`/ingest`)** | Yes | Yes | None | Port 8006. Validates schemas, normalizes units/aliases, handles null/NaN/clock skew, integrates organizer format. |
 | **Orchestrator & State Graph** | Yes | Yes | None | LangGraph multi-node state graph (port 8000). Executes specialist dispatch, mediation, inquiry, and synthesis turns. |
 | **Conflict Resolution & Mediation**| Yes | Yes | None | Deterministic tie-breaking hierarchy (direct > correlated > topology), cross-agent inquiries, ArbitrationResult container. |
-| **Zero-LLM Offline Engine** | Yes | Yes | None | 100% deterministic rule-based correlation, evidence scoring, and formal 10-signature registry with zero LLM dependence. |
+| **Zero-LLM Offline Engine** | Yes | Yes | None | Deterministic rule-based correlation, evidence scoring, and formal 10-signature registry with zero LLM dependence. |
 | **Learned Layer & Hybrid Blending** | Yes | Yes | None | Calibrated ML classifier (`RandomForest` + Platt scaling), weighted blending ($0.55 \cdot S_{rules} + 0.45 \cdot S_{model}$), conformal prediction sets, abstention enforcement. |
 | **Chaos Fuzzer & Robustness Suite** | Yes | Yes | None | Random seedable mutation fuzzer, 7 end-to-end anomaly tests, circuit breakers, degraded mode continuation. |
 | **Optional LLM Bridge (Gemini)** | Yes | Yes | None | Summaries and tie-breaking only. Gracefully degrades to rule-based fallback when absent. |
@@ -29,13 +29,13 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 
 | Requirement | Target Criteria | Implementation File(s) | Verification Test / Script | Status |
 | :--- | :--- | :--- | :--- | :---: |
-| **Collaborating Agents (>= 2, aim 5)** | 7 isolated agents communicating strictly over versioned envelopes | `netcoop/agents/telemetry_agent.py`<br/>`netcoop/agents/topology_agent.py`<br/>`netcoop/agents/config_agent.py`<br/>`netcoop/agents/log_agent.py`<br/>`netcoop/agents/synthesizer_agent.py`<br/>`netcoop/agents/classifier/agent.py`<br/>`netcoop/agents/wifi_services_agent.py` | `tests/test_agents.py`<br/>`tests/test_agent_http.py`<br/>`tests/test_wifi_services_agent.py` | **Complete** |
+| **Collaborating Agents (>= 2, aim 5)** | 7 specialist agents plus gateway and orchestrator | `netcoop/agents/telemetry_agent.py`<br/>`netcoop/agents/topology_agent.py`<br/>`netcoop/agents/config_agent.py`<br/>`netcoop/agents/log_agent.py`<br/>`netcoop/agents/synthesizer_agent.py`<br/>`netcoop/agents/classifier/agent.py`<br/>`netcoop/agents/wifi_services_agent.py` | `tests/test_agents.py`<br/>`tests/test_agent_http.py`<br/>`tests/test_wifi_services_agent.py` | **Complete** |
 | **Documented Interoperability** | Message formats, field meanings, units, envelope schema | `schemas/envelope.json`<br/>`schemas/telemetry.json`<br/>`docs/protocol.md`<br/>`docs/contract.md` | `tests/test_protocol_envelope.py` | **Complete** |
 | **Orchestration & Conflict Resolution** | LangGraph orchestration, debate/inquiry rounds, dispute handling | `netcoop/orchestrator/graph.py`<br/>`netcoop/orchestrator/mediator.py`<br/>`netcoop/orchestrator/conflict_resolver.py` | `tests/test_conflict_resolution.py`<br/>`tests/test_signatures_and_conflicts.py`<br/>`tests/test_scenarios.py` | **Complete** |
 | **Fault Diagnosis with Evidence** | Corroborated root cause identification with evidentiary chain | `netcoop/core/evidence.py`<br/>`netcoop/core/correlation.py`<br/>`netcoop/core/signatures.py`<br/>`netcoop/core/thresholds.py` | `scripts/eval_benchmark.py`<br/>(21/21 scenarios passed, 100%) | **Complete** |
 | **Unified JSON Report** | Exact output format (incident_id, status, cause, confidence, devices, evidence, uncertainty, actions, causal_chain, conflicts_resolved, limitations, provenance, confidence_breakdown, conformal_prediction_set, confidence_category) | `netcoop/core/report.py`<br/>`schemas/diagnostic_report.json` | `tests/test_scenarios.py`<br/>`tests/test_insufficient_evidence.py`<br/>`tests/test_chaos.py` (18/18 passed) | **Complete** |
 | **Validation & Error Handling** | Schema validation, unit conversions, null/NaN sanitization, skew handling | `gateway/adapters/organizer_adapter.py`<br/>`netcoop/core/normalizer.py`<br/>`gateway/api.py` | `tests/test_organizer_adapter.py`<br/>`tests/test_robustness_hypothesis.py`<br/>`tests/test_b1_gateway_robustness.py`<br/>`tests/test_chaos.py` | **Complete** |
-| **Reproducible Tests, Samples & Demo** | Single command demo, sample inputs, setup instructions, unit & fuzz tests | `Makefile`<br/>`scripts/demo.py`<br/>`scripts/demo_organizer.py`<br/>`data/scenarios/` | `pytest tests/ -q` (136/136 passed)<br/>`python scripts/eval_benchmark.py` (21/21 passed) | **Complete** |
+| **Reproducible Tests, Samples & Demo** | Single command demo, sample inputs, setup instructions, unit & fuzz tests | `Makefile`<br/>`scripts/demo.py`<br/>`scripts/demo_organizer.py`<br/>`data/scenarios/` | `pytest tests/ -q` (429/429 passed)<br/>`npm test -- --run` (9/9 passed)<br/>`python scripts/eval_benchmark.py` (21/21 passed) | **Complete** |
 
 ---
 
@@ -51,6 +51,7 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 | Synthesizer Agent | HTTP POST | `127.0.0.1` | **8005** | `GET /health`<br/>`POST /process` | complete |
 | Ingestion Gateway | HTTP POST | `127.0.0.1` | **8006** | `GET /health`<br/>`POST /ingest` | complete |
 | Classifier Agent | HTTP POST | `127.0.0.1` | **8007** | `GET /health`<br/>`POST /process` | complete |
+| Wifi Services Agent | HTTP POST | `127.0.0.1` | **8008** | `GET /health`<br/>`POST /process` | complete |
 
 ---
 
@@ -141,7 +142,7 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 | **Orchestration & Conflict Resolution** | 15% | `orchestrator/graph.py`<br/>`orchestrator/mediator.py`<br/>`orchestrator/conflict_resolver.py`<br/>`core/bus.py` | `tests/test_conflict_resolution.py`<br/>`tests/test_scenarios.py` | complete |
 | **Robustness to Missing / Incompatible Data** | 15% | `core/normalizer.py`<br/>`gateway/adapters/organizer_adapter.py`<br/>`gateway/adapters/unit_inference.py`<br/>`gateway/adapters/field_matcher.py`<br/>`netcoop/models/conformal.py` | `tests/test_robustness_hypothesis.py`<br/>`tests/test_organizer_adapter.py`<br/>`tests/test_b1_gateway_robustness.py`<br/>`tests/test_b2_learned_layer.py` | complete |
 | **Innovation, Usability, Extensibility** | 10% | `mcp_server/server.py`<br/>`remediation/engine.py`<br/>`dashboard/` (React Dashboard)<br/>`cli/main.py` (`diagnose`, `replay`)<br/>`netcoop/models/conformal.py`<br/>`Makefile` (`up`, `down`, `demo`, `train`, `eval`, `eval-quick`) | `tests/test_mcp_server.py`<br/>`tests/test_remediation_safety.py`<br/>`tests/test_b2_learned_layer.py`<br/>`tests/test_mcp_and_remediation.py` | complete |
-| **Code Quality, Docs, and Demo** | 5% | `docs/progress.md`<br/>`docs/contract.md`<br/>`docs/handoff.md`<br/>`docs/organizer_format.md`<br/>`docs/eval_results_format.md`<br/>`docs/confidence.md`<br/>`docs/eval_report.md`<br/>`docs/mcp.md`<br/>`docs/contract_changes.md`<br/>`netcoop/models/MODEL_CARD.md`<br/>`README.md`<br/>`Makefile` | Full test suite execution (107 passed) | complete |
+| **Code Quality, Docs, and Demo** | 5% | `docs/progress.md`<br/>`docs/contract.md`<br/>`docs/handoff.md`<br/>`docs/organizer_format.md`<br/>`docs/eval_results_format.md`<br/>`docs/confidence.md`<br/>`docs/eval_report.md`<br/>`docs/mcp.md`<br/>`docs/contract_changes.md`<br/>`netcoop/models/MODEL_CARD.md`<br/>`README.md`<br/>`Makefile` | Full test suite execution (429 backend passed, 9 frontend passed) | complete |
 
 ---
 
@@ -183,7 +184,7 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 | **Evaluation Sync & Read-Only API** | `scripts/sync_eval_results.py`, `netcoop/main.py` | Automated pre-build evaluation sync to `dashboard/public/results/` and read-only `/api/eval/results` endpoint | **Complete** |
 | **Evaluation Report & Caveat Doc** | `docs/eval_report.md` | Formal conformal prediction and calibration caveat documentation | **Complete** |
 | **Model Card Specification** | `netcoop/models/MODEL_CARD.md` | System architecture, calibration benchmarks, arbitration rules, out-of-scope uses, and exchangeability caveats | **Complete** |
-| **Dynamic README Generator** | `docs/README.template.md`, `scripts/build_readme.py` | Dynamic compilation of README.md from eval/results/mock.json with zero hardcoded claims, all rubric sections, and make readme target | **Complete** |
+| **Dynamic README Generator** | `docs/README.template.md`, `scripts/build_readme.py` | Dynamic script (deprecated; README maintained directly to prevent stale overwrites) | **Complete** |
 | **Visual Asset Pipeline & Suite** | `docs/assets/scripts/generate_all_assets.py` | Monochrome architecture SVG, grayscale confusion matrix, reliability & risk-coverage curves, and Playwright light/dark dashboard screenshots | **Complete** |
 | **4-Minute Demo Script & Storyboard** | `docs/demo_script.md` | Second-by-second presentation script covering problem, architecture, link congestion walkthrough, conflict arbitration, organizer ingestion, abstention, and proof tab | **Complete** |
 | **HITL Approval Queue View** | `dashboard/src/components/HitlApprovalQueue.tsx` | Operator approval queue showing pending actions, approve/reject/modify controls with mandatory rationale validation, and persistent decision audit history from SQLite | **Complete** |

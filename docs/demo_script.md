@@ -35,7 +35,7 @@ This script provides an exact, second-by-second walkthrough for demonstrating Ne
 #### Spoken Narration (Presenter)
 > "Modern enterprise networks generate massive volumes of fragmented data: telemetry metrics, spanning-tree topology shifts, configuration diffs, and syslogs exist in completely disconnected silos. Monolithic rule engines fail to correlate across domains, while generic LLM wrappers hallucinate topologies and leak state.
 >
-> NetCoop AI solves this with a shared-nothing, multi-agent microservice architecture. Here in PowerShell, we have five specialist agents running as isolated Python OS processes across ports 8001 through 8005, coordinated by a LangGraph orchestrator on port 8000 and an Ingestion Gateway on port 8006. The agents share zero memory and communicate strictly through versioned, strongly-typed JSON wire envelopes."
+> NetCoop AI solves this with a shared-nothing, multi-agent microservice architecture. Here in PowerShell, we have 7 specialist agents plus gateway running as isolated Python OS processes across ports 8001 through 8008, coordinated by the central LangGraph orchestrator on port 8000. The agents share zero memory and communicate strictly through versioned, strongly-typed JSON wire envelopes."
 
 ---
 

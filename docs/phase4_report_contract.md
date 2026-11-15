@@ -145,7 +145,7 @@ The authoritative adapter `export_hackathon_report_json()` (`netcoop/reporting/b
   "incident_id": "inc-link-congestion-42",
   "status": "diagnosed",
   "suspected_root_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
-  "confidence": 0.956,
+  "confidence": 0.949,
   "affected_devices": [
     "core-rtr-01",
     "dist-sw-core"
@@ -157,22 +157,60 @@ The authoritative adapter `export_hackathon_report_json()` (`netcoop/reporting/b
       "interpretation": "core-rtr-01 latency_ms: observed 131.1 ms"
     },
     {
+      "metric": "jitter_ms",
+      "value": 25.6,
+      "interpretation": "core-rtr-01 jitter_ms: observed 25.6 ms"
+    },
+    {
       "metric": "link_utilization_pct",
       "value": 92.57,
       "interpretation": "core-rtr-01 link_utilization_pct: observed 92.57 percent"
+    },
+    {
+      "metric": "queue_drops",
+      "value": 1484,
+      "interpretation": "core-rtr-01 queue_drops: observed 1484 packets"
+    },
+    {
+      "metric": "latency_ms",
+      "value": 147.94,
+      "interpretation": "dist-sw-core latency_ms: observed 147.94 ms"
+    },
+    {
+      "metric": "jitter_ms",
+      "value": 28.19,
+      "interpretation": "dist-sw-core jitter_ms: observed 28.19 ms"
+    },
+    {
+      "metric": "link_utilization_pct",
+      "value": 97.65,
+      "interpretation": "dist-sw-core link_utilization_pct: observed 97.65 percent"
+    },
+    {
+      "metric": "queue_drops",
+      "value": 1019,
+      "interpretation": "dist-sw-core queue_drops: observed 1019 packets"
+    },
+    {
+      "metric": "transit_link_adjacency",
+      "value": "congested_transit_trunk_10.0gbps",
+      "interpretation": "core-rtr-01:eth0<->dist-sw-core:eth0 transit_link_adjacency: observed congested_transit_trunk_10.0gbps text"
     }
   ],
   "alternative_causes": [
     "Upstream provider or transit link congestion inducing downstream delay"
   ],
   "recommended_actions": [
-    "Re-weight hash buckets to steer egress flows across parallel paths and relieve congestion."
+    "Rebalance traffic across ECMP next-hops from core-rtr-01 et-0/0/1",
+    "Raise QoS priority and buffer reserve on core-rtr-01 et-0/0/1"
   ],
   "evidence_sources": [
-    "telemetry_agent"
+    "telemetry_agent",
+    "topology_agent"
   ],
   "limitations": [
-    "single snapshot, no temporal context"
+    "single snapshot, no temporal context",
+    "Data quality penalty (-0.020) applied due to: telemetry values repaired: status_mapping, timestamp_parsing."
   ]
 }
 ```
@@ -180,10 +218,14 @@ The authoritative adapter `export_hackathon_report_json()` (`netcoop/reporting/b
 ### Invariants:
 1. `supporting_evidence` items strictly contain the exact 3 keys: `metric`, `value`, `interpretation`.
 2. `recommended_actions` is strictly a list of strings (`List[str]`).
-3. For `insufficient_evidence`, `benign`, `invalid`, or `failed` reports:
+3. For `insufficient_evidence`, `invalid`, or `failed` reports:
    - `suspected_root_cause`: `null`
    - `confidence`: `0.0`
    - `recommended_actions`: `[]`
+4. For `benign` reports (`normal_operation`):
+   - `suspected_root_cause`: `"Normal Operation"`
+   - `confidence`: `1.0`
+   - `recommended_actions`: `[]` (suppressed by design on healthy networks)
 
 ---
 

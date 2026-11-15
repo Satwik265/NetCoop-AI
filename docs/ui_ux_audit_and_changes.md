@@ -48,15 +48,15 @@ Prior to this phase, the dashboard exhibited several operational hazards:
 
 | WCAG Criterion | Level | Implementation in Phase 5 | Result |
 | :--- | :--- | :--- | :--- |
-| **1.4.3 Contrast (Minimum)** | AA | Text colors exceed 4.5:1 (Light: `#0F172A` on `#FFFFFF` = 15.3:1; Dark: `#F1F5F9` on `#0B132B` = 16.1:1). Status colors exceed 4.5:1 (`#15803D` OK, `#B45309` Warn, `#DC2626` Crit). | **100% Compliant** |
-| **1.4.11 Non-text Contrast** | AA | UI controls, input borders, and graph node borders exceed 3:1 contrast against adjacent background surfaces (`#CBD5E1` light, `#3A4668` dark). | **100% Compliant** |
-| **1.4.1 Use of Color** | A | Color is never the sole conveyor of information. All status indicators feature text badges (`[CRITICAL]`, `[WARNING]`, `[OK]`) and geometric symbols (●, ▲, ■). | **100% Compliant** |
-| **2.1.1 Keyboard Navigation** | A | All interactive elements (`button`, `select`, `input`, `a`, role toggles) are reachable via standard `Tab` / `Shift+Tab`. All graph nodes and timeline items support `Enter` / `Space` activation. | **100% Compliant** |
-| **2.4.1 Bypass Blocks** | A | Implemented accessible skip link: `<a href="#main-content">Skip to main content</a>`, visible on keyboard focus. Main content flagged with `id="main-content"`. | **100% Compliant** |
-| **2.4.7 Focus Visible** | AA | Universal `:focus-visible` styling with 2px solid primary focus ring (`#133E87` / `#3A86FF`) and 2px offset. | **100% Compliant** |
-| **2.5.8 Target Size (Minimum)** | AA | All interactive buttons and touch targets meet or exceed 24&times;24 px (standard controls range from 28px to 44px). | **100% Compliant** |
-| **1.1.1 Non-text Content** | A | Visual graphs (`AgentGraph`, `TopologyView`) provide accessible 1-click semantic HTML Table alternatives with headers (`th scope="col"`), captions, and screen-reader summaries. | **100% Compliant** |
-| **2.3.3 Animation from Interactions** | AAA | `@media (prefers-reduced-motion: reduce)` dampens all animations and transitions to near-instantaneous `0.01ms`. | **100% Compliant** |
+| **1.4.3 Contrast (Minimum)** | AA | Text colors exceed 4.5:1 (Light: `#0F172A` on `#FFFFFF` = 15.3:1; Dark: `#F1F5F9` on `#0B132B` = 16.1:1). Status colors exceed 4.5:1 (`#15803D` OK, `#B45309` Warn, `#DC2626` Crit). | **Compliant (Verified)** |
+| **1.4.11 Non-text Contrast** | AA | UI controls, input borders, and graph node borders exceed 3:1 contrast against adjacent background surfaces (`#CBD5E1` light, `#3A4668` dark). | **Compliant (Verified)** |
+| **1.4.1 Use of Color** | A | Color is never the sole conveyor of information. All status indicators feature text badges (`[CRITICAL]`, `[WARNING]`, `[OK]`) and geometric symbols (●, ▲, ■). | **Compliant (Verified)** |
+| **2.1.1 Keyboard Navigation** | A | All interactive elements (`button`, `select`, `input`, `a`, role toggles) are reachable via standard `Tab` / `Shift+Tab`. All graph nodes and timeline items support `Enter` / `Space` activation. | **Compliant (Verified)** |
+| **2.4.1 Bypass Blocks** | A | Implemented accessible skip link: `<a href="#main-content">Skip to main content</a>`, visible on keyboard focus. Main content flagged with `id="main-content"`. | **Compliant (Verified)** |
+| **2.4.7 Focus Visible** | AA | Universal `:focus-visible` styling with 2px solid primary focus ring (`#133E87` / `#3A86FF`) and 2px offset. | **Compliant (Verified)** |
+| **2.5.8 Target Size (Minimum)** | AA | All interactive buttons and touch targets meet or exceed 24&times;24 px (standard controls range from 28px to 44px). | **Compliant (Verified)** |
+| **1.1.1 Non-text Content** | A | Visual graphs (`AgentGraph`, `TopologyView`) provide accessible 1-click semantic HTML Table alternatives with headers (`th scope="col"`), captions, and screen-reader summaries. | **Compliant (Verified)** |
+| **2.3.3 Animation from Interactions** | AAA | `@media (prefers-reduced-motion: reduce)` dampens all animations and transitions to near-instantaneous `0.01ms`. | **Compliant (Verified)** |
 
 ---
 

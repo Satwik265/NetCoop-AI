@@ -1,0 +1,161 @@
+{
+  "link_congestion": {
+    "cli_exit_code": 0,
+    "cli_output": "\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 NetCoop AI Orchestrator \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 Starting Multi-Agent Diagnosis                                              \u2502\n\u2502 Incident ID: inc-link-congestion-42                                         \u2502\n\u2502 Network ID: iit-bbs-campus-fabric                                           \u2502\n\u2502 Description: Synthetic incident telemetry for scenario 'link_congestion'    \u2502\n\u2502 (seed=42)                                                                   \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n[DEV ONLY] Falling back to in-process execution for telemetry_agent.\n[DEV ONLY] Falling back to in-process execution for topology_agent.\n[DEV ONLY] Falling back to in-process execution for config_agent.\n[DEV ONLY] Falling back to in-process execution for wifi_services_agent.\n[DEV ONLY] Falling back to in-process execution for classifier_agent.\n[DEV ONLY] Falling back to in-process execution for log_agent.\n[DEV ONLY] Falling back to in-process execution for synthesizer_agent.\n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 Diagnostic Report \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 Status: diagnosed                                                           \u2502\n\u2502 Probable Cause: Link utilization saturation causing buffer queue drops and  \u2502\n\u2502 latency spikes                                                              \u2502\n\u2502 Confidence: 94%                                                             \u2502\n\u2502 Affected Devices: core-rtr-01, dist-sw-core                                 \u2502\n\u2502 Processing Time: 286.47 ms                                                  \u2502\n\u2502                                                                             \u2502\n\u2502 Executive Summary:                                                          \u2502\n\u2502 Incident inc-link-congestion-42 on network iit-bbs-campus-fabric was        \u2502\n\u2502 successfully diagnosed as 'Link utilization saturation causing buffer queue \u2502\n\u2502 drops and latency spikes' with 94% confidence impacting core-rtr-01,        \u2502\n\u2502 dist-sw-core.                                                               \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n                         Corroborated Evidence Chains                          \n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 Agent Domain   \u2502 Category       \u2502 Entity         \u2502 Finding       \u2502 Severity \u2502\n\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n\u2502 telemetry_age\u2026 \u2502 metric_anomaly \u2502 core-rtr-01    \u2502 core-rtr-01   \u2502 critical \u2502\n\u2502                \u2502                \u2502                \u2502 latency_ms:   \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 observed      \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 131.1 ms      \u2502          \u2502\n\u2502 telemetry_age\u2026 \u2502 metric_anomaly \u2502 core-rtr-01    \u2502 core-rtr-01   \u2502 critical \u2502\n\u2502                \u2502                \u2502                \u2502 jitter_ms:    \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 observed 25.6 \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 ms            \u2502          \u2502\n\u2502 telemetry_age\u2026 \u2502 metric_anomaly \u2502 core-rtr-01    \u2502 core-rtr-01   \u2502 critical \u2502\n\u2502                \u2502                \u2502                \u2502 link_utiliza\u2026 \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 observed      \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 92.57 percent \u2502          \u2502\n\u2502 telemetry_age\u2026 \u2502 metric_anomaly \u2502 core-rtr-01    \u2502 core-rtr-01   \u2502 critical \u2502\n\u2502                \u2502                \u2502                \u2502 queue_drops:  \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 observed 1484 \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 packets       \u2502          \u2502\n\u2502 telemetry_age\u2026 \u2502 metric_anomaly \u2502 dist-sw-core   \u2502 dist-sw-core  \u2502 critical \u2502\n\u2502                \u2502                \u2502                \u2502 latency_ms:   \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 observed      \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 147.94 ms     \u2502          \u2502\n\u2502 telemetry_age\u2026 \u2502 metric_anomaly \u2502 dist-sw-core   \u2502 dist-sw-core  \u2502 critical \u2502\n\u2502                \u2502                \u2502                \u2502 jitter_ms:    \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 observed      \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 28.19 ms      \u2502          \u2502\n\u2502 telemetry_age\u2026 \u2502 metric_anomaly \u2502 dist-sw-core   \u2502 dist-sw-core  \u2502 critical \u2502\n\u2502                \u2502                \u2502                \u2502 link_utiliza\u2026 \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 observed      \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 97.65 percent \u2502          \u2502\n\u2502 telemetry_age\u2026 \u2502 metric_anomaly \u2502 dist-sw-core   \u2502 dist-sw-core  \u2502 critical \u2502\n\u2502                \u2502                \u2502                \u2502 queue_drops:  \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 observed 1019 \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 packets       \u2502          \u2502\n\u2502 topology_agent \u2502 metric_anomaly \u2502 core-rtr-01:e\u2026 \u2502 core-rtr-01:\u2026 \u2502 critical \u2502\n\u2502                \u2502                \u2502                \u2502 transit_link\u2026 \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 observed      \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 congested_tr\u2026 \u2502          \u2502\n\u2502                \u2502                \u2502                \u2502 text          \u2502          \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n                   Recommended Simulated Remediation Actions                   \n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 Action ID             \u2502 Title                \u2502 Device      \u2502 Risk \u2502 Status  \u2502\n\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n\u2502 act-rebalance-core-r\u2026 \u2502 Rebalance traffic    \u2502 core-rtr-01 \u2502 low  \u2502 pending \u2502\n\u2502                       \u2502 across ECMP          \u2502             \u2502      \u2502         \u2502\n\u2502                       \u2502 next-hops from       \u2502             \u2502      \u2502         \u2502\n\u2502                       \u2502 core-rtr-01 et-0/0/1 \u2502             \u2502      \u2502         \u2502\n\u2502 act-qos-core-rtr-01   \u2502 Raise QoS priority   \u2502 core-rtr-01 \u2502 low  \u2502 pending \u2502\n\u2502                       \u2502 and buffer reserve   \u2502             \u2502      \u2502         \u2502\n\u2502                       \u2502 on core-rtr-01       \u2502             \u2502      \u2502         \u2502\n\u2502                       \u2502 et-0/0/1             \u2502             \u2502      \u2502         \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\nUse 'netcoop remediate approve <incident-id> <action-id>' to simulate \nexecution.\n",
+    "hackathon_report_10_key": {
+      "incident_id": "inc-link-congestion-42",
+      "status": "diagnosed",
+      "suspected_root_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
+      "confidence": 0.949,
+      "affected_devices": [
+        "core-rtr-01",
+        "dist-sw-core"
+      ],
+      "supporting_evidence": [
+        {
+          "metric": "latency_ms",
+          "value": 131.1,
+          "interpretation": "core-rtr-01 latency_ms: observed 131.1 ms"
+        },
+        {
+          "metric": "jitter_ms",
+          "value": 25.6,
+          "interpretation": "core-rtr-01 jitter_ms: observed 25.6 ms"
+        },
+        {
+          "metric": "link_utilization_pct",
+          "value": 92.57,
+          "interpretation": "core-rtr-01 link_utilization_pct: observed 92.57 percent"
+        },
+        {
+          "metric": "queue_drops",
+          "value": 1484,
+          "interpretation": "core-rtr-01 queue_drops: observed 1484 packets"
+        },
+        {
+          "metric": "latency_ms",
+          "value": 147.94,
+          "interpretation": "dist-sw-core latency_ms: observed 147.94 ms"
+        },
+        {
+          "metric": "jitter_ms",
+          "value": 28.19,
+          "interpretation": "dist-sw-core jitter_ms: observed 28.19 ms"
+        },
+        {
+          "metric": "link_utilization_pct",
+          "value": 97.65,
+          "interpretation": "dist-sw-core link_utilization_pct: observed 97.65 percent"
+        },
+        {
+          "metric": "queue_drops",
+          "value": 1019,
+          "interpretation": "dist-sw-core queue_drops: observed 1019 packets"
+        },
+        {
+          "metric": "transit_link_adjacency",
+          "value": "congested_transit_trunk_10.0gbps",
+          "interpretation": "core-rtr-01:eth0<->dist-sw-core:eth0 transit_link_adjacency: observed congested_transit_trunk_10.0gbps text"
+        }
+      ],
+      "alternative_causes": [
+        "Upstream provider or transit link congestion inducing downstream delay"
+      ],
+      "recommended_actions": [
+        "Rebalance traffic across ECMP next-hops from core-rtr-01 et-0/0/1",
+        "Raise QoS priority and buffer reserve on core-rtr-01 et-0/0/1"
+      ],
+      "evidence_sources": [
+        "telemetry_agent",
+        "topology_agent"
+      ],
+      "limitations": [
+        "single snapshot, no temporal context",
+        "Data quality penalty (-0.020) applied due to: telemetry values repaired: status_mapping, timestamp_parsing."
+      ]
+    }
+  },
+  "normal_operation": {
+    "cli_exit_code": 0,
+    "cli_output": "\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 NetCoop AI Orchestrator \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 Starting Multi-Agent Diagnosis                                              \u2502\n\u2502 Incident ID: inc-normal-operation-42                                        \u2502\n\u2502 Network ID: iit-bbs-campus-fabric                                           \u2502\n\u2502 Description: Synthetic incident telemetry for scenario 'normal_operation'   \u2502\n\u2502 (seed=42)                                                                   \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n[DEV ONLY] Falling back to in-process execution for telemetry_agent.\n[DEV ONLY] Falling back to in-process execution for topology_agent.\n[DEV ONLY] Falling back to in-process execution for config_agent.\n[DEV ONLY] Falling back to in-process execution for log_agent.\n[DEV ONLY] Falling back to in-process execution for classifier_agent.\n[DEV ONLY] Falling back to in-process execution for wifi_services_agent.\n[DEV ONLY] Falling back to in-process execution for synthesizer_agent.\n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 Diagnostic Report \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 Status: benign                                                              \u2502\n\u2502 Probable Cause: Normal Operation                                            \u2502\n\u2502 Confidence: 100%                                                            \u2502\n\u2502 Affected Devices: core-rtr-01, dist-sw-core, dept-sw-cs-01, host-cs-lab-01, \u2502\n\u2502 dist-sw-hostel, ap-hostel-b1, host-student-01, ap-lecture-lh1               \u2502\n\u2502 Processing Time: 281.55 ms                                                  \u2502\n\u2502                                                                             \u2502\n\u2502 Executive Summary:                                                          \u2502\n\u2502 All telemetry metrics, queue depths, and services operating within nominal  \u2502\n\u2502 operational baselines.                                                      \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n",
+    "hackathon_report_10_key": {
+      "incident_id": "inc-normal-operation-42",
+      "status": "benign",
+      "suspected_root_cause": "Normal Operation",
+      "confidence": 1.0,
+      "affected_devices": [
+        "core-rtr-01",
+        "dist-sw-core",
+        "dept-sw-cs-01",
+        "host-cs-lab-01",
+        "dist-sw-hostel",
+        "ap-hostel-b1",
+        "host-student-01",
+        "ap-lecture-lh1"
+      ],
+      "supporting_evidence": [],
+      "alternative_causes": [],
+      "recommended_actions": [],
+      "evidence_sources": [],
+      "limitations": [
+        "single snapshot, no temporal context"
+      ]
+    }
+  },
+  "insufficient_data": {
+    "cli_exit_code": 0,
+    "cli_output": "\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 NetCoop AI Orchestrator \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 Starting Multi-Agent Diagnosis                                              \u2502\n\u2502 Incident ID: inc-insufficient-data-42                                       \u2502\n\u2502 Network ID: iit-bbs-campus-fabric                                           \u2502\n\u2502 Description: Synthetic incident telemetry for scenario 'insufficient_data'  \u2502\n\u2502 (seed=42)                                                                   \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n[DEV ONLY] Falling back to in-process execution for telemetry_agent.\n[DEV ONLY] Falling back to in-process execution for classifier_agent.\n[DEV ONLY] Falling back to in-process execution for log_agent.\n[DEV ONLY] Falling back to in-process execution for wifi_services_agent.\n[DEV ONLY] Falling back to in-process execution for topology_agent.\n[DEV ONLY] Falling back to in-process execution for config_agent.\n[DEV ONLY] Falling back to in-process execution for synthesizer_agent.\n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 Diagnostic Report \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 Status: insufficient_evidence                                               \u2502\n\u2502 Probable Cause: N/A                                                         \u2502\n\u2502 Confidence: 0%                                                              \u2502\n\u2502 Affected Devices: None                                                      \u2502\n\u2502 Processing Time: 250.89 ms                                                  \u2502\n\u2502                                                                             \u2502\n\u2502 Executive Summary:                                                          \u2502\n\u2502 Incident inc-insufficient-data-42 on network iit-bbs-campus-fabric could    \u2502\n\u2502 not be conclusively diagnosed. Observed anomalies lack necessary            \u2502\n\u2502 multi-point corroboration across agent domains.                             \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 Uncertainty Analysis \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 Uncertainty Score: 1.00                                                     \u2502\n\u2502 Missing Corroboration Required:                                             \u2502\n\u2502 - Decisive empirical attribution features                                   \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n",
+    "hackathon_report_10_key": {
+      "incident_id": "inc-insufficient-data-42",
+      "status": "insufficient_evidence",
+      "suspected_root_cause": null,
+      "confidence": 0.0,
+      "affected_devices": [],
+      "supporting_evidence": [],
+      "alternative_causes": [],
+      "recommended_actions": [],
+      "evidence_sources": [],
+      "limitations": [
+        "single snapshot, no temporal context",
+        "wifi metrics missing (rssi, snr, retransmissions)"
+      ]
+    }
+  },
+  "interop_renamed_fields_unadapted": {
+    "hackathon_report_10_key": {
+      "incident_id": "inc-interop-renamed-fields",
+      "status": "insufficient_evidence",
+      "suspected_root_cause": null,
+      "confidence": 0.0,
+      "affected_devices": [],
+      "supporting_evidence": [],
+      "alternative_causes": [],
+      "recommended_actions": [],
+      "evidence_sources": [],
+      "limitations": [
+        "single snapshot, no temporal context"
+      ]
+    }
+  },
+  "malformed_json": {
+    "cli_exit_code": 1,
+    "cli_output": "Error: Malformed JSON in data\\scenarios\\interop_malformed_json.json: Expecting \nproperty name enclosed in double quotes: line 2 column 3 (char 4)\n",
+    "api_status_code": 422,
+    "api_response_body": {
+      "detail": [
+        {
+          "type": "json_invalid",
+          "loc": [
+            "body",
+            5
+          ],
+          "msg": "JSON decode error",
+          "input": {},
+          "ctx": {
+            "error": "Expecting property name enclosed in double quotes"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -48,13 +48,15 @@ $$S = \{ c \in \mathcal{C} \mid p(c) \ge 1 - q_\alpha \}$$
 
 ### 4.4 Theoretical Guarantee and Coverage Bound
 - **Guaranteed In-Distribution Coverage**: Under the exchangeability assumption, the true fault set is contained within prediction set $S$ with probability $\ge 1 - \alpha = 90\%$.
-- **Validation Test Split Coverage**: Observed empirical set coverage on held-out test data is **84.4%**.
+- **Validation Test Split Coverage**: Observed empirical set coverage on held-out test data is **84.4%** under exchangeable conditions, and **77.4%** across the full 400-sample primary benchmark under non-Gaussian noise regimes.
 - **Distribution Shift Limitation**: Theoretical coverage guarantees strictly require exchangeability between calibration and production data. On distribution-shifted datasets (such as novel topologies, uncalibrated equipment, or hackathon organizer telemetry), exchangeability does not hold; the model degrades gracefully into status **`insufficient_evidence`**, preventing false alarm hallucinations.
 
 ---
 
-## 5. Expected Calibration Error (ECE)
-- **Held-Out Test Set ECE**: **0.0372** across 10 probability bins.
+## 5. Expected Calibration Error (ECE) & Reliability
+- **Component-Level Classifier ECE**: **0.0372** across 10 probability bins on the isolated calibration test holdout.
+- **Full Primary Benchmark ECE (End-to-End)**: **0.214** across 400 synthetic samples (in-distribution and held-out partitions, source: `eval/results/benchmark_phase11_20261115.json`).
+- **Full Primary Benchmark Brier Score**: **0.211** (400 synthetic samples).
 
 ---
 

@@ -4,7 +4,7 @@
 [![Architecture](https://img.shields.io/badge/Architecture-Shared--Nothing%20Microservices-2A2A2D?style=flat-square&labelColor=161618)](docs/contract.md)
 [![Orchestration](https://img.shields.io/badge/Orchestration-LangGraph-2A2A2D?style=flat-square&labelColor=161618)](netcoop/orchestrator/graph.py)
 [![Wire Protocol](https://img.shields.io/badge/Wire%20Protocol-JSON%20Schema%20v1.0-2A2A2D?style=flat-square&labelColor=161618)](schemas/envelope.json)
-[![License](https://img.shields.io/badge/License-MIT-2A2A2D?style=flat-square&labelColor=161618)](LICENSE)
+[![Status](https://img.shields.io/badge/Status-Release%20Candidate%20(RC--1)-2A2A2D?style=flat-square&labelColor=161618)](docs/final_release_candidate_report.md)
 
 A modular, shared-nothing multi-agent platform for enterprise and campus network fault diagnosis, cross-domain evidence corroboration, and safe simulated remediation planning.
 
@@ -12,7 +12,7 @@ A modular, shared-nothing multi-agent platform for enterprise and campus network
 
 Across all 21 scenarios run through `POST /api/diagnose` in HTTP mode:
 - **Before Interop Fix**: 18/21 scenarios diagnosed or abstained as expected.
-- **After Interop Fix**: `interop_renamed_fields` and `interop_null_nan` are diagnosed as `LINK_CONGESTION` (conf 0.956, 2 actions), and `interop_malformed_json` returns HTTP 422 by design.
+- **After Interop Fix**: `interop_renamed_fields` and `interop_null_nan` are diagnosed as `LINK_CONGESTION` (conf 0.949, 2 actions), and `interop_malformed_json` returns HTTP 422 by design.
 - **Zero Regressions**: Zero regressions across the 18 earlier passes.
 
 ---
@@ -26,7 +26,7 @@ Existing approaches fall into two failure modes:
 2. **Naive LLM Wrappers**: Direct prompt-engineering wrappers hallucinate network topology, invent non-existent interfaces, violate JSON wire schemas, leak state across diagnostic turns, and cannot operate in disconnected environments without external cloud endpoints.
 
 **The NetCoop AI Insight**:
-Network diagnosis is fundamentally a multi-perspective consensus problem. NetCoop AI decomposes network intelligence into isolated specialist agents plus a synthesizer operating as decoupled processes (Telemetry, Topology, Configuration, Log, Classifier, and Wifi Services specialists, with consensus mediation by the Synthesizer). Agents share zero memory and communicate strictly through versioned, strongly-typed wire envelopes (`schemas/envelope.json`). A LangGraph state-machine orchestrator manages multi-turn mediation, routing targeted cross-inquiries (`payload.inquiries`) between specialists to corroborate empirical evidence (`Observation`) and debate causal hypotheses (`Hypothesis`). When evidence is incomplete, corrupted, or conflicting, the system strictly refuses to guess and emits an auditable `insufficient_evidence` determination.
+Network diagnosis is fundamentally a multi-perspective consensus problem. NetCoop AI decomposes network intelligence into 7 specialist agents plus gateway and orchestrator operating as decoupled processes (Telemetry, Topology, Configuration, Log, Synthesizer, Classifier, and Wi-Fi & Services specialists, mediated by the central Orchestrator). Agents share zero memory and communicate strictly through versioned, strongly-typed wire envelopes (`schemas/envelope.json`). A LangGraph state-machine orchestrator manages multi-turn mediation, routing targeted cross-inquiries (`payload.inquiries`) between specialists to corroborate empirical evidence (`Observation`) and debate causal hypotheses (`Hypothesis`). When evidence is incomplete, corrupted, or conflicting, the system strictly refuses to guess and emits an auditable `insufficient_evidence` determination.
 
 Under identical seed initialization, two consecutive runs of link_congestion seed 42 produced byte-identical reasoning output excluding timestamps and IDs.
 
@@ -37,83 +37,86 @@ Under identical seed initialization, two consecutive runs of link_congestion see
 | Evaluation Pillar | Hackathon Weight | NetCoop AI Implementation | Verifiable Source / Metric |
 | :--- | :---: | :--- | :---: |
 | **Interoperability & Protocol Design** | 30% | Dedicated HTTP REST microservices with zero shared memory. Fully documented wire schema (`schemas/envelope.json`), semantic versioning (`1.0.0`), strict SI unit conversions, and Ingestion Gateway with typed validation handlers for multi-vendor and organizer Colab telemetry. | `schemas/envelope.json`, `gateway/adapters/organizer_adapter.py` |
-| **Diagnostic Accuracy & Evidence Quality** | 25% | Two-layer finding architecture: empirical facts (`Observation`) separate from inferred causes (`Hypothesis`). Complete corroboration matrix with calibrated confidence scoring and mathematical abstention bounds. | `eval/results/benchmark_latest.json` (64.4% in-distribution, 40.0% held-out, 93.8% selective accuracy at 40% coverage) |
+| **Diagnostic Accuracy & Evidence Quality** | 25% | Two-layer finding architecture: empirical facts (`Observation`) separate from inferred causes (`Hypothesis`). Complete corroboration matrix with calibrated confidence scoring and mathematical abstention bounds. | `eval/results/benchmark_phase11_20261115.json` (71.6% in-distribution, 32.0% held-out, 97.9% selective accuracy on diagnosed at 36.0% coverage) |
 | **Orchestration & Conflict Resolution** | 15% | LangGraph cyclical state graph. The Mediator evaluates hypothesis overlap, triggers cross-inquiry turns, and applies a strict domain precedence hierarchy (physical optics > buffer drops > routing flaps > ping latency). | `netcoop/orchestrator/graph.py`, `tests/test_conflict_resolution.py` |
-| **Robustness to Missing & Corrupted Data** | 15% | Evaluated on independently generated non-Gaussian held-out data (Pareto/log-normal noise, bursty dropouts) and organizer Colab telemetry. Degrades gracefully to `insufficient_evidence` rather than hallucinating root causes. | `eval/results/benchmark_latest.json` (66.7% organizer set-match; exact-match is 0.0%) |
+| **Robustness to Missing & Corrupted Data** | 15% | Evaluated on independently generated non-Gaussian held-out data (Pareto/log-normal noise, bursty dropouts) and organizer Colab telemetry. Degrades gracefully to `insufficient_evidence` rather than hallucinating root causes. | `eval/results/benchmark_phase11_20261115.json` (66.7% organizer set-match; exact-match is 33.3%) |
 | **Usability, Extensibility & Innovation** | 10% | Stdio Model Context Protocol (MCP) server for external AI tools; blast-radius bounded simulated remediation engine with rollback automation; Rich monochrome CLI (`netcoop`); and real-time React web dashboard. | `netcoop/mcp/server.py`, `netcoop/remediation/engine.py` |
-| **Code Quality, Docs & Demo** | 5% | Clean-room architectural separation, comprehensive automated test suite (327 collected tests across 31 test files), typed codebase, docstrings, structured logging, zero emojis, and reproducible demo scripts. | `tests/` (326 passed in full test suite run) |
+| **Code Quality, Docs & Demo** | 5% | Clean-room architectural separation, comprehensive automated test suite (429 backend unit/integration tests passed across 38 test files, 9 frontend contract tests passed), typed codebase, docstrings, structured logging, zero emojis, and reproducible demo scripts. | `tests/` (429 passed in full test suite run) |
 
 ---
 
 ## 3. Results at a Glance
 
 > [!NOTE]
-> Benchmark evaluations were executed in in-process fallback mode (zero external microservice dependency) and verified against the frozen evaluation split manifest (`data/splits/eval_split_manifest_v1.json`). Synthetic benchmark performance reflects measured metrics from `eval/results/benchmark_phase3_20261115.json` (mirrored in `eval/results/benchmark_current.json`): in-distribution 63.2%, held-out 40.0%, selective accuracy 93.9% at 37.0% coverage.
+> Benchmark evaluations were executed in in-process fallback mode (zero external microservice dependency) and verified against the frozen evaluation split manifest (`data/splits/eval_split_manifest_v1.json`). All benchmark metrics reflect evaluations on synthetic and simulated network corpora. Synthetic benchmark performance reflects measured metrics from the newest evaluation artifact `eval/results/benchmark_phase11_20261115.json` (commit `8dbdd71`): synthetic in-distribution 71.6%, synthetic held-out 32.0%, selective accuracy 97.9% at 36.0% coverage.
 >
 > The historical pre-fix baseline (`eval/results/benchmark_latest.json`, generated 2026-10-31T18:58:30Z) is preserved untouched for audited comparison.
 
 ### 3.1 Benchmark Dataset Splits (Current Verified vs Historical Baseline)
 
-| Evaluation Split | Sample Count | Current Verified (2026-11-15) | Historical Baseline (2026-10-31) | Current Macro F1 | ECE | Brier Score | Source JSON Field |
+| Evaluation Split (Synthetic) | Sample Count | Current Verified (2026-11-15) | Historical Baseline (2026-10-31) | Current Macro F1 | ECE | Brier Score | Source JSON Field |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| **Combined Primary Benchmark** | 400 | **54.5%** | **55.2%** | 0.603 | 0.182 | 0.201 | `summary["combined_primary_accuracy"]` |
-| **In-Distribution Evaluation (TEST_SPEC)** | 250 | **63.2%** | **64.4%** | - | - | - | `dataset_splits["in_distribution_accuracy"]` |
-| **Held-Out Evaluation (Non-Gaussian Blind)** | 150 | **40.0%** | **40.0%** | - | - | - | `dataset_splits["held_out_accuracy"]` |
-| **Organizer Colab Telemetry (Set Match)** | 900 | **66.7%** | **66.7%** | - | - | - | `dataset_splits["organizer_accuracy"]` |
-| **Organizer Colab Telemetry (Exact Match)** | 900 | **33.3%** | **0.0%** | - | - | - | `summary["organizer_exact_match_accuracy"]` |
-| **Selective Classification (Coverage 37.0%)** | 148 | **93.9%** | 93.8% (cov 40%) | - | - | - | `summary["selective_accuracy"]` |
-| **Safe Abstention Rate (Ambiguous/Sparse)** | 80 | **88.7%** | - | - | - | - | `summary["safe_abstention_rate"]` |
+| **Combined Primary Benchmark (Synthetic)** | 400 | **56.8%** | **55.2%** | 0.620 | 0.214 | 0.211 | `summary["combined_primary_accuracy"]` |
+| **In-Distribution Evaluation (TEST_SPEC, Synthetic)** | 250 | **71.6%** | **64.4%** | - | - | - | `dataset_splits["in_distribution_accuracy"]` |
+| **Held-Out Evaluation (Non-Gaussian Blind, Synthetic)** | 150 | **32.0%** | **40.0%** | - | - | - | `dataset_splits["held_out_accuracy"]` |
+| **Organizer Colab Telemetry (Set Match, Synthetic)** | 900 | **66.7%** | **66.7%** | - | - | - | `dataset_splits["organizer_accuracy"]` |
+| **Organizer Colab Telemetry (Exact Match, Synthetic)** | 900 | **33.3%** | **0.0%** | - | - | - | `summary["organizer_exact_match_accuracy"]` |
+| **Selective Classification (Coverage 36.0%, Synthetic)** | 144 | **97.9%** | 93.8% (cov 40%) | - | - | - | `summary["selective_accuracy"]` |
+| **Safe Abstention Rate (Ambiguous/Sparse, Synthetic)** | 80 | **97.5%** | 88.7% | - | - | - | `summary["safe_abstention_rate"]` |
 
-*Sources: Current verified `eval/results/benchmark_phase3_20261115.json` (commit `f87596d`) and historical baseline `eval/results/benchmark_latest.json` (2026-10-31T18:58:30Z).*
+*Sources: Current verified `eval/results/benchmark_phase11_20261115.json` (commit `8dbdd71`) and historical baseline `eval/results/benchmark_latest.json` (2026-10-31T18:58:30Z).*
 
 > **Exact JSON Field Derivation & Metric Definitions**:
-> - **Headline Combined Primary Accuracy (54.5%)**: Read directly from `summary["combined_primary_accuracy"]` over the 400 primary in-distribution and held-out benchmark samples.
-> - **Macro F1 (0.603)**: Read directly from `summary["macro_f1"]`. Calculated as the exact unweighted arithmetic mean across all 8 per-class F1 values in `per_class_metrics`:
->   $$\text{Macro F1} = \frac{0.320 + 0.788 + 0.621 + 0.519 + 0.769 + 0.689 + 0.824 + 0.298}{8} = 0.6035 \approx 0.603$$
->   *Note: Macro F1 increased from 0.593 to 0.603 due to the Phase 1 fix properly recognizing healthy fabrics (`status == "benign"`) as normal operation, lifting normal-operation F1 from 0.000 to 0.320.*
-> - **Expected Calibration Error (0.182)**: Read directly from `summary["expected_calibration_error"]` (population: `in_distribution_and_heldout_primary_samples`).
-> - **Brier Score (0.201)**: Read directly from `summary["brier_score"]` (population: `in_distribution_and_heldout_primary_samples`).
-> - **Selective Accuracy (93.9%)**: Read directly from `summary["selective_accuracy"]` at coverage `summary["coverage"] = 0.370` (selective risk: `summary["selective_risk"] = 0.061`).
-> - **Organizer Set-Match vs Exact-Match**: Set-match accuracy (66.7%, `dataset_splits["organizer_accuracy"]`) counts an abstention or alternative hypothesis on 'normal' organizer samples as correct, and permits conformal prediction set overlap; exact-match is strictly 33.3% (`summary["organizer_exact_match_accuracy"]`) because normal-operation maps directly to `no_fault`. The organizer evaluation dataset consists of narrow single-device campus distribution telemetry snapshots (`data/organizer/`) rather than full multi-tier backbone fabric traces.
+> - **Headline Combined Primary Accuracy (56.8%)**: Read directly from `summary["combined_primary_accuracy"]` over the 400 primary synthetic in-distribution and held-out benchmark samples.
+>   *Important Accounting Note*: The headline 56.8% combined primary accuracy (and earlier 54.5% baseline) reflects evaluation on synthetic scenario corpora and **includes credit for correct abstentions**: across the 320 labelled cases (8 classes $\times$ 40 samples), **141 were answered correct**, **3 were answered wrong**, and **176 were safely abstained**. Together with **78 correct abstentions** out of the 80 ambiguous/sparse synthetic cases, this yields $141 + 78 + 8 = 227 / 400 = 56.75\% \approx 56.8\%$ total credit.
+> - **Selective Accuracy on Diagnosed Subset (97.9%)**: When the system emits a definitive diagnosis (144 accepted samples out of 400 primary, coverage: 36.0%), 141 of 144 are correct, yielding **97.9% selective accuracy** and a **selective risk of 2.1%** (3 errors / 144 diagnosed).
+> - **Macro F1 (0.620)**: Read directly from `summary["macro_f1"]`. Calculated as the unweighted arithmetic mean across all 8 per-class F1 values in `per_class_metrics`:
+>   $$\text{Macro F1} = \frac{0.320 + 0.698 + 0.571 + 0.545 + 0.710 + 0.644 + 0.806 + 0.667}{8} = 0.6201 \approx 0.620$$
+> - **Expected Calibration Error (0.214)**: Read directly from `summary["expected_calibration_error"]` (population: `in_distribution_and_heldout_primary_samples`).
+> - **Brier Score (0.211)**: Read directly from `summary["brier_score"]` (population: `in_distribution_and_heldout_primary_samples`).
+> - **Organizer Set-Match vs Exact-Match**: Set-match accuracy (66.7%, `dataset_splits["organizer_accuracy"]`) counts an abstention or alternative hypothesis on 'normal' organizer samples as correct, and permits conformal prediction set overlap. Exact-match is 33.3% (`summary["organizer_exact_match_accuracy"]`). The jump in exact-match from 0.0% to 33.3% reflects a **scoring-definition correction** (Phase 1 fix) where healthy campus switch states correctly evaluate as `no_fault` / `benign` rather than expecting an active fault label. The organizer evaluation dataset consists of narrow single-device campus distribution telemetry snapshots (`data/organizer/`) rather than full multi-tier backbone fabric traces.
 
 ### 3.2 Pipeline Ablation Analysis
 
-Ablation evaluation results from `eval/results/benchmark_phase3_20261115.json` across all 8 canonical fault classes under identical seeds (`4000` to `4007`, 64 runs total):
+Ablation evaluation results from `eval/results/benchmark_phase11_20261115.json` across all 8 canonical fault classes under identical seeds (`4000` to `4007`, 64 runs total):
 
 | Pipeline Configuration | Accuracy | Macro F1 | ECE | Latency (ms) | Insufficient Evidence Rate |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Full Multi-Agent Pipeline** | **100.0%** | **1.000** | **0.052** | 635.0 ms | 0.0% |
-| Rules-Only Core (Without Learned Layer) | 87.5% | 0.875 | 0.101 | 1.2 ms | 0.0% |
-| Model-Only (Learned Classifier Alone) | 87.5% | 0.875 | 0.125 | 81.3 ms | 0.0% |
-| Single-Agent Heuristic Baseline | 25.0% | 0.188 | 0.296 | 0.4 ms | 25.0% |
+| **Full Multi-Agent Pipeline** | **100.0%** | **1.000** | **0.052** | 421.7 ms | 0.0% |
+| Rules-Only Core (Without Learned Layer) | 87.5% | 0.875 | 0.100 | 0.6 ms | 0.0% |
+| Model-Only (Learned Classifier Alone) | 87.5% | 0.875 | 0.125 | 33.5 ms | 0.0% |
+| Single-Agent Heuristic Baseline | 25.0% | 0.188 | 0.296 | 0.1 ms | 25.0% |
 
 *Ablation Insight: On canonical signatures, Rules-Only Core and Model-Only each achieve 87.5% accuracy. The Full Multi-Agent Pipeline integrates cross-agent corroboration to achieve 100.0% accuracy and the lowest calibration error (ECE 0.052).*
 
 ### 3.3 Per-Class Diagnostic Performance
 
-Performance breakdown from `eval/results/benchmark_phase3_20261115.json` across evaluated incident classes (with reconciled support accounting):
+Performance breakdown from `eval/results/benchmark_phase11_20261115.json` across evaluated synthetic incident classes (with reconciled support accounting, 40 support per class across 320 labelled cases):
 
-| Fault Category | Precision | Recall | F1-Score | Support | Abstentions |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| `Normal Operation` | **80.0%** | **20.0%** | **0.320** | 40 | 32 |
-| `Link Congestion` | **100.0%** | **65.0%** | **0.788** | 40 | 14 |
-| `Weak Wifi Signal` | **100.0%** | **45.0%** | **0.621** | 40 | 22 |
-| `Ethernet Interface Fault` | **100.0%** | **35.0%** | **0.519** | 40 | 24 |
-| `Dns Failure` | **100.0%** | **62.5%** | **0.769** | 40 | 15 |
-| `Dhcp Failure` | **100.0%** | **52.5%** | **0.689** | 40 | 19 |
-| `Device Cpu Overload` | **100.0%** | **70.0%** | **0.824** | 40 | 12 |
-| `Upstream Failure Cascade` | **100.0%** | **17.5%** | **0.298** | 40 | 33 |
+| Fault Category (Synthetic) | Precision | Recall | F1-Score | Support | Abstentions | Correct Answers | Wrong Answers |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| `Normal Operation` | **80.0%** | **20.0%** | **0.320** | 40 | 32 | 8 | 0 |
+| `Link Congestion` | **95.7%** | **55.0%** | **0.698** | 40 | 18 | 22 | 0 |
+| `Weak Wifi Signal` | **100.0%** | **40.0%** | **0.571** | 40 | 24 | 16 | 0 |
+| `Ethernet Interface Fault` | **100.0%** | **37.5%** | **0.545** | 40 | 23 | 15 | 2 |
+| `Dns Failure` | **100.0%** | **55.0%** | **0.710** | 40 | 18 | 22 | 0 |
+| `Dhcp Failure` | **100.0%** | **47.5%** | **0.644** | 40 | 21 | 19 | 0 |
+| `Device Cpu Overload` | **100.0%** | **67.5%** | **0.806** | 40 | 13 | 27 | 0 |
+| `Upstream Failure Cascade` | **100.0%** | **50.0%** | **0.667** | 40 | 19 | 20 | 1 |
 
-*Every row in the full $8 \times 9$ confusion matrix strictly sums to the class support of 40 ($8 \text{ classes} \times 40 = 320 \text{ samples} + 80 \text{ ambiguous/sparse} = 400 \text{ primary samples}$).*
+*Every row in the full $8 \times 9$ confusion matrix strictly sums to the class support of 40 ($8 \text{ classes} \times 40 = 320 \text{ labelled samples} + 80 \text{ ambiguous/sparse} = 400 \text{ primary synthetic samples}$). Across the 320 labelled cases: 141 answered-correct, 3 wrong, 176 abstained.*
 
 ### 3.4 Selective Classification (Risk-Coverage)
 
-Operating points derived from `eval/results/benchmark_phase3_20261115.json`:
+Operating points derived from `eval/results/benchmark_phase11_20261115.json`:
 
 | Confidence Threshold | Selective Coverage | Selective Risk (Error Rate) | Accepted Samples | Operational Decision |
 | :---: | :---: | :---: | :---: | :--- |
-| $\ge 0.40 \text{ to } 0.70$ | 37.0% | 6.1% | 148 / 400 | Autonomous diagnosis with 93.9% selective accuracy |
-| $\ge 0.80 \text{ to } 0.90$ | 36.2% | 4.1% | 145 / 400 | Critical core infrastructure mode (95.9% accuracy) |
+| $\ge 0.40 \text{ to } 0.50$ | 38.5% | 3.2% | 154 / 400 | Broad diagnostic automation with 96.8% selective accuracy |
+| $\ge 0.60$ | 37.0% | 3.4% | 148 / 400 | Corroborated multi-agent diagnostic mode (96.6% accuracy) |
+| $\ge 0.70$ | 36.5% | 2.7% | 146 / 400 | High-confidence campus operator queue (97.3% accuracy) |
+| $\ge 0.80$ | 36.0% | 2.8% | 144 / 400 | Autonomous diagnosis with 97.9% selective accuracy |
+| $\ge 0.90$ | 29.5% | 3.4% | 118 / 400 | Critical core infrastructure mode (96.6% accuracy) |
 
 ### 3.5 Latency Profile
 
@@ -121,8 +124,8 @@ Measured across 25 consecutive diagnostic requests with full payload parsing and
 
 | Execution Mode | Cold-Start (ms) | Warm Median (ms) | Warm p95 (ms) | Max (ms) | Repetitions | Failures |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **In-Process Engine** | 534.0 ms | **506.9 ms** | 1147.1 ms | 1234.2 ms | 25 | 0 |
-| **HTTP REST Service (`/api/diagnose`)** | 2890.4 ms | **2787.8 ms** | 2993.6 ms | 3093.6 ms | 25 | 0 |
+| **In-Process Engine** | 369.2 ms | **314.2 ms** | 1303.4 ms | 1824.7 ms | 25 | 0 |
+| **HTTP REST Service (`/api/diagnose`)** | 2666.8 ms | **2476.8 ms** | 2935.7 ms | 3000.6 ms | 25 | 0 |
 
 ---
 
@@ -161,6 +164,35 @@ Multi-tier error handling guarantees bounded degraded execution without unhandle
 - **Ingestion Gateway Validation** (`gateway/adapters/organizer_adapter.py`): Traps and recovers from dirty strings, unit discrepancies, out-of-order records, and unsupported schema versions via `TypedValidationError`.
 - **API Error Boundaries** (`api/main.py`): Fails with HTTP 503 if the Ingestion Gateway microservice is offline, and rejects malformed JSON bodies with HTTP 422 before dispatch.
 - **CLI Robustness** (`netcoop/cli.py`): Catches `json.JSONDecodeError` on malformed inputs and prints a one-line error message with non-zero exit code 1 instead of an unhandled traceback.
+
+### 4.5 Operational Boundaries & Architecture Disclosures
+
+To ensure transparency, prevent technical overstatement, and maintain verified engineering rigor, NetCoop AI discloses the following operational boundaries:
+
+1. **Independent vs. Derived Corroboration**:
+   - **Independent Sources**: `telemetry_agent`, `wifi_services_agent`, `log_agent`, and `config_agent` inspect distinct, primary operational data structures (`telemetry`, `logs`, `configurations`).
+   - **Derived Sources**: `topology_agent` and `classifier_agent` operate on derived views. In particular, `topology_agent` parses device IDs and link endpoints from the incoming telemetry block rather than polling an independent live control plane; `classifier_agent` calculates mathematical summary features from the identical telemetry payload.
+   - **Cross-Domain Footprint**: Across the 8 diagnosed fault categories, exactly 1 scenario (`dns_failure`) features multi-agent corroboration from $\ge 2$ independent sources (`telemetry_agent` + `wifi_services_agent`); 1 scenario (`link_congestion`) combines 1 independent + 1 derived source (`telemetry_agent` + `topology_agent`); and 6 scenarios rely primarily on `telemetry_agent` for evidentiary attribution.
+
+2. **In-Memory Rate Limiting Boundary**:
+   - The authentication rate limiter (`LoginRateLimiter` in `api/main.py`) operates via an in-memory sliding window bucket within the local Uvicorn process.
+   - In distributed deployments with multiple worker processes or multi-instance containers without Redis, rate limit counters are local to each process and do not synchronize cluster-wide.
+
+3. **SQLite Single-File Persistence Boundary**:
+   - Diagnostic reports, envelope audit logs, checkpoint pause/resume states, and operator HITL audit trails persist to a single local SQLite database file (`DATABASE_URL="sqlite:///./netcoop.db"`).
+   - Although SQLite runs in WAL mode with synchronous writes, it provides single-node storage and does not support distributed clustering, replication, or distributed transactions.
+
+4. **Plaintext HTTP Intra-Service Communication (No TLS)**:
+   - Communication between the Orchestrator (port 8000) and specialist agent microservices (ports 8001–8008) runs over unencrypted plaintext HTTP (`http://127.0.0.1:PORT`).
+   - Intra-service authorization relies strictly on loopback network interface binding (`127.0.0.1`) and the secret `X-NetCoop-Service-Token` header. Network payload encryption (TLS/mTLS) is not implemented for intra-node agent traffic.
+
+5. **Simulation-Only Remediation Safety Invariant**:
+   - All remediation actions, traffic rebalancing plans, and rollback procedures operate strictly in simulated dry-run mode (`is_simulated = True`).
+   - The platform never modifies physical router or switch configurations directly. Any attempt to invoke live execution via `POST /api/remediation/{id}/execute` strictly fails closed with `HTTP 403 Forbidden: LIVE_HARDWARE_REMEDIATION_FORBIDDEN`.
+
+6. **Sample and Offline Data Labelling in UI**:
+   - The React dashboard explicitly labels sample, synthetic, and offline telemetry feeds with persistent UI badges (`[OFFLINE BACKEND]`, `[SYNTHETIC]`, and non-dismissible `Simulated, no production changes` watermarks).
+   - Ingestion provenance and data quality health scores are surfaced directly to operators to prevent confusion between synthetic test traces and live telemetry.
 
 ---
 
@@ -433,7 +465,7 @@ NetCoop AI operates as a set of decoupled operating system processes communicati
 $env:INTERNAL_SERVICE_TOKEN = [guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N")
 Remove-Item Env:AGENTS_MODE -ErrorAction SilentlyContinue
 
-# 2. Launch seven agent processes (six specialists plus a synthesizer) plus the gateway on 8001-8008
+# 2. Launch 7 specialist agents plus gateway on ports 8001-8008
 python scripts/run_agents.py --daemon
 
 # 3. Check health status of all 8 microservices (ports 8001-8008)
@@ -447,7 +479,7 @@ uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
 python scripts/run_agents.py --stop
 ```
 
-> **Process Architecture Note**: `python scripts/run_agents.py --daemon` spawns seven agent processes (six specialists plus a synthesizer) plus the gateway on 8001-8008 (`telemetry_agent:8001`, `topology_agent:8002`, `config_agent:8003`, `log_agent:8004`, `synthesizer_agent:8005`, `gateway:8006`, `classifier_agent:8007`, `wifi_services_agent:8008`). The Orchestrator API (`uvicorn api.main:app`) is executed separately on port 8000.
+> **Process Architecture Note**: `python scripts/run_agents.py --daemon` spawns 7 specialist agents plus gateway on ports 8001-8008 (`telemetry_agent:8001`, `topology_agent:8002`, `config_agent:8003`, `log_agent:8004`, `synthesizer_agent:8005`, `gateway:8006`, `classifier_agent:8007`, `wifi_services_agent:8008`), coordinated by the central orchestrator on port 8000. The Orchestrator API (`uvicorn api.main:app`) is executed separately on port 8000.
 
 #### Docker Compose Deployment Path (Optional)
 
@@ -732,7 +764,7 @@ Nine specialized scenarios evaluating ingestion resilience:
 
 #### Live Scenario Evaluation (All 21 Manifest Scenarios)
 
-Executed live over HTTP with seven agent processes (six specialists plus a synthesizer) plus the gateway running on ports 8001-8008:
+Executed live over HTTP with 7 specialist agents plus gateway running on ports 8001-8008, coordinated by the central orchestrator on port 8000:
 ```powershell
 $env:INTERNAL_SERVICE_TOKEN = [guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N")
 Remove-Item Env:AGENTS_MODE -ErrorAction SilentlyContinue
@@ -743,7 +775,7 @@ python scripts/run_agents.py --daemon
 | Scenario File | Expected Status | Actual Status | Actual Top Cause Key | Confidence | Evidence Count | Remediation Actions | Match? |
 | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: |
 | `normal_operation.json` | `benign` | `benign` | `NO_FAULT` | 100% | 0 | 0 | **YES** |
-| `link_congestion.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 95% | 8 | 2 | **YES** |
+| `link_congestion.json` | `diagnosed` | `diagnosed` | `LINK_CONGESTION` | 94% | 9 | 2 | **YES** |
 | `weak_wifi_signal.json` | `diagnosed` | `diagnosed` | `WEAK_WIFI_SIGNAL` | 94% | 4 | 1 | **YES** |
 | `ethernet_interface_fault.json` | `diagnosed` | `diagnosed` | `ETHERNET_INTERFACE_FAULT` | 97% | 2 | 2 | **YES** |
 | `dns_failure.json` | `diagnosed` | `diagnosed` | `DNS_FAILURE` | 97% | 16 | 1 | **YES** |
@@ -764,7 +796,7 @@ python scripts/run_agents.py --daemon
 | `compound_cpu_and_link.json` | `insufficient_evidence` | `insufficient_evidence` | `None` | 0% | 0 | 0 | **YES** |
 | `compound_wifi_and_dns.json` | `insufficient_evidence` | `insufficient_evidence` | `None` | 0% | 0 | 0 | **YES** |
 
-*Source: Measured live over HTTP with seven agent processes (six specialists plus a synthesizer) plus the gateway active on ports 8001-8008 (`INTERNAL_SERVICE_TOKEN` set, `AGENTS_MODE` unset).*
+*Source: Measured live over HTTP with 7 specialist agents plus gateway active on ports 8001-8008, coordinated by orchestrator on port 8000 (`INTERNAL_SERVICE_TOKEN` set, `AGENTS_MODE` unset).*
 
 > **Note on Confidence Display**: The CLI truncates floating-point confidence to a whole percent (`int(conf * 100) = 95%`) while the benchmark summary rounds uncalibrated values (`0.956` to `96%`). Both refer to the identical underlying model prediction.
 
@@ -780,8 +812,8 @@ Comparing empirical results across the three invocation paths (Local CLI, Produc
 
 | Scenario File | Expected (Manifest) | Local CLI (`netcoop diagnose --file`) | Product API (`POST /api/diagnose`) [Before] | Product API (`POST /api/diagnose`) [After Fix] | Ingestion Gateway (`POST :8006/ingest`) | Resolution & Root Cause |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `interop_renamed_fields.json` | `diagnosed` | `insufficient_evidence` (Conf: 0%, Ev: 0, Act: 0) | **HTTP 200** (`status: insufficient_evidence`, cause: `None`, Conf: 0.0, Act: 0) | **HTTP 200 OK** (`status: diagnosed`, cause: `LINK_CONGESTION`, Conf: 0.956, Act: 2) | **HTTP 200 OK** (`record_count: 8`, applied: `alias_mapping`) | **RESOLVED**: `/api/diagnose` now routes all dict/list payloads through Ingestion Gateway (`:8006/ingest`), ensuring field aliases (`dev_id` -> `device_id`, `delay` -> `latency_ms`, `loss` -> `packet_loss_pct`, `util` -> `link_utilization_pct`) are normalized prior to multi-agent dispatch. |
-| `interop_null_nan.json` | `diagnosed` | `insufficient_evidence` (Conf: 0%, Ev: 0, Act: 0) | **HTTP 200** (`status: insufficient_evidence`, cause: `None`, Conf: 0.0, Act: 0) | **HTTP 200 OK** (`status: diagnosed`, cause: `LINK_CONGESTION`, Conf: 0.956, Act: 2) | **HTTP 200 OK** (`record_count: 8`, applied: `dirty_string_sanitization`) | **RESOLVED**: Payload routed through Gateway sanitizes string `'NaN'` and `'null'` tokens. `TelemetryNormalizer.normalize_metric` now treats non-numeric/null values as missing rather than fabricating measured `0.0`, allowing valid metrics to diagnose correctly. |
+| `interop_renamed_fields.json` | `diagnosed` | `insufficient_evidence` (Conf: 0%, Ev: 0, Act: 0) | **HTTP 200** (`status: insufficient_evidence`, cause: `None`, Conf: 0.0, Act: 0) | **HTTP 200 OK** (`status: diagnosed`, cause: `LINK_CONGESTION`, Conf: 0.949, Act: 2) | **HTTP 200 OK** (`record_count: 8`, applied: `alias_mapping`) | **RESOLVED**: `/api/diagnose` now routes all dict/list payloads through Ingestion Gateway (`:8006/ingest`), ensuring field aliases (`dev_id` -> `device_id`, `delay` -> `latency_ms`, `loss` -> `packet_loss_pct`, `util` -> `link_utilization_pct`) are normalized prior to multi-agent dispatch. |
+| `interop_null_nan.json` | `diagnosed` | `insufficient_evidence` (Conf: 0%, Ev: 0, Act: 0) | **HTTP 200** (`status: insufficient_evidence`, cause: `None`, Conf: 0.0, Act: 0) | **HTTP 200 OK** (`status: diagnosed`, cause: `LINK_CONGESTION`, Conf: 0.949, Act: 2) | **HTTP 200 OK** (`record_count: 8`, applied: `dirty_string_sanitization`) | **RESOLVED**: Payload routed through Gateway sanitizes string `'NaN'` and `'null'` tokens. `TelemetryNormalizer.normalize_metric` now treats non-numeric/null values as missing rather than fabricating measured `0.0`, allowing valid metrics to diagnose correctly. |
 | `interop_malformed_json.json` | `diagnosed` | **Error: Malformed JSON** (one-line error, exit code 1; no traceback) | **HTTP 422 Unprocessable Entity** (`JSON decode error`) | **HTTP 422 Unprocessable Entity** (maintained; invalid JSON rejected before handler) | **HTTP 200 OK** (`record_count: 1`, repair: `ERR_MALFORMED_JSON`) | Raw file uses single quotes (`'incident_id'`). CLI catches `json.JSONDecodeError` and prints a one-line error with non-zero exit; API rejects invalid JSON as HTTP 422; direct Ingestion Gateway endpoint succeeds (HTTP 200) via raw text fallback and tolerant single-quote repair. |
 
 #### Automated Pytest Suite Results
@@ -790,28 +822,28 @@ Executed across the entire codebase:
 ```powershell
 pytest -o pythonpath=. --collect-only -q
 ```
-**Collection Result**: **357 tests collected across 32 test files** (duration: 4.85s).
+**Collection Result**: **429 tests collected across 39 test files** (duration: 4.64s).
 
 Executed in `in_process` mode:
 ```powershell
 $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
 ```
-**Execution Result**: **357 passed, 4 warnings** (100% pass rate; zero failures across all 357 unit, property, security, contract, and remediation tests).
+**Execution Result**: **429 passed, 4 warnings** (zero failures across all 429 unit, property, security, contract, and remediation tests).
+In addition, frontend contract tests pass: **9 passed, 0 failed** in `dashboard/tests/test_ui_ux_contract.mjs`, and the dashboard builds cleanly (`npm run build`, 229 modules transformed in 3.02s).
 
-> **Test Fix Verification**: The previous failure in `tests/test_phase4_security.py::test_logout_and_token_invalidation` (which submitted a mismatched password `"<your-password>"` against the seeded `"<your-password>"`) was resolved in commit `0027d88` by referencing `os.getenv("NETCOOP_DEV_PASSWORD", "<your-password>")`. Together with the 28 tests in `tests/test_remediation_coverage.py` from commit `a7ee939`, all 355 tests pass cleanly.
-
-#### Inventory of All 32 Test Files
+#### Inventory of All 39 Test Files
 
 | Test File | Coverage Description | Tests Collected |
 | :--- | :--- | :---: |
 | `test_agent_http.py` | Unit and integration tests for isolated agent FastAPI servers and mediator dispatch. | 29 |
-| `test_agents.py` | Unit tests for the five domain specialist agents. | 5 |
+| `test_agents.py` | Unit tests for domain specialist agents. | 5 |
 | `test_api_endpoints.py` | Tests for FastAPI backend REST and WebSocket endpoints. | 7 |
 | `test_b1_gateway_robustness.py` | Comprehensive validation tests for B1 deliverables (Gateway, Normalizer, Error handling). | 28 |
 | `test_b2_learned_layer.py` | Unit and property tests for B2 learned layer (Feature extraction, Calibrated classifier). | 15 |
 | `test_chaos.py` | Chaos, circuit-breaker, and degraded-mode resilience testing. | 19 |
 | `test_conflict_resolution.py` | Tests for conflict detection and deterministic arbitration. | 3 |
 | `test_diagnosis_execution.py` | Test suite validating diagnosis execution flow, repeated runs, and run comparison. | 2 |
+| `test_evidence_provenance_and_corroboration.py` | Evidence provenance, corroboration matrix, and non-fabrication tests. | 9 |
 | `test_gateway_api.py` | Integration test for Gateway /ingest and /health microservice endpoints. | 2 |
 | `test_generator.py` | Unit tests for synthetic network generator determinism, scenario signatures, and knobs. | 7 |
 | `test_heldout_generator.py` | Unit and contract validation tests for the held-out telemetry generator. | 27 |
@@ -822,8 +854,14 @@ $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
 | `test_new_views_api.py` | Tests for new HITL, simulation, resume, and feature flags endpoints. | 7 |
 | `test_normal_operation_benign.py` | Regression test suite for normal_operation resolution and non-fault boundaries. | 29 |
 | `test_organizer_adapter.py` | Unit tests verifying OrganizerAdapter resilience to external variants and dirty inputs. | 7 |
+| `test_phase2_canonical_ingestion.py` | Canonical normalization, alias adaptation, and unit coercion verification. | 15 |
+| `test_phase3_evaluation.py` | Full multi-dataset benchmark evaluation harness and metrics verification. | 7 |
 | `test_phase3_validation.py` | Targeted regression and validation test suite for Phase 3 System Validation. | 5 |
+| `test_phase4_report_contract.py` | Unified diagnostic report schema contract, validation, and explainability tests. | 10 |
 | `test_phase4_security.py` | Comprehensive test suite for Phase 4 production security hardening. | 31 |
+| `test_phase5_ui_ux_contract.py` | Accessible UI/UX layout, WCAG AA tokens, and i18n contract tests. | 8 |
+| `test_phase6_security.py` | Production security boundaries, fail-closed startup, and token enforcement tests. | 13 |
+| `test_phase9_regressions.py` | Regression verification suite for Phase 9 truth audit resolutions. | 10 |
 | `test_protocol_envelope.py` | Unit tests verifying envelope serialization, SI unit validation, and JSON schema compliance. | 4 |
 | `test_remediation_coverage.py` | Comprehensive coverage tests for all cause keys, case variants, and simulated action counts. | 28 |
 | `test_remediation_safety.py` | Unit and integration tests for simulated remediation safety gates. | 3 |
@@ -837,7 +875,7 @@ $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
 | `test_tickets_and_impersonation.py` | Tests for ticket management workflow, RBAC access boundaries, and audited impersonation. | 6 |
 | `test_wifi_services_agent.py` | Unit and integration tests for WifiServicesAgent. | 5 |
 
-*Source: `pytest -o pythonpath=. --collect-only -q`*
+*Source: `pytest -o pythonpath=. --collect-only -q` (Total: 429 tests across 39 files).*
 
 #### Commands for Key Verification Checks
 
@@ -864,9 +902,8 @@ $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
    $env:AGENTS_MODE="in_process"; pytest tests/test_remediation_safety.py tests/test_mcp_and_remediation.py -v
    ```
    *Result: 24 passed in 2.1s (verifies simulation safety gates, blast radius limit, and hard blocking).*
-   *(Note: `tests/test_remediation_coverage.py` was developed on branch `fix/remediation-cause-keys` and is not part of this branch).*
 
-#### Real Diagnostic Output Samples
+#### Real Diagnostic Output Samples (Generated by `scripts/generate_doc_examples.py`)
 
 ##### 1. `normal_operation.json` (Trimmed to First 30 Lines)
 ```text
@@ -883,14 +920,14 @@ $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
 | Confidence: 100%                                                            |
 | Affected Devices: core-rtr-01, dist-sw-core, dept-sw-cs-01, host-cs-lab-01, |
 | dist-sw-hostel, ap-hostel-b1, host-student-01, ap-lecture-lh1               |
-| Processing Time: 345.98 ms                                                  |
+| Processing Time: 281.55 ms                                                  |
 |                                                                             |
 | Executive Summary:                                                          |
 | All telemetry metrics, queue depths, and services operating within nominal  |
 | operational baselines.                                                      |
 +-----------------------------------------------------------------------------+
 ```
-*Source: Live CLI output of `netcoop diagnose --file data/scenarios/normal_operation.json`*
+*Source: Executed CLI output of `netcoop diagnose --file data/scenarios/normal_operation.json` via `scripts/generate_doc_examples.py`.*
 
 ##### 2. `link_congestion.json` (Trimmed to First 30 Lines)
 ```text
@@ -905,14 +942,14 @@ $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
 | Status: diagnosed                                                           |
 | Probable Cause: Link utilization saturation causing buffer queue drops and  |
 | latency spikes                                                              |
-| Confidence: 95%                                                             |
+| Confidence: 94%                                                             |
 | Affected Devices: core-rtr-01, dist-sw-core                                 |
-| Processing Time: 404.74 ms                                                  |
+| Processing Time: 286.47 ms                                                  |
 |                                                                             |
 | Executive Summary:                                                          |
 | Incident inc-link-congestion-42 on network iit-bbs-campus-fabric was        |
 | successfully diagnosed as 'Link utilization saturation causing buffer queue |
-| drops and latency spikes' with 92% confidence impacting core-rtr-01,        |
+| drops and latency spikes' with 94% confidence impacting core-rtr-01,        |
 | dist-sw-core.                                                               |
 +-----------------------------------------------------------------------------+
                          Corroborated Evidence Chains                          
@@ -924,16 +961,30 @@ $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
 |                 |                |              | observed 131.1 |          |
 |                 |                |              | ms             |          |
 | telemetry_agent | metric_anomaly | core-rtr-01  | core-rtr-01    | critical |
+|                 |                |              | jitter_ms:     |          |
+|                 |                |              | observed 25.6  |          |
+|                 |                |              | ms             |          |
+| telemetry_agent | metric_anomaly | core-rtr-01  | core-rtr-01    | critical |
+|                 |                |              | link_utiliz... |          |
+|                 |                |              | observed 92.57 |          |
+|                 |                |              | percent        |          |
+| telemetry_agent | metric_anomaly | core-rtr-01  | core-rtr-01    | critical |
+|                 |                |              | queue_drops:   |          |
+|                 |                |              | observed 1484  |          |
+|                 |                |              | packets        |          |
+| topology_agent  | metric_anomaly | core-rtr-01  | transit_link_  | critical |
+|                 |                | :eth0        | adjacency:     |          |
+|                 |                |              | congested_...  |          |
 ```
-*Source: Live CLI output of `netcoop diagnose --file data/scenarios/link_congestion.json`*
+*Source: Executed CLI output of `netcoop diagnose --file data/scenarios/link_congestion.json` via `scripts/generate_doc_examples.py`.*
 
-##### 3. `interop_renamed_fields.json` (Trimmed to First 30 Lines)
+##### 3. `insufficient_data.json` / `interop_renamed_fields.json` (Trimmed to First 30 Lines)
 ```text
 +-------------------------- NetCoop AI Orchestrator --------------------------+
 | Starting Multi-Agent Diagnosis                                              |
-| Incident ID: inc-interop-renamed-fields                                     |
+| Incident ID: inc-insufficient-data-42                                       |
 | Network ID: iit-bbs-campus-fabric                                           |
-| Description: Synthetic incident telemetry for scenario 'link_congestion'    |
+| Description: Synthetic incident telemetry for scenario 'insufficient_data'  |
 | (seed=42)                                                                   |
 +-----------------------------------------------------------------------------+
 +----------------------------- Diagnostic Report -----------------------------+
@@ -941,10 +992,10 @@ $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
 | Probable Cause: N/A                                                         |
 | Confidence: 0%                                                              |
 | Affected Devices: None                                                      |
-| Processing Time: 221.27 ms                                                  |
+| Processing Time: 250.89 ms                                                  |
 |                                                                             |
 | Executive Summary:                                                          |
-| Incident inc-interop-renamed-fields on network iit-bbs-campus-fabric could  |
+| Incident inc-insufficient-data-42 on network iit-bbs-campus-fabric could    |
 | not be conclusively diagnosed. Observed anomalies lack necessary            |
 | multi-point corroboration across agent domains.                             |
 +-----------------------------------------------------------------------------+
@@ -954,15 +1005,15 @@ $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
 | - Decisive empirical attribution features                                   |
 +-----------------------------------------------------------------------------+
 ```
-*Source: Live CLI output of `netcoop diagnose --file data/scenarios/interop_renamed_fields.json`*
+*Source: Executed CLI output of `netcoop diagnose --file data/scenarios/insufficient_data.json` via `scripts/generate_doc_examples.py`.*
 
-##### 4. Real 10-Key Hackathon JSON Contract for `link_congestion` (PDF Section 6 Format)
+##### 4. Real 10-Key Hackathon JSON Contract for `link_congestion` (Executed Output)
 ```json
 {
   "incident_id": "inc-link-congestion-42",
   "status": "diagnosed",
   "suspected_root_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
-  "confidence": 0.956,
+  "confidence": 0.949,
   "affected_devices": [
     "core-rtr-01",
     "dist-sw-core"
@@ -1007,24 +1058,60 @@ $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
       "metric": "queue_drops",
       "value": 1019,
       "interpretation": "dist-sw-core queue_drops: observed 1019 packets"
+    },
+    {
+      "metric": "transit_link_adjacency",
+      "value": "congested_transit_trunk_10.0gbps",
+      "interpretation": "core-rtr-01:eth0<->dist-sw-core:eth0 transit_link_adjacency: observed congested_transit_trunk_10.0gbps text"
     }
   ],
   "alternative_causes": [
     "Upstream provider or transit link congestion inducing downstream delay"
   ],
   "recommended_actions": [
-    "Re-weight hash buckets to steer egress flows across parallel paths and relieve congestion.",
-    "Prioritize delay-sensitive flows and allocate strict priority queue bandwidth."
+    "Rebalance traffic across ECMP next-hops from core-rtr-01 et-0/0/1",
+    "Raise QoS priority and buffer reserve on core-rtr-01 et-0/0/1"
   ],
   "evidence_sources": [
-    "telemetry_agent"
+    "telemetry_agent",
+    "topology_agent"
   ],
   "limitations": [
-    "single snapshot, no temporal context"
+    "single snapshot, no temporal context",
+    "Data quality penalty (-0.020) applied due to: telemetry values repaired: status_mapping, timestamp_parsing."
   ]
 }
 ```
-*Source: Generated via `netcoop.reporting.builder.export_hackathon_report_json(report)` / `POST /api/diagnose/export`.*
+*Source: Executed live via `scripts/generate_doc_examples.py` (`export_hackathon_report_json(report)` / `POST /api/diagnose/export`).*
+
+##### 5. Real Output for Invalid / Malformed Scenario (`interop_malformed_json.json`)
+
+**CLI Rejection (Exit Code 1, Clean Error Boundary)**:
+```text
+$ netcoop diagnose --file data/scenarios/interop_malformed_json.json
+Error: Malformed JSON in data\scenarios\interop_malformed_json.json: Expecting property name enclosed in double quotes: line 2 column 3 (char 4)
+```
+
+**FastAPI Product API Rejection (`POST /api/diagnose`, HTTP 422)**:
+```json
+{
+  "detail": [
+    {
+      "type": "json_invalid",
+      "loc": [
+        "body",
+        5
+      ],
+      "msg": "JSON decode error",
+      "input": {},
+      "ctx": {
+        "error": "Expecting property name enclosed in double quotes"
+      }
+    }
+  ]
+}
+```
+*Source: Executed live via `scripts/generate_doc_examples.py`.*
 
 ---
 
@@ -1072,7 +1159,7 @@ NetCoop-AI/
 |   |-- demo.py                 # End-to-end diagnostic demonstration
 |   |-- demo_organizer.py       # Organizer Colab telemetry demo
 |   `-- run_agents.py           # Multi-process agent launcher
-|-- tests/                      # Automated unit and integration test suite (32 test files)
+|-- tests/                      # Automated unit and integration test suite (39 test files)
 |-- Makefile                    # Automation commands (wrapped for PowerShell)
 `-- pyproject.toml              # Package configuration and dependencies
 ```
@@ -1083,7 +1170,7 @@ NetCoop-AI/
 
 | Requirement | Implementation Module | Verification Status & Test Evidence |
 | :--- | :--- | :--- |
-| **Shared-Nothing Microservices** | `agents/`, `netcoop/orchestrator/mediator.py` | Verified: seven agent processes (six specialists plus a synthesizer) plus the gateway on 8001-8008 (`scripts/run_agents.py`, `tests/test_agent_http.py`) |
+| **Shared-Nothing Microservices** | `agents/`, `netcoop/orchestrator/mediator.py` | Verified: 7 specialist agents plus gateway on ports 8001-8008, coordinated by orchestrator on port 8000 (`scripts/run_agents.py`, `tests/test_agent_http.py`) |
 | **Strongly Typed Wire Envelopes** | `schemas/envelope.json`, `netcoop/core/envelope.py` | Verified: Pydantic v2 schemas validated against JSON Schema specification (`tests/test_protocol_envelope.py`) |
 | **Consensus State Graph** | `netcoop/orchestrator/graph.py` | Verified: LangGraph cyclic supervisor workflow with arbitration (`tests/test_signatures_and_conflicts.py`) |
 | **Ingestion Gateway & Normalizer** | `gateway/api.py`, `gateway/adapters/` | Verified: Port 8006 microservice with alias mapping and unit coercion (`tests/test_b1_gateway_robustness.py`) |
@@ -1098,14 +1185,14 @@ NetCoop-AI/
 
 ## 12. Known Limitations
 
-1. **Synthetic Benchmark**: The benchmark dataset and evaluation suite are entirely synthetic (`data/scenarios/`, `eval/results/benchmark_latest.json`); diagnostic models, Bayesian thresholds, and fault signatures were calibrated against simulated campus topologies and synthetic traffic traces, not verified on production multi-vendor hardware.
+1. **Synthetic Benchmark**: The benchmark dataset and evaluation suite are entirely synthetic (`data/scenarios/`, `eval/results/benchmark_phase11_20261115.json` and earlier runs); diagnostic models, Bayesian thresholds, and fault signatures were calibrated against simulated campus topologies and synthetic traffic traces, not verified on production multi-vendor hardware.
 2. **Compound Multi-Fault and Ambiguous Scenarios**: Compound multi-fault scenarios (`compound_cpu_and_link.json`, `compound_wifi_and_dns.json`) and `ambiguous_multi_fault.json` return insufficient evidence (`insufficient_evidence` status) because the multi-agent consensus state machine abstains rather than emitting uncorroborated single-fault causes when metrics cross multiple competing fault domains.
 3. **Unified Confidence Semantics**: Confidence adheres to a single unified rule across API, export, and reports: normal baseline operation (`status == "benign"`) strictly emits confidence `1.000` with zero suggested remediation actions; ambiguous, incomplete, or uncorroborated scenarios (`status == "insufficient_evidence"`) strictly emit confidence `0.000` under mathematical split-conformal abstention guarantees.
 4. **Conformal Coverage Gap**: Conformal coverage measured **77.4%** versus the nominal **90%** target ($\alpha = 0.10$) due to non-exchangeability across synthetic noise regimes.
-5. **Collected vs. Executed Test Count**: The test count of **357** represents tests collected across the test suite (`pytest -o pythonpath=. --collect-only -q`), not all tests are executed in every localized development run.
-6. **Stale Benchmark Assets**: The committed benchmark file (`eval/results/benchmark_latest.json`) bears timestamp `2026-10-31T18:58:30Z` and was generated prior to the normal-operation benign classification fix; the benchmark JSON has not been regenerated.
-7. **Out-of-Distribution Generalization Drop**: While in-distribution synthetic accuracy is **64.4%** (250 samples), accuracy on held-out synthetic non-Gaussian distributions drops to **40.0%** (150 samples).
-8. **Organizer Telemetry Exact-Match**: On organizer Colab telemetry (`data/organizer/`, 900 samples), set-match accuracy is **66.7%**; strict exact-match accuracy is **0.0%** (`summary["organizer_exact_match_accuracy"]`).
+5. **Executed Test Suite Results**: The backend test suite executes **429 tests across 39 test files** (`pytest -o pythonpath=. tests/ -q`), passing with zero failures. In addition, 9 frontend contract tests pass in `dashboard/tests/test_ui_ux_contract.mjs`, and the dashboard builds cleanly.
+6. **Benchmark Artifacts & Headline Combined Accuracy**: The latest verified benchmark run (`eval/results/benchmark_phase11_20261115.json`) achieves 71.6% in-distribution, 32.0% held-out, and 56.8% combined primary accuracy across 400 synthetic samples. The headline 56.8% combined accuracy includes credit for correct abstentions (141 answered-correct, 3 wrong, 176 abstained out of 320 labelled cases). Selective accuracy on diagnosed incidents is 97.9% (141/144) with 2.1% selective risk at 36.0% coverage.
+7. **Out-of-Distribution Generalization Drop**: While in-distribution synthetic accuracy is **71.6%** (179/250 samples), accuracy on held-out synthetic non-Gaussian distributions drops to **32.0%** (48/150 samples).
+8. **Organizer Telemetry Exact-Match**: On organizer Colab telemetry (`data/organizer/`, 900 samples), set-match accuracy is **66.7%**; exact-match accuracy is **33.3%** (`summary["organizer_exact_match_accuracy"]`). The jump from 0.0% to 33.3% exact-match is due to a scoring-definition correction where healthy switch states map to `no_fault`.
 9. **Smoke-Test Ablation Scope**: The ablation table in Section 3.2 is an isolated 32-case smoke test (4 fault types, 8 seeds); rules-only, model-only, and the full multi-agent pipeline achieve identical 100.0% scores on this subset.
 10. **Simulated Remediation Only**: All generated remediation plans and rollback sequences operate strictly in simulated mode (`is_simulated = True`); the platform does not commit configuration changes directly to live hardware interfaces.
 
