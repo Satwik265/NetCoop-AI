@@ -785,6 +785,8 @@ def run_evaluation_benchmark(
     workers: int = 4,
     output_file: Optional[str] = None,
     overwrite_latest: bool = False,
+    heldout_seed_start: int = 601,
+    heldout_seed_count: int = 15,
 ) -> Dict[str, Any]:
     """Execute complete evaluation suite across all three datasets."""
     start_time = datetime.now(timezone.utc)
@@ -828,8 +830,12 @@ def run_evaluation_benchmark(
         "ambiguous_multi_fault",
         "insufficient_data",
     ]
-    seeds_held = range(501, 503) if quick else range(501, 516)  # 15 per class in full = 150 runs
-    console.print(f"Evaluating Held-Out Dataset ({len(held_scenarios) * len(seeds_held)} samples)...")
+    seeds_held = (
+        range(heldout_seed_start, heldout_seed_start + 2)
+        if quick
+        else range(heldout_seed_start, heldout_seed_start + heldout_seed_count)
+    )
+    console.print(f"Evaluating Held-Out Dataset ({len(held_scenarios) * len(seeds_held)} samples, seeds {seeds_held.start}-{seeds_held.stop-1})...")
     held_tasks = [
         (sc, s) for sc in held_scenarios for s in seeds_held
     ]
@@ -905,6 +911,29 @@ def run_evaluation_benchmark(
 
     brier = float(np.mean([(c - (1.0 if a else 0.0)) ** 2 for c, a in zip(confs, accs)]))
 
+    # Calibration View (a): Over all primary samples with abstentions mapped to confidence 0.0
+    confs_abstentions_zero = [
+        0.0 if (r.get("status") in ("insufficient_evidence", "ambiguous") or (not r.get("is_diagnosed") and r.get("scenario") != "normal_operation"))
+        else float(r["confidence"])
+        for r in all_primary
+    ]
+    accs_abstentions_zero = [r["is_correct"] for r in all_primary]
+    ece_zero, mce_zero, rel_bins_zero = compute_calibration_curve(confs_abstentions_zero, accs_abstentions_zero, n_bins=5)
+    brier_zero = float(np.mean([(c - (1.0 if a else 0.0)) ** 2 for c, a in zip(confs_abstentions_zero, accs_abstentions_zero)]))
+
+    # Calibration View (b): Over accepted predictions only
+    accepted_samples = [
+        r for r in all_primary
+        if r.get("is_diagnosed") or (r.get("scenario") == "normal_operation" and r.get("status") == "benign")
+    ]
+    if accepted_samples:
+        confs_accepted = [float(r["confidence"]) for r in accepted_samples]
+        accs_accepted = [r["is_correct"] for r in accepted_samples]
+        ece_accepted, mce_accepted, rel_bins_accepted = compute_calibration_curve(confs_accepted, accs_accepted, n_bins=5)
+        brier_accepted = float(np.mean([(c - (1.0 if a else 0.0)) ** 2 for c, a in zip(confs_accepted, accs_accepted)]))
+    else:
+        ece_accepted, mce_accepted, rel_bins_accepted, brier_accepted = 0.0, 0.0, [], 0.0
+
     # Parameter range statistics for TEST_SPEC coverage
     miss_rates = [r["missing_rate"] for r in in_dist_results]
     onsets = [r["onset_offset_s"] for r in in_dist_results]
@@ -919,7 +948,7 @@ def run_evaluation_benchmark(
     latency_data = measure_latency_profile(is_quick=quick)
 
     output: Dict[str, Any] = {
-        "version": "1.0.0",
+        "version": "2.0.0",
         "evaluation_mode": mode_str,
         "generated_at": start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "reproducibility": {
@@ -927,11 +956,12 @@ def run_evaluation_benchmark(
             "platform": sys.platform,
             "agents_execution_mode": os.environ.get("AGENTS_MODE", getattr(settings, "agents_mode", "in_process")),
             "git_commit": get_git_commit(),
-            "split_manifest": "data/splits/eval_split_manifest_v1.json",
-            "dataset_version": "1.0.0",
+            "split_manifest": "data/splits/eval_split_manifest_v2.json",
+            "dataset_version": "2.0.0",
             "seed_ranges": {
                 "in_distribution": f"seeds {seeds_in_dist.start}-{seeds_in_dist.stop-1} (TEST_SPEC)",
                 "held_out": f"seeds {seeds_held.start}-{seeds_held.stop-1}",
+                "held_out_historical": "seeds 501-515",
                 "organizer": f"seeds 6000-{6000+samples_per_mode-1} (windowed), 7000-{7000+samples_per_mode-1} (single-snapshot)",
                 "stress_missing": "seeds 3000-3009",
                 "stress_corruption": "seeds 3500-3509",
@@ -998,6 +1028,20 @@ def run_evaluation_benchmark(
             "expected_calibration_error": ece,
             "max_calibration_error": mce,
             "reliability_bins": rel_bins,
+            "all_samples_with_abstentions_as_zero": {
+                "expected_calibration_error": ece_zero,
+                "max_calibration_error": mce_zero,
+                "brier_score": round(brier_zero, 3),
+                "sample_count": len(all_primary),
+                "reliability_bins": rel_bins_zero,
+            },
+            "accepted_predictions_only": {
+                "expected_calibration_error": ece_accepted,
+                "max_calibration_error": mce_accepted,
+                "brier_score": round(brier_accepted, 3),
+                "sample_count": len(accepted_samples),
+                "reliability_bins": rel_bins_accepted,
+            },
         },
         "stress_tests": stress_data,
         "risk_coverage": risk_cov,
@@ -1109,13 +1153,24 @@ Because the organizer schema utilizes high-level labels that do not map 1:1 to i
 
 ## 4. Calibration & Reliability Analysis
 
+### 4.1 Primary Benchmark Calibration
 - **Expected Calibration Error (ECE)**: **{calib['expected_calibration_error']:.3f}** (population: {summary.get('ece_population', 'primary_samples')})
 - **Maximum Calibration Error (MCE)**: **{calib['max_calibration_error']:.3f}**
 - **Brier Score**: **{summary['brier_score']:.3f}** (population: {summary.get('brier_score_population', 'primary_samples')})
 - **Macro F1**: **{summary['macro_f1']:.3f}** (evaluated across 8 canonical classes)
 - **Weighted F1**: **{summary['weighted_f1']:.3f}**
 
-### Reliability Diagram Bins
+### 4.2 Calibration View (a): All Samples with Abstentions at Confidence 0.0
+- **ECE (Abstentions = 0.0)**: **{calib.get('all_samples_with_abstentions_as_zero', {}).get('expected_calibration_error', calib['expected_calibration_error']):.3f}**
+- **Brier Score (Abstentions = 0.0)**: **{calib.get('all_samples_with_abstentions_as_zero', {}).get('brier_score', summary['brier_score']):.3f}**
+- **Total Population**: **{calib.get('all_samples_with_abstentions_as_zero', {}).get('sample_count', summary['primary_in_distribution_samples'] + summary['held_out_samples'])}** samples
+
+### 4.3 Calibration View (b): Accepted Predictions Only
+- **ECE (Accepted Only)**: **{calib.get('accepted_predictions_only', {}).get('expected_calibration_error', 0.0):.3f}**
+- **Brier Score (Accepted Only)**: **{calib.get('accepted_predictions_only', {}).get('brier_score', 0.0):.3f}**
+- **Accepted Subpopulation**: **{calib.get('accepted_predictions_only', {}).get('sample_count', 0)}** samples
+
+### Reliability Diagram Bins (Primary Benchmark)
 | Confidence Interval | Mean Confidence | Empirical Accuracy | Sample Count |
 | :---: | :---: | :---: | :---: |
 """
@@ -1169,6 +1224,8 @@ if __name__ == "__main__":
     parser.add_argument("--workers", type=int, default=4, help="Parallel worker processes")
     parser.add_argument("--output", type=str, default=None, help="Custom output JSON path")
     parser.add_argument("--overwrite-latest", action="store_true", help="Allow updating benchmark_latest.json")
+    parser.add_argument("--heldout-seed-start", type=int, default=601, help="Heldout evaluation starting seed")
+    parser.add_argument("--heldout-seed-count", type=int, default=15, help="Heldout evaluation seed count")
     args = parser.parse_args()
 
     run_evaluation_benchmark(
@@ -1176,4 +1233,6 @@ if __name__ == "__main__":
         workers=args.workers,
         output_file=args.output,
         overwrite_latest=args.overwrite_latest,
+        heldout_seed_start=args.heldout_seed_start,
+        heldout_seed_count=args.heldout_seed_count,
     )
