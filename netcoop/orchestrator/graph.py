@@ -853,11 +853,16 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         weights_data.get("confidence_cutoffs", {}).get("high", 0.8),
     )
 
+    raw_data = state.get("raw_data", {})
+    dq = raw_data.get("data_quality") or {}
+    dq_score = float(dq.get("overall_score", 1.0))
+
     is_benign_normal = (
         not specialist_obs
         and not hypothesis
         and top_class == "normal_operation"
         and top_prob >= normal_threshold
+        and dq_score >= 0.75
     )
 
     if is_benign_normal:
@@ -889,12 +894,24 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         )
         summary_text = "All telemetry metrics, queue depths, and services operating within nominal operational baselines."
 
+    is_ambiguous_conformal = (len(conformal_prediction_set) > 1 or classifier_conformal_status == "ambiguous")
+    if is_ambiguous_conformal and status != "benign":
+        status = "insufficient_evidence"
+        hypothesis = None
+        confidence_category = "low"
+        uncertainty = UncertaintyEvaluation(
+            score=0.85,
+            reasons=[f"Ambiguous multi-fault signature: conformal prediction set contains multiple competing classes {conformal_prediction_set}."],
+            missing_evidence=["Targeted differential discrimination probes"],
+            alternative_hypotheses=[{"cause": c, "confidence": float(classifier_calib_probs.get(c, 0.5))} for c in conformal_prediction_set],
+        )
+
     classifier_abstained = (
         status != "benign"
         and not is_benign_normal
+        and not is_ambiguous_conformal
         and (
             classifier_conformal_status == "abstain"
-            or (is_statistical_domain and classifier_calib_probs and len(conformal_prediction_set) == 0)
             or (not hypothesis and len(conformal_prediction_set) == 0 and classifier_calib_probs)
         )
     )

@@ -384,8 +384,8 @@ class OfflineCorrelationEngine:
         cls, observations: List[Observation], evidence: List[EvidenceItem]
     ) -> Optional[DiagnosticHypothesis]:
         """Correlate Ethernet interface errors and flapping."""
-        errs = [o for o in observations if o.metric_name in ("interface_errors", "fcs_errors", "crc_errors") and float(o.observed_value or 0) > 500]
-        flaps = [o for o in observations if o.metric_name == "link_flaps" and float(o.observed_value or 0) > 3]
+        errs = [o for o in observations if o.metric_name in ("interface_errors", "fcs_errors", "crc_errors") and float(o.observed_value or 0) > 100]
+        flaps = [o for o in observations if o.metric_name == "link_flaps" and float(o.observed_value or 0) >= 3]
 
         if not (errs or flaps):
             return None
@@ -398,9 +398,9 @@ class OfflineCorrelationEngine:
         provided_domains = sorted(list({e.source_agent for e in sup_evidence if e.source_agent}))
         required_domains = ["telemetry_agent"]
 
-        is_sufficient = len(errs) > 0
-        max_err = max([float(o.observed_value or 0) for o in errs], default=500.0)
-        err_factor = min(1.0, max(0.0, (max_err - 500.0) / 2000.0))
+        is_sufficient = (len(errs) > 0 or len(flaps) > 0)
+        max_err = max([float(o.observed_value or 0) for o in errs], default=0.0)
+        err_factor = min(1.0, max(0.0, (max_err - 100.0) / 2000.0)) if errs else 0.0
         flap_factor = min(1.0, len(flaps) * 0.1)
 
         raw_score = round(min(0.95, 0.70 + 0.15 * err_factor + 0.10 * flap_factor), 3) if is_sufficient else 0.45
@@ -522,9 +522,9 @@ class OfflineCorrelationEngine:
     ) -> Optional[DiagnosticHypothesis]:
         """Correlate upstream device failure with downstream cascade."""
         offline_obs = [o for o in observations if o.metric_name in ("device_offline", "carrier_transitions") or (o.metric_name == "packet_loss_pct" and float(o.observed_value or 0) >= 99.0)]
-        util_obs = [o for o in observations if o.metric_name in ("link_utilization_pct", "queue_drops") and float(o.observed_value or 0) > 80.0]
+        util_obs = [o for o in observations if (o.metric_name == "link_utilization_pct" and float(o.observed_value or 0) > 75.0) or (o.metric_name == "queue_drops" and float(o.observed_value or 0) > 10)]
 
-        if not (offline_obs and util_obs):
+        if not offline_obs:
             return None
 
         devs = sorted(list({o.entity.split(":")[0] for o in (offline_obs + util_obs)}))
@@ -535,7 +535,7 @@ class OfflineCorrelationEngine:
         provided_domains = sorted(list({e.source_agent for e in sup_evidence if e.source_agent}))
         required_domains = ["telemetry_agent"]
 
-        raw_score = 0.96 if len(offline_obs) > 0 and len(util_obs) > 0 else 0.50
+        raw_score = 0.96 if len(util_obs) > 0 else 0.80
         return DiagnosticHypothesis(
             cause_key="UPSTREAM_FAILURE_CASCADE",
             title="Core router failure causing failover saturation on distribution links",
