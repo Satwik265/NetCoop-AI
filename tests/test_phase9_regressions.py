@@ -172,7 +172,8 @@ def test_every_cause_key_has_valid_remediation_mapping():
             for act in actions:
                 assert act.action_id
                 assert act.title
-                assert act.action_type
+                assert act.commands
+                assert act.description
 
 
 def test_canonical_cause_key_eval_mapping_coverage():

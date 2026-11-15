@@ -53,6 +53,21 @@ export interface RemediationAction {
   action?: string;
 }
 
+export type CanonicalCauseKey =
+  | "LINK_CONGESTION"
+  | "WEAK_WIFI_SIGNAL"
+  | "ETHERNET_INTERFACE_FAULT"
+  | "DEVICE_CPU_OVERLOAD"
+  | "DNS_FAILURE"
+  | "DHCP_FAILURE"
+  | "UPSTREAM_FAILURE_CASCADE"
+  | "DEVICE_HARDWARE_FAILURE"
+  | "MTU_MISMATCH_BLACKHOLE"
+  | "BGP_ROUTE_FLAP_DAMPING"
+  | "OPTICAL_TRANSCEIVER_DEGRADATION"
+  | "STP_SPLIT_BRAIN_LOOP"
+  | "NO_FAULT";
+
 export interface UnifiedDiagnosticReport {
   incident_id: string;
   network_id: string;
@@ -60,6 +75,7 @@ export interface UnifiedDiagnosticReport {
   status: "diagnosed" | "insufficient_evidence" | "inconclusive" | "benign" | "failed" | "invalid" | string;
   probable_cause: string | null;
   suspected_root_cause?: string | null;
+  hypothesis_key?: CanonicalCauseKey | string;
   confidence: number;
   is_confidence_calibrated?: boolean;
   confidence_type?: string;

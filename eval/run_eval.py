@@ -98,6 +98,12 @@ def map_cause_to_class(status: str, cause_str: Optional[str]) -> str:
         return "normal_operation"
     if status in ("insufficient_evidence", "ambiguous"):
         return "insufficient_evidence"
+
+    from netcoop.core.taxonomy import resolve_canonical_cause, CAUSE_TO_EVAL_MAP
+    canonical = resolve_canonical_cause(cause_str)
+    if canonical and canonical in CAUSE_TO_EVAL_MAP:
+        return CAUSE_TO_EVAL_MAP[canonical]
+
     c = (cause_str or "").lower()
     if "hardware" in c:
         return "device_hardware_failure"
