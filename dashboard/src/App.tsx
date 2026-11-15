@@ -769,6 +769,16 @@ export const App: React.FC = () => {
                 </button>
               )}
 
+              {!user && (
+                <button
+                  onClick={openLoginModal}
+                  className="px-2.5 py-1 border border-[#0B2545] dark:border-[#3A86FF] text-[#0B2545] dark:text-[#3A86FF] hover:bg-[#0B2545]/10 text-xs font-bold uppercase transition-colors min-h-[28px]"
+                  title="Log in"
+                >
+                  Login
+                </button>
+              )}
+
               {user && (
                 <button
                   onClick={logout}
