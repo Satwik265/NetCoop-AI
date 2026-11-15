@@ -1009,12 +1009,16 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     )
 
     if status == "benign":
-        report.confidence = top_prob
+        report.confidence = 1.0
         report.probable_cause = _NormalOperationProbableCause(report.probable_cause or "Normal Operation")
         if not report.summary or "insufficient" in report.summary.lower() or "status benign" in report.summary.lower():
             report.summary = (
-                f"Normal network operation verified with {int(top_prob * 100)}% confidence. No anomalous faults detected."
+                "Normal network operation verified with 100% confidence. No anomalous faults detected."
             )
+    elif status in ("insufficient_evidence", "inconclusive", "invalid", "failed"):
+        report.confidence = 0.0
+        report.probable_cause = None
+        report.suspected_root_cause = None
 
     # Schema validation against schemas/diagnostic_report.json
     _validate_report_schema(report)
