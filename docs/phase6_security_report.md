@@ -65,6 +65,13 @@ The table below documents the server-side authentication and authorization requi
 | `/api/remediation/pending` | `GET` | Bearer JWT | `PERM_VIEW_FABRIC_HEALTH` | 401 Unauthorized | 401 / 403 |
 | `/api/remediation/actions` | `GET` | Bearer JWT | `PERM_VIEW_FABRIC_HEALTH` | 401 Unauthorized | 401 / 403 |
 | `/api/remediation/logs` | `GET` | Bearer JWT | `PERM_EXPORT_AUDIT_LOGS` | 401 Unauthorized | 401 / 403 |
+| `/api/incidents/{id}/hitl-decision` | `POST` | Bearer JWT | `PERM_APPROVE_REMEDIATION` | 401 Unauthorized | 401 / 403 |
+| `/api/incidents/{id}/remediate` | `POST` | Bearer JWT | `PERM_APPROVE_REMEDIATION` | 401 Unauthorized | 401 / 403 |
+| `/api/remediate/simulate` | `POST` | Bearer JWT | `PERM_SIMULATE_REMEDIATION` | 401 Unauthorized | 401 / 403 |
+| `/api/orchestrator/pause` | `POST` | Bearer JWT | `PERM_EXECUTE_DIAGNOSIS` | 401 Unauthorized | 401 / 403 |
+| `/api/orchestrator/resume/{session_id}` | `POST` | Bearer JWT | `PERM_EXECUTE_DIAGNOSIS` | 401 Unauthorized | 401 / 403 |
+| `/api/incidents/{incident_id}/resume` | `POST` | Bearer JWT | `PERM_EXECUTE_DIAGNOSIS` | 401 Unauthorized | 401 / 403 |
+| `/api/orchestrator/checkpoints/{session_id}` | `GET` | Bearer JWT | `PERM_EXECUTE_DIAGNOSIS` | 401 Unauthorized | 401 / 403 |
 | `/api/remediation/{id}/modify` | `POST` | Bearer JWT | `PERM_MODIFY_COMMANDS` | 401 Unauthorized | 401 / 403 |
 | `/api/remediation/{id}/approve` | `POST` | Bearer JWT | `PERM_APPROVE_REMEDIATION` | 401 Unauthorized | 401 / 403 |
 | `/api/remediation/{id}/reject` | `POST` | Bearer JWT | `PERM_APPROVE_REMEDIATION` | 401 Unauthorized | 401 / 403 |
