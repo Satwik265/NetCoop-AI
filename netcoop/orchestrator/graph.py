@@ -1093,11 +1093,6 @@ def run_diagnosis(incident_data: Dict[str, Any]) -> UnifiedDiagnosticReport:
     mediator.reset_dead_agents()
     init_db()
 
-    # Automatically adapt unnormalized inputs through OrganizerAdapter
-    if not incident_data.get("is_normalized") or not incident_data.get("data_quality"):
-        from gateway.adapters.organizer_adapter import OrganizerAdapter
-        incident_data = OrganizerAdapter.adapt_dataset(incident_data)
-
     incident_id = incident_data.get("incident_id", "inc-default")
     network_id = incident_data.get("network_id", "net-default")
     topology_nodes = incident_data.get("topology", {}).get("nodes", [])
