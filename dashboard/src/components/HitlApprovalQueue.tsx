@@ -43,7 +43,7 @@ export const HitlApprovalQueue: React.FC<HitlApprovalQueueProps> = ({
   // Initialize pending actions strictly from props without inventing fake actions
   useEffect(() => {
     if (actions && actions.length > 0) {
-      setPendingActions(actions);
+      setPendingActions(actions.filter((a) => a.status !== "simulated_executed" && a.status !== "rejected"));
     } else {
       setPendingActions([]);
     }
@@ -69,6 +69,17 @@ export const HitlApprovalQueue: React.FC<HitlApprovalQueueProps> = ({
   useEffect(() => {
     fetchLogs();
   }, [incidentId]);
+
+  // Support closing modal with Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && modalMode) {
+        closeModal();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [modalMode]);
 
   const openModal = (action: RemediationAction, mode: "approve" | "reject" | "modify") => {
     setSelectedAction(action);

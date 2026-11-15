@@ -203,7 +203,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({
         </div>
 
         {/* Section Navigation Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pt-3 text-xs font-sans text-[#475569] dark:text-[#94A3B8]">
+        <div className="flex items-center gap-1.5 overflow-x-auto pt-3 text-xs font-sans text-[#475569] dark:text-[#94A3B8]" tabIndex={0} role="region" aria-label="Section Navigation Pills">
           <span className="uppercase text-[10px] font-bold mr-1 text-[#0B2545] dark:text-[#F1F5F9]">Jump to:</span>
           {[
             { id: "all", label: "All 12 Sections" },
@@ -431,7 +431,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({
           </div>
 
           {evidenceExpanded && (
-            <div className="overflow-x-auto border border-[#E2E8F0] dark:border-[#2A2A2D]">
+            <div className="overflow-x-auto border border-[#E2E8F0] dark:border-[#2A2A2D]" tabIndex={0} role="region" aria-label="Evidence Ledger Table Container">
               <table className="w-full text-left font-sans text-xs border-collapse" aria-label="Evidence Ledger Table">
                 <caption className="sr-only">Detailed breakdown of empirical evidence items, source agents, target entities, and telemetry metrics</caption>
                 <thead className="bg-[#F1F5F9] dark:bg-[#0F0F10] border-b border-[#CBD5E1] dark:border-[#2A2A2D] text-[10px] uppercase font-bold tracking-wider text-[#475569] dark:text-[#94A3B8]">
@@ -647,7 +647,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({
                     <div className="text-[#475569] dark:text-[#94A3B8] uppercase font-bold text-[10px]">
                       Proposed Target Commands:
                     </div>
-                    <pre className="text-[#0F172A] dark:text-[#F1F5F9] overflow-x-auto">
+                    <pre className="text-[#0F172A] dark:text-[#F1F5F9] overflow-x-auto" tabIndex={0} role="region" aria-label="Proposed Target Commands">
                       {act.commands.join("\n")}
                     </pre>
                   </div>
@@ -679,7 +679,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({
                   Automated Rollback Commands (Pre-validated):
                 </div>
                 <div className="bg-[#FFFFFF] dark:bg-[#161618] border border-[#E2E8F0] dark:border-[#2A2A2D] p-3 text-xs font-mono">
-                  <pre className="text-[#0F172A] dark:text-[#F1F5F9] overflow-x-auto">
+                  <pre className="text-[#0F172A] dark:text-[#F1F5F9] overflow-x-auto" tabIndex={0} role="region" aria-label="Automated Rollback Commands">
                     {report.remediation_actions.flatMap((a) => a.rollback_commands).join("\n")}
                   </pre>
                 </div>

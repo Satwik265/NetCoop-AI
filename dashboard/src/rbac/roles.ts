@@ -56,7 +56,7 @@ export const ROLE_DEFINITIONS: Record<UserRole, RoleDefinition> = {
       "approve_remediation",
     ],
     primaryView: "engineer",
-    badgeClass: "border-[#5E7A6A] text-[#5E7A6A] bg-[#5E7A6A]/10",
+    badgeClass: "border-[#2D5A43] text-[#2D5A43] bg-[#2D5A43]/10",
   },
   network_admin: {
     id: "network_admin",
@@ -115,7 +115,7 @@ export const ROLE_DEFINITIONS: Record<UserRole, RoleDefinition> = {
     description: "Triages user support tickets, views impacted campus buildings, and tracks incident resolution progress.",
     permissions: ["view_incidents", "edit_incident_assignments"],
     primaryView: "helpdesk",
-    badgeClass: "border-[#5E7A6A] text-[#5E7A6A] bg-[#5E7A6A]/10",
+    badgeClass: "border-[#2D5A43] text-[#2D5A43] bg-[#2D5A43]/10",
   },
 };
 

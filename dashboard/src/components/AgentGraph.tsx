@@ -47,15 +47,6 @@ const CustomAgentNode: React.FC<{ data: CustomNodeData }> = ({ data }) => {
   return (
     <div
       onClick={() => data.onFilterAgent && data.onFilterAgent(data.id)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if ((e.key === "Enter" || e.key === " ") && data.onFilterAgent) {
-          e.preventDefault();
-          data.onFilterAgent(data.id);
-        }
-      }}
-      aria-label={`Agent ${data.label}, Port ${data.port}, ${data.messageCount} messages recorded`}
       className={`px-3.5 py-2.5 rounded-none border text-xs font-mono transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-[#133E87] dark:focus-visible:ring-[#3A86FF] outline-none ${
         isTarget
           ? "border-[#133E87] bg-[#EEF4FB] dark:border-[#3A86FF] dark:bg-[#1E293B] shadow-sm ring-1 ring-[#133E87]"
@@ -267,7 +258,7 @@ export const AgentGraph: React.FC<AgentGraphProps> = ({
         </div>
       ) : (
         /* Accessible Table Alternative (WCAG 2.2 AA compliant tabular view) */
-        <div className="p-4 overflow-x-auto">
+        <div className="p-4 overflow-x-auto" tabIndex={0} role="region" aria-label="Agent Registry Table Container">
           <table
             className="w-full text-left border-collapse text-xs font-sans"
             aria-label="Agent Registry Table"

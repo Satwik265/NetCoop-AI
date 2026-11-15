@@ -55,7 +55,10 @@ export const ScenarioPicker: React.FC<ScenarioPickerProps> = ({
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex-1 space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-bold uppercase tracking-wider text-[#0B2545] dark:text-[#94A3B8]">
+            <label
+              htmlFor="scenario-select"
+              className="text-xs font-bold uppercase tracking-wider text-[#0B2545] dark:text-[#94A3B8]"
+            >
               Target Network Diagnostic Scenario / Dataset
             </label>
             {/* Execution status indicator */}
@@ -84,6 +87,8 @@ export const ScenarioPicker: React.FC<ScenarioPickerProps> = ({
 
           <div className="relative">
             <select
+              id="scenario-select"
+              aria-label="Target network diagnostic scenario or dataset"
               value={selectedScenario}
               onChange={(e) => onSelectScenario(e.target.value)}
               className="w-full bg-[#F8FAFC] dark:bg-[#0F0F10] border border-[#E2E8F0] dark:border-[#2A2A2D] text-[#0F172A] dark:text-[#EDEDEA] px-3.5 py-2.5 text-sm font-sans outline-none focus:border-[#133E87] transition-colors"

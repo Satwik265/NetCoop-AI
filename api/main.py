@@ -1759,6 +1759,14 @@ def run_scenario_diagnosis_endpoint(
         previous_run_id=prev_run_id,
         triggered_by=current_user.username,
     )
+    save_incident(
+        incident_id=execution_id,
+        network_id=getattr(report, "network_id", "iit-bbs-campus-fabric"),
+        status=report.status,
+        probable_cause=report.probable_cause,
+        confidence=report.confidence,
+        report_json=report.to_json(),
+    )
 
     # Retrieve newly recorded envelope messages
     envelopes = [

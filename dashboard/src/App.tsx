@@ -726,7 +726,7 @@ export const App: React.FC = () => {
                     ? "bg-[#EEF4FB] text-[#133E87] border border-[#133E87]/40 dark:bg-[#1E3A8A]/40 dark:text-[#93C5FD]"
                     : provenance === "CACHED_STALE"
                     ? "bg-[#FFFBEB] text-[#B45309] border border-[#B45309]/40 dark:bg-[#78350F]/40 dark:text-[#FDE68A]"
-                    : "bg-[#FEF2F2] text-[#DC2626] border border-[#DC2626]/40 dark:bg-[#7F1D1D]/40 dark:text-[#FCA5A5]"
+                    : "bg-[#FEF2F2] text-[#B91C1C] border border-[#B91C1C]/40 dark:bg-[#7F1D1D]/40 dark:text-[#FCA5A5]"
                 }`}
               >
                 [{provenance.replace("_", " ")}]
@@ -740,6 +740,7 @@ export const App: React.FC = () => {
               </label>
               <select
                 id="tz-select"
+                aria-label="Operator display timezone"
                 value={timezone}
                 onChange={(e) => setTimezone(e.target.value as SupportedTimezone)}
                 className="bg-transparent text-xs font-mono font-bold text-[#0F172A] dark:text-[#F1F5F9] outline-none cursor-pointer"
@@ -923,10 +924,10 @@ export const App: React.FC = () => {
 
           {/* ROUTE GUARD: Check authorization for active view */}
           {!isNavAuthorized ? (
-            <div className="p-8 border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400 font-mono space-y-3">
+            <div className="p-8 border border-[#B91C1C]/40 bg-[#FEF2F2] dark:bg-[#7F1D1D]/30 text-[#B91C1C] dark:text-[#FCA5A5] font-mono space-y-3">
               <div className="font-bold uppercase text-sm">Access Denied (RBAC Protected Route)</div>
               <p className="text-xs">
-                Your authenticated role (<strong>{user?.role}</strong>) does not have authorization to view the requested dashboard (<strong>{getNavLabel(activeNav)}</strong>).
+                Your authenticated role (<strong>{user?.role || "unauthenticated"}</strong>) does not have authorization to view the requested dashboard (<strong>{getNavLabel(activeNav)}</strong>).
               </p>
               <button
                 onClick={handleNavigateHome}

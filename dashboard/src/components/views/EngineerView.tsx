@@ -658,6 +658,8 @@ export const EngineerView: React.FC<EngineerViewProps> = ({
                 <span className="text-xs uppercase font-bold text-slate-500">Incident Record Selection</span>
                 <div className="flex items-center gap-3">
                   <select
+                    id="incident-selector"
+                    aria-label="Incident record selection"
                     value={selectedIncidentId}
                     onChange={(e) => setSelectedIncidentId(e.target.value)}
                     className="p-2.5 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-mono text-sm font-bold text-[#0B2545] dark:text-blue-400 outline-none"

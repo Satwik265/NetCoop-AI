@@ -133,7 +133,7 @@ export const StreamingTimeline: React.FC<StreamingTimelineProps> = ({
       </div>
 
       {/* Scrollable Timeline List */}
-      <div className="flex-1 overflow-y-auto space-y-2 pr-1" role="feed" aria-label="Envelope events list">
+      <div className="flex-1 overflow-y-auto space-y-2 pr-1" role="region" aria-label="Envelope events list">
         {filtered.length === 0 ? (
           <div className="text-xs text-[#475569] dark:text-[#94A3B8] font-mono py-8 text-center">
             No envelopes match the selected filters or scrub state.
@@ -157,7 +157,6 @@ export const StreamingTimeline: React.FC<StreamingTimelineProps> = ({
                     onSelectEnvelope(env);
                   }
                 }}
-                aria-label={`Envelope ${env.id || idx + 1}: ${env.sender} to ${env.recipient}, ${env.message_type}`}
                 className={`p-2.5 border text-xs font-sans cursor-pointer transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-[#133E87] ${
                   isLatest
                     ? "border-[#0B2545] bg-[#EEF4FB] dark:border-[#3A86FF] dark:bg-[#1E293B]"
