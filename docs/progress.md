@@ -13,7 +13,7 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 | **Orchestrator & State Graph** | Yes | Yes | None | LangGraph multi-node state graph (port 8000). Executes specialist dispatch, mediation, inquiry, and synthesis turns. |
 | **Conflict Resolution & Mediation**| Yes | Yes | None | Deterministic tie-breaking hierarchy (direct > correlated > topology), cross-agent inquiries, ArbitrationResult container. |
 | **Zero-LLM Offline Engine** | Yes | Yes | None | Deterministic rule-based correlation, evidence scoring, and formal 10-signature registry with zero LLM dependence. |
-| **Learned Layer & Hybrid Blending** | Yes | Yes | None | Calibrated ML classifier (`RandomForest` + Platt scaling), weighted blending ($0.55 \cdot S_{rules} + 0.45 \cdot S_{model}$), conformal prediction sets, abstention enforcement. |
+| **Learned Layer & Hybrid Blending** | Yes | Yes | None | Calibrated ML classifier (`HistGradientBoostingClassifier` + Isotonic Regression), weighted blending ($0.55 \cdot S_{rules} + 0.45 \cdot S_{model}$), conformal prediction sets, abstention enforcement. |
 | **Chaos Fuzzer & Robustness Suite** | Yes | Yes | None | Random seedable mutation fuzzer, 7 end-to-end anomaly tests, circuit breakers, degraded mode continuation. |
 | **Optional LLM Bridge (Gemini)** | Yes | Yes | None | Summaries and tie-breaking only. Gracefully degrades to rule-based fallback when absent. |
 | **Simulated Remediation Engine** | Yes | Yes | None | In-memory state mutation, before/after metric deltas, hard-blocked network calls, HITL approval. |
@@ -32,10 +32,10 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 | **Collaborating Agents (>= 2, aim 5)** | 7 specialist agents plus gateway and orchestrator | `netcoop/agents/telemetry_agent.py`<br/>`netcoop/agents/topology_agent.py`<br/>`netcoop/agents/config_agent.py`<br/>`netcoop/agents/log_agent.py`<br/>`netcoop/agents/synthesizer_agent.py`<br/>`netcoop/agents/classifier/agent.py`<br/>`netcoop/agents/wifi_services_agent.py` | `tests/test_agents.py`<br/>`tests/test_agent_http.py`<br/>`tests/test_wifi_services_agent.py` | **Complete** |
 | **Documented Interoperability** | Message formats, field meanings, units, envelope schema | `schemas/envelope.json`<br/>`schemas/telemetry.json`<br/>`docs/protocol.md`<br/>`docs/contract.md` | `tests/test_protocol_envelope.py` | **Complete** |
 | **Orchestration & Conflict Resolution** | LangGraph orchestration, debate/inquiry rounds, dispute handling | `netcoop/orchestrator/graph.py`<br/>`netcoop/orchestrator/mediator.py`<br/>`netcoop/orchestrator/conflict_resolver.py` | `tests/test_conflict_resolution.py`<br/>`tests/test_signatures_and_conflicts.py`<br/>`tests/test_scenarios.py` | **Complete** |
-| **Fault Diagnosis with Evidence** | Corroborated root cause identification with evidentiary chain | `netcoop/core/evidence.py`<br/>`netcoop/core/correlation.py`<br/>`netcoop/core/signatures.py`<br/>`netcoop/core/thresholds.py` | `scripts/eval_benchmark.py`<br/>(21/21 scenarios passed, 100%) | **Complete** |
+| **Fault Diagnosis with Evidence** | Corroborated root cause identification with evidentiary chain | `netcoop/core/evidence.py`<br/>`netcoop/core/correlation.py`<br/>`netcoop/core/signatures.py`<br/>`netcoop/core/thresholds.py` | `scripts/eval_benchmark.py`<br/>(21/21 scenarios supported via Ingestion Gateway) | **Complete** |
 | **Unified JSON Report** | Exact output format (incident_id, status, cause, confidence, devices, evidence, uncertainty, actions, causal_chain, conflicts_resolved, limitations, provenance, confidence_breakdown, conformal_prediction_set, confidence_category) | `netcoop/core/report.py`<br/>`schemas/diagnostic_report.json` | `tests/test_scenarios.py`<br/>`tests/test_insufficient_evidence.py`<br/>`tests/test_chaos.py` (18/18 passed) | **Complete** |
 | **Validation & Error Handling** | Schema validation, unit conversions, null/NaN sanitization, skew handling | `gateway/adapters/organizer_adapter.py`<br/>`netcoop/core/normalizer.py`<br/>`gateway/api.py` | `tests/test_organizer_adapter.py`<br/>`tests/test_robustness_hypothesis.py`<br/>`tests/test_b1_gateway_robustness.py`<br/>`tests/test_chaos.py` | **Complete** |
-| **Reproducible Tests, Samples & Demo** | Single command demo, sample inputs, setup instructions, unit & fuzz tests | `Makefile`<br/>`scripts/demo.py`<br/>`scripts/demo_organizer.py`<br/>`data/scenarios/` | `pytest tests/ -q` (429/429 passed)<br/>`npm test -- --run` (9/9 passed)<br/>`python scripts/eval_benchmark.py` (21/21 passed) | **Complete** |
+| **Reproducible Tests, Samples & Demo** | Single command demo, sample inputs, setup instructions, unit & fuzz tests | `Makefile`<br/>`scripts/demo.py`<br/>`scripts/demo_organizer.py`<br/>`data/scenarios/` | `pytest tests/ -q` (429/429 passed)<br/>`npm test -- --run` (9/9 passed)<br/>`python scripts/eval_benchmark.py` (21/21 scenarios supported) | **Complete** |
 
 ---
 
@@ -68,7 +68,7 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 | **Interactive Dashboard + CLI** | Rich monochrome terminal CLI and web-based streaming UI | `netcoop/cli.py`<br/>`dashboard/` (React + Tailwind) | `netcoop --help`<br/>`cd dashboard && npm run build` | **Complete** |
 | **Organizer Telemetry Compatibility**| Ingest organizer's Colab notebook format with unit/status translations | `data/organizer/organizer_generator.py`<br/>`gateway/adapters/organizer_adapter.py` | `scripts/demo_organizer.py`<br/>`make demo-organizer` | **Complete** |
 | **Degraded Mode Resilience** | Circuit breaker fast-fallback, graceful agent unavailability recording | `netcoop/orchestrator/mediator.py`<br/>`docs/robustness.md` | `tests/test_chaos.py` (18/18 passed) | **Complete** |
-| **Learned Model & Conformal Guarantees** | Platt-calibrated Random Forest, split-conformal prediction sets ($1 - \alpha = 0.90$), abstention guarantee | `netcoop/models/`<br/>`netcoop/agents/classifier/`<br/>`docs/confidence.md` | `tests/test_b2_learned_layer.py`<br/>`tests/test_chaos.py` | **Complete** |
+| **Learned Model & Conformal Guarantees** | Isotonically calibrated HistGradientBoostingClassifier, split-conformal prediction sets ($1 - \alpha = 0.90$), disciplined abstention | `netcoop/models/`<br/>`netcoop/agents/classifier/`<br/>`docs/confidence.md` | `tests/test_b2_learned_layer.py`<br/>`tests/test_chaos.py` | **Complete** |
 
 ---
 
@@ -138,7 +138,7 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 | Evaluation Area | Weight | Implementation Modules | Test Modules | Status |
 | :--- | :---: | :--- | :--- | :--- |
 | **Interoperability & Protocol Design** | 30% | `schemas/*.json`<br/>`core/envelope.py`<br/>`gateway/api.py`<br/>`gateway/adapters/organizer_adapter.py`<br/>`gateway/adapters/unit_inference.py`<br/>`gateway/adapters/field_matcher.py`<br/>`docs/protocol.md`<br/>`docs/contract.md` | `tests/test_protocol_envelope.py`<br/>`tests/test_gateway_api.py`<br/>`tests/test_agent_http.py`<br/>`tests/test_b1_gateway_robustness.py`<br/>`tests/test_b2_learned_layer.py`<br/>`tests/test_mcp_and_remediation.py` | complete |
-| **Diagnostic Accuracy & Evidence Quality** | 25% | `core/evidence.py`<br/>`core/correlation.py`<br/>`core/scoring.py`<br/>`core/report.py`<br/>`netcoop/models/`<br/>`netcoop/agents/classifier/`<br/>`eval/run_eval.py` | `tests/test_scenarios.py`<br/>`tests/test_insufficient_evidence.py`<br/>`tests/test_b2_learned_layer.py`<br/>`scripts/eval_benchmark.py` (21/21 PASS, 1300 samples evaluated) | complete |
+| **Diagnostic Accuracy & Evidence Quality** | 25% | `core/evidence.py`<br/>`core/correlation.py`<br/>`core/scoring.py`<br/>`core/report.py`<br/>`netcoop/models/`<br/>`netcoop/agents/classifier/`<br/>`eval/run_eval.py` | `tests/test_scenarios.py`<br/>`tests/test_insufficient_evidence.py`<br/>`tests/test_b2_learned_layer.py`<br/>`scripts/eval_benchmark.py` (1300 samples evaluated across 3 datasets) | complete |
 | **Orchestration & Conflict Resolution** | 15% | `orchestrator/graph.py`<br/>`orchestrator/mediator.py`<br/>`orchestrator/conflict_resolver.py`<br/>`core/bus.py` | `tests/test_conflict_resolution.py`<br/>`tests/test_scenarios.py` | complete |
 | **Robustness to Missing / Incompatible Data** | 15% | `core/normalizer.py`<br/>`gateway/adapters/organizer_adapter.py`<br/>`gateway/adapters/unit_inference.py`<br/>`gateway/adapters/field_matcher.py`<br/>`netcoop/models/conformal.py` | `tests/test_robustness_hypothesis.py`<br/>`tests/test_organizer_adapter.py`<br/>`tests/test_b1_gateway_robustness.py`<br/>`tests/test_b2_learned_layer.py` | complete |
 | **Innovation, Usability, Extensibility** | 10% | `mcp_server/server.py`<br/>`remediation/engine.py`<br/>`dashboard/` (React Dashboard)<br/>`cli/main.py` (`diagnose`, `replay`)<br/>`netcoop/models/conformal.py`<br/>`Makefile` (`up`, `down`, `demo`, `train`, `eval`, `eval-quick`) | `tests/test_mcp_server.py`<br/>`tests/test_remediation_safety.py`<br/>`tests/test_b2_learned_layer.py`<br/>`tests/test_mcp_and_remediation.py` | complete |
@@ -158,7 +158,7 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 
 ---
 
-## 7. Member C (UI & Testing) Sprint Deliverables
+## 11. Member C (UI & Testing) Sprint Deliverables
 
 | Deliverable | Implementation File | Capabilities Verified | Status |
 | :--- | :--- | :--- | :---: |
@@ -173,7 +173,7 @@ This document maps all hackathon criteria, mandatory features, data layer compon
 | **Mock Envelope Fallback** | `dashboard/mock/envelopes.json`, `dashboard/src/mock/envelopes.ts` | Offline mock envelope trace copied from `docs/handoff.md` with automatic switch to live backend stream | **Complete** |
 
 | **Held-Out Evaluation Generator** | `netcoop/data/heldout_generator.py` | Seeded generation with heavy-tailed Pareto/Log-Normal noise, variable onset timing, wide severity ranges ($0.75\times - 1.65\times$), bursty dropouts, and compound fault mixes. CLI and schema validated | **Complete** |
-| **Held-Out Test Suite** | `tests/test_heldout_generator.py` | 27 pytest tests verifying schema compliance, seed determinism, coverage across all 23 scenarios, CLI subprocess invocation, and statistical variance | **Complete** |
+| **Held-Out Test Suite** | `tests/test_heldout_generator.py` | 27 pytest tests verifying schema compliance, seed determinism, coverage across generated synthetic scenarios, CLI subprocess invocation, and statistical variance | **Complete** |
 | **Held-Out Evaluation Notes** | `docs/heldout_notes.md` | Comprehensive documentation of statistical parameter shifts, distribution models, and CLI usage | **Complete** |
 
 | **Proof & Benchmark Evaluation Tab** | `dashboard/src/components/ProofTab.tsx` | 3-column dataset split comparison (In-Distribution, Held-Out, Organizer with note), Conformal Calibration Caveat card, SVG Confusion Matrix with cell shading, Reliability curve with ECE, Stress tests (missing data & corruption), Risk-Coverage curve, and Ablation study table | **Complete** |

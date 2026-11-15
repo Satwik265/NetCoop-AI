@@ -96,7 +96,7 @@ In strict accordance with Gate 6 and Gate 7 guidelines, NetCoop AI makes the fol
 
 ### 2. Synthetic Benchmark Data Notice
 > [!NOTE]
-> The performance metrics reported in Phase 3 evaluation (Exact-Match Accuracy: 98.7%, Macro F1: 0.985, ECE: 0.038) were derived from synthetic and simulated scenario corpora. While designed to rigorously test multi-agent reasoning, noise injection, and network topologies, synthetic benchmarks may exhibit lower entropy than real-world enterprise traffic.
+> The performance metrics reported in Phase 11 evaluation (In-Distribution Accuracy: 71.6%, Combined Primary Accuracy: 56.8%, Selective Accuracy: 97.9% at 36.0% coverage, Macro F1: 0.620, ECE: 0.214, source: `eval/results/benchmark_phase11_20261115.json`) were derived from synthetic and simulated scenario corpora. While designed to rigorously test multi-agent reasoning, noise injection, and network topologies, synthetic benchmarks may exhibit lower entropy than real-world enterprise traffic.
 
 ### 3. Production Deployment Prerequisites
 Before deploying NetCoop AI against physical production network infrastructure, an operations team must:
