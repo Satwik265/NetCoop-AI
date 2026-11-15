@@ -940,11 +940,47 @@ def node_report(state: GraphState) -> Dict[str, Any]:
 
         hypothesis.final_confidence = calibrated_confidence
 
+        # Data-quality-aware confidence adjustment & limitations (Phase 9 Item B / F-02)
+        raw_data = state.get("raw_data", {})
+        dq = raw_data.get("data_quality") or {}
+        dq_score = float(dq.get("overall_score", 1.0))
+        transformations = dq.get("transformations_applied", [])
+        val_errors = dq.get("validation_errors", [])
+
+        quality_penalty = 0.0
+        quality_reasons = []
+
+        if dq_score < 0.999:
+            # Penalty proportional to missing metric score gap: (1.0 - dq_score) * 0.50
+            gap_penalty = (1.0 - dq_score) * 0.50
+            quality_penalty += gap_penalty
+            quality_reasons.append(f"data quality degradation (score: {dq_score:.3f})")
+
+        repaired_types = [t for t in transformations if t not in ("unit_conversion",)]
+        if repaired_types:
+            quality_penalty += 0.02
+            quality_reasons.append(f"telemetry values repaired: {', '.join(sorted(repaired_types))}")
+
+        if val_errors:
+            quality_penalty += min(0.05, len(val_errors) * 0.01)
+            quality_reasons.append(f"validation warnings: {len(val_errors)}")
+
+        quality_penalty = round(min(0.25, max(0.0, quality_penalty)), 3)
+
+        if quality_penalty > 0.0:
+            calibrated_confidence = round(max(0.40, calibrated_confidence - quality_penalty), 3)
+            hypothesis.final_confidence = calibrated_confidence
+            lim_str = f"Data quality penalty (-{quality_penalty:.3f}) applied due to: {'; '.join(quality_reasons)}."
+            if lim_str not in limitations:
+                limitations.append(lim_str)
+
         confidence_breakdown = {
             "rules_score": rules_score,
             "model_score": model_score,
             "blended_score": blended_score,
             "calibrated_confidence": calibrated_confidence,
+            "data_quality_penalty": quality_penalty,
+            "data_quality_score": dq_score,
         }
 
         if calibrated_confidence >= 0.85:
@@ -1052,6 +1088,11 @@ def run_diagnosis(incident_data: Dict[str, Any]) -> UnifiedDiagnosticReport:
     """High-level runner executing full diagnostic pipeline on network incident input."""
     mediator.reset_dead_agents()
     init_db()
+
+    # Automatically adapt unnormalized inputs through OrganizerAdapter
+    if not incident_data.get("is_normalized") or not incident_data.get("data_quality"):
+        from gateway.adapters.organizer_adapter import OrganizerAdapter
+        incident_data = OrganizerAdapter.adapt_dataset(incident_data)
 
     incident_id = incident_data.get("incident_id", "inc-default")
     network_id = incident_data.get("network_id", "net-default")

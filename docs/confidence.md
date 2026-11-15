@@ -55,3 +55,22 @@ $$S = \{ c \in \mathcal{C} \mid p(c) \ge 1 - q_\alpha \}$$
 
 ## 5. Expected Calibration Error (ECE)
 - **Held-Out Test Set ECE**: **0.0372** across 10 probability bins.
+
+---
+
+## 6. Data-Quality-Aware Confidence Adjustment Formula
+
+When external telemetry exhibits missing metrics, low quality scores, or required data cleansing transformations, the report-level confidence is adjusted downwards to reflect empirical data uncertainty:
+
+$$\text{penalty}_{DQ} = \min\left(0.25, \max\left(0.0, (1.0 - DQ_{\text{score}}) \times 0.50\right) + (0.02 \text{ if values repaired else } 0.0) + (0.01 \times n_{\text{warnings}})\right)$$
+
+$$\text{confidence}_{\text{final}} = \text{round}\left(\max\left(0.40, \text{confidence}_{\text{calibrated}} - \text{penalty}_{DQ}\right), 3\right)$$
+
+Where:
+- $DQ_{\text{score}} \in [0.0, 1.0]$: Ingestion data quality score output by the canonical normalization boundary (`data_quality.overall_score`).
+- $\text{values repaired}$: Applied when dirty string sanitization, clock skew correction, or field alias mappings were necessary to recover records.
+- $n_{\text{warnings}}$: Count of non-fatal validation warnings recorded during ingestion.
+
+When $\text{penalty}_{DQ} > 0$, a corresponding operational limitation is appended to the diagnostic report:
+`Data quality penalty (-{penalty}) applied due to: data quality degradation (score: {DQ_score})`
+Ensuring that missing-fields scenarios exhibit strictly lower confidence than pristine equivalents while preserving root-cause attribution when evidence suffices.
