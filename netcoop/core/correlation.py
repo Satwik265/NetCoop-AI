@@ -172,7 +172,7 @@ class OfflineCorrelationEngine:
         if len(candidate_hypotheses) >= 2:
             top = candidate_hypotheses[0]
             second = candidate_hypotheses[1]
-            if top.cause_key != second.cause_key and abs(top.final_confidence - second.final_confidence) <= 0.15:
+            if top.is_sufficient and second.is_sufficient and top.cause_key != second.cause_key and abs(top.final_confidence - second.final_confidence) <= 0.15:
                 # Ambiguous multi-fault condition
                 uncertainty = UncertaintyEvaluation(
                     score=0.75,
@@ -294,12 +294,16 @@ class OfflineCorrelationEngine:
             devs = sorted(list({o.entity.split(":")[0] for o in (high_util_obs + queue_drop_obs)}))
 
         # Dynamic, documented confidence scoring:
-        # 1. Base metric intensity (0.50 to 0.75) based on utilization and drop volume:
+        # 1. Base metric intensity (0.50 to 0.75) based on utilization, drop volume, and latency/jitter:
         max_util = max([float(o.observed_value or 0) for o in high_util_obs], default=60.0)
         max_drops = max([float(o.observed_value or 0) for o in queue_drop_obs], default=0.0)
+        max_lat = max([float(o.observed_value or 0) for o in latency_obs if o.metric_name == "latency_ms"], default=20.0)
+        max_jit = max([float(o.observed_value or 0) for o in latency_obs if o.metric_name == "jitter_ms"], default=5.0)
+
         util_factor = min(1.0, max(0.0, (max_util - 50.0) / 50.0))
         drop_factor = min(1.0, max(0.0, max_drops / 1000.0))
-        metric_intensity = 0.50 + 0.15 * util_factor + 0.10 * drop_factor
+        lat_factor = min(1.0, max(0.0, (max_lat - 25.0) / 250.0, (max_jit - 10.0) / 50.0 if max_jit > 10.0 else 0.0))
+        metric_intensity = round(min(0.85, 0.55 + 0.15 * util_factor + 0.10 * drop_factor + 0.20 * lat_factor), 3)
 
         # 2. Multi-domain corroboration:
         has_any_topology_data = any(
@@ -573,9 +577,13 @@ class OfflineCorrelationEngine:
             or (obs.metric_name == "mtu" and obs.observed_value != obs.baseline_value)
             for obs in observations
         )
+        has_log_mtu = any(
+            obs.category.value == "log_pattern" and any(k in str(obs.observed_value).lower() for k in ("mtu", "packet_too_big", "packet size", "exceeds mtu"))
+            for obs in observations
+        )
 
         devices = list({obs.entity.split(":")[0] for obs in observations if ":" in obs.entity})
-        if not (has_drops or has_mtu_diff):
+        if not (has_drops or has_mtu_diff or has_log_mtu):
             return None
 
         provided_domains = []
@@ -583,10 +591,6 @@ class OfflineCorrelationEngine:
             provided_domains.append("telemetry_agent")
         if has_mtu_diff:
             provided_domains.append("config_agent")
-        has_log_mtu = any(
-            obs.category.value == "log_pattern" and any(k in str(obs.observed_value).lower() for k in ("mtu", "packet_too_big", "packet size", "exceeds mtu"))
-            for obs in observations
-        )
         if has_log_mtu:
             provided_domains.append("log_agent")
 

@@ -857,39 +857,67 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     raw_data = state.get("raw_data", {})
     dq = raw_data.get("data_quality") or {}
     dq_score = float(dq.get("overall_score", 1.0))
+    detected_format = raw_data.get("detected_format") or ""
+    is_organizer_format = "organizer" in str(detected_format)
+
+    # In organizer format, single-device telemetry has sparse multi-device feature vectors,
+    # so we verify nominal operation directly from the validated telemetry records
+    telemetry_records = raw_data.get("telemetry", [])
+    telemetry_is_nominal = False
+    if is_organizer_format and telemetry_records and not specialist_obs and not hypothesis:
+        all_records_nominal = True
+        for r in telemetry_records:
+            rec_metrics = r.get("metrics", r)
+            loss = float(rec_metrics.get("packet_loss_pct") or rec_metrics.get("loss_pct") or 0.0)
+            drops = float(rec_metrics.get("queue_drops") or rec_metrics.get("drops") or 0.0)
+            lat = float(rec_metrics.get("latency_ms") or rec_metrics.get("rtt") or rec_metrics.get("delay") or 0.0)
+            cpu = float(rec_metrics.get("cpu_pct") or rec_metrics.get("cpu_utilization_pct") or 0.0)
+            util = float(rec_metrics.get("link_utilization_pct") or rec_metrics.get("utilization") or 0.0)
+            status_val = str(r.get("device_status") or r.get("status") or rec_metrics.get("status") or "").lower()
+            if (
+                loss > 1.0
+                or drops > 5
+                or lat > 35.0
+                or cpu > 60.0
+                or util > 65.0
+                or status_val in ("critical", "degraded", "warning", "down")
+            ):
+                all_records_nominal = False
+                break
+        telemetry_is_nominal = all_records_nominal
 
     is_benign_normal = (
         not specialist_obs
         and not hypothesis
-        and top_class == "normal_operation"
-        and top_prob >= normal_threshold
         and dq_score >= 0.75
+        and ((top_class == "normal_operation" and top_prob >= normal_threshold) or telemetry_is_nominal)
     )
 
     if is_benign_normal:
         status = "benign"
         conformal_prediction_set = ["normal_operation"]
-        confidence_category = "high" if top_prob >= 0.85 else "medium"
-        calibrated_confidence = top_prob
+        benign_conf = top_prob if top_prob >= normal_threshold else 0.95
+        confidence_category = "high" if benign_conf >= 0.85 else "medium"
+        calibrated_confidence = benign_conf
         confidence_breakdown = {
             "rules_score": 1.0,
             "model_score": top_prob,
-            "blended_score": top_prob,
-            "calibrated_confidence": top_prob,
+            "blended_score": benign_conf,
+            "calibrated_confidence": benign_conf,
         }
         hypothesis = DiagnosticHypothesis(
             cause_key="NO_FAULT",
             title="Normal Operation",
             description="Normal network operation within nominal operational boundaries; zero anomalous observations reported.",
-            confidence=top_prob,
+            confidence=benign_conf,
             affected_devices=state.get("scope_devices", []),
             supporting_evidence=[],
             suggested_remediation_type="none",
-            final_confidence=top_prob,
+            final_confidence=benign_conf,
         )
         uncertainty = UncertaintyEvaluation(
-            score=round(1.0 - top_prob, 3),
-            reasons=["All telemetry metrics within nominal baselines; confirmed by statistical classifier."],
+            score=round(1.0 - benign_conf, 3),
+            reasons=["All telemetry metrics within nominal baselines; verified zero anomalous observations."],
             missing_evidence=[],
             alternative_hypotheses=[],
         )
@@ -943,7 +971,7 @@ def node_report(state: GraphState) -> Dict[str, Any]:
             "NO_FAULT": "normal_operation",
         }
         cname = cause_map.get(hypothesis.cause_key)
-        if cname and classifier_calib_probs:
+        if cname and classifier_calib_probs and classifier_conformal_status != "insufficient_evidence" and any(v > 0.05 for v in classifier_calib_probs.values()):
             model_score = round(float(classifier_calib_probs.get(cname, rules_score)), 3)
             blended_score = round(w_rules * rules_score + w_model * model_score, 3)
             calibrated_confidence = blended_score
