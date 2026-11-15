@@ -94,7 +94,6 @@ export interface UnifiedDiagnosticReport {
   confidence_breakdown?: Record<string, number>;
   conformal_prediction_set?: string[];
   confidence_category?: string;
-  hypothesis_key?: string;
 }
 
 export interface EnvelopeLogItem {
