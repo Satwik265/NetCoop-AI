@@ -205,3 +205,19 @@ test("WCAG 2.2 AA accessibility standards are enforced in styles and index.html"
   assert.match(appContent, /Skip to main content/);
   assert.match(appContent, /id="main-content"/);
 });
+
+// ---------------------------------------------------------------------------
+// 7. Test Diagnostic Progress State during Execution (F-14 / Phase 10 Item 7)
+// ---------------------------------------------------------------------------
+test("ScenarioPicker and ReportCard expose an accessible progress state during diagnosis", () => {
+  const scenarioPickerPath = path.join(dashboardDir, "src", "components", "ScenarioPicker.tsx");
+  const scenarioContent = fs.readFileSync(scenarioPickerPath, "utf-8");
+  assert.match(scenarioContent, /role="progressbar"/);
+  assert.match(scenarioContent, /Multi-Agent Network Diagnosis in Progress/);
+  assert.match(scenarioContent, /7 Agents \+ Gateway \+ Orchestrator/);
+
+  const reportCardPath = path.join(dashboardDir, "src", "components", "ReportCard.tsx");
+  const reportContent = fs.readFileSync(reportCardPath, "utf-8");
+  assert.match(reportContent, /Executing multi-agent reasoning graph/);
+  assert.match(reportContent, /animate-ping/);
+});

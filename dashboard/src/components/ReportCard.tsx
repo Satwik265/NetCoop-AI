@@ -26,15 +26,21 @@ export const ReportCard: React.FC<ReportCardProps> = ({
 
   if (loading) {
     return (
-      <div className="bg-[#FFFFFF] dark:bg-[#161618] border border-[#E2E8F0] dark:border-[#2A2A2D] p-6 space-y-4 animate-pulse font-sans">
-        <div className="h-4 bg-[#E2E8F0] dark:bg-[#2A2A2D] w-1/4"></div>
-        <div className="h-8 bg-[#E2E8F0] dark:bg-[#2A2A2D] w-2/3"></div>
-        <div className="h-20 bg-[#E2E8F0] dark:bg-[#2A2A2D] w-full"></div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="h-16 bg-[#E2E8F0] dark:bg-[#2A2A2D]"></div>
-          <div className="h-16 bg-[#E2E8F0] dark:bg-[#2A2A2D]"></div>
-          <div className="h-16 bg-[#E2E8F0] dark:bg-[#2A2A2D]"></div>
-          <div className="h-16 bg-[#E2E8F0] dark:bg-[#2A2A2D]"></div>
+      <div className="bg-[#FFFFFF] dark:bg-[#161618] border border-[#E2E8F0] dark:border-[#2A2A2D] p-6 space-y-4 font-sans">
+        <div className="flex items-center gap-3 p-3 bg-[#EEF4FB] dark:bg-[#0B132B] border border-[#133E87]/20 text-[#133E87] dark:text-[#3A86FF] text-xs font-mono">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#133E87] dark:bg-[#3A86FF] animate-ping" />
+          <span>Executing multi-agent reasoning graph... Synthesizing 12-section diagnostic report...</span>
+        </div>
+        <div className="animate-pulse space-y-4">
+          <div className="h-4 bg-[#E2E8F0] dark:bg-[#2A2A2D] w-1/4"></div>
+          <div className="h-8 bg-[#E2E8F0] dark:bg-[#2A2A2D] w-2/3"></div>
+          <div className="h-20 bg-[#E2E8F0] dark:bg-[#2A2A2D] w-full"></div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="h-16 bg-[#E2E8F0] dark:bg-[#2A2A2D]"></div>
+            <div className="h-16 bg-[#E2E8F0] dark:bg-[#2A2A2D]"></div>
+            <div className="h-16 bg-[#E2E8F0] dark:bg-[#2A2A2D]"></div>
+            <div className="h-16 bg-[#E2E8F0] dark:bg-[#2A2A2D]"></div>
+          </div>
         </div>
       </div>
     );

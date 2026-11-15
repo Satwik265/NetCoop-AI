@@ -130,6 +130,32 @@ export const ScenarioPicker: React.FC<ScenarioPickerProps> = ({
         </div>
       </div>
 
+      {/* Multi-Agent Diagnostic Execution Progress State (F-14 / Phase 10 Item 7) */}
+      {(loading || executionStatus === "running") && (
+        <div
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Multi-Agent Diagnostic Execution"
+          className="p-4 bg-[#EEF4FB] dark:bg-[#0B132B] border border-[#133E87]/30 space-y-2.5 font-sans"
+        >
+          <div className="flex items-center justify-between text-xs font-semibold text-[#133E87] dark:text-[#3A86FF]">
+            <span className="flex items-center gap-2">
+              <span className="inline-block w-2.5 h-2.5 bg-[#133E87] dark:bg-[#3A86FF] rounded-full animate-ping" />
+              Multi-Agent Network Diagnosis in Progress (~3s)...
+            </span>
+            <span className="font-mono text-[11px]">7 Agents + Gateway + Orchestrator</span>
+          </div>
+          <div className="w-full bg-[#CBD5E1] dark:bg-[#1E293B] h-2 rounded-full overflow-hidden">
+            <div className="bg-[#133E87] dark:bg-[#3A86FF] h-full rounded-full transition-all duration-500 animate-pulse w-3/4" />
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-[#475569] dark:text-[#94A3B8] font-mono">
+            <span>Normalizing telemetry &bull; Ingesting logs &bull; Analyzing topology</span>
+            <span className="font-semibold text-[#133E87] dark:text-[#3A86FF]">Corroborating Evidence...</span>
+          </div>
+        </div>
+      )}
+
       {/* Active Run Provenance Information */}
       {lastRunId && (
         <div className="p-3 bg-[#EEF4FB] dark:bg-[#0B132B] border border-[#133E87]/20 flex flex-wrap items-center justify-between text-xs text-[#0B2545] dark:text-[#94A3B8]">

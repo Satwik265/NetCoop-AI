@@ -33,6 +33,7 @@ venv.bak/
 .hypothesis/
 .coverage
 htmlcov/
+demo_artifacts/
 
 # Database & Runtime
 *.sqlite
