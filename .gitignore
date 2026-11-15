@@ -60,6 +60,13 @@ yarn-error.log*
 .env
 .env.*
 !.env.example
+*.secret
+*.secrets
+*.key
+*.token
+*.pem
+secrets/
+.secrets/
 
 # IDE
 .vscode/

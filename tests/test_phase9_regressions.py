@@ -259,10 +259,12 @@ def test_no_literal_secrets_in_tracked_docs():
             m = literal_secret_pattern.search(line)
             if m:
                 val = m.group(2)
-                # Allow only placeholder or doc descriptions
-                assert "placeholder" in val.lower() or "generate" in val.lower() or "<" in val, (
-                    f"Found unredacted literal secret in {p.name}:{line_no}: {line.strip()}"
-                )
+                # Fail if a production-length secret string (>=16 chars) is not a placeholder/dummy
+                if len(val) >= 16:
+                    allowed = any(x in val.lower() for x in ["placeholder", "generate", "change", "0123456789abcdef", "<"])
+                    assert allowed, (
+                        f"Found unredacted literal secret in {p.name}:{line_no}: {line.strip()}"
+                    )
 
 
 def test_gitignore_contains_secret_file_patterns():

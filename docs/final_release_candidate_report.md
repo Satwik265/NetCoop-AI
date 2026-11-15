@@ -119,9 +119,9 @@ cd D:\NetCoop-AI\Team_inSANE_MITRA_NetCoop-AI
 # Activate virtual environment
 .venv\Scripts\activate
 
-# Set security environment tokens
-$env:INTERNAL_SERVICE_TOKEN = "production-internal-service-token-secure-32-chars-long!"
-$env:NETCOOP_JWT_SECRET = "production-ready-jwt-secret-key-minimum-32-chars-secure!"
+# Set security environment tokens (generate high-entropy tokens dynamically)
+$env:INTERNAL_SERVICE_TOKEN = "<GENERATE_STRONG_RANDOM_SECRET_HEX_32_BYTES>"
+$env:NETCOOP_JWT_SECRET = "<GENERATE_STRONG_RANDOM_SECRET_HEX_32_BYTES>"
 $env:PYTHONPATH = "."
 ```
 
