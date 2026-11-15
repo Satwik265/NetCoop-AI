@@ -273,7 +273,7 @@ export const AgentGraph: React.FC<AgentGraphProps> = ({
             aria-label="Agent Registry Table"
           >
             <caption className="sr-only">
-              List of all 9 specialist agents, their network ports, domains of diagnostic expertise, and message traffic statistics.
+              List of 7 specialist agents plus gateway and orchestrator, their network ports, domains of diagnostic expertise, and message traffic statistics.
             </caption>
             <thead>
               <tr className="border-b border-[#CBD5E1] dark:border-[#2A2A2D] bg-[#F1F5F9] dark:bg-[#0F0F10] text-[11px] uppercase tracking-wider text-[#475569] dark:text-[#94A3B8]">

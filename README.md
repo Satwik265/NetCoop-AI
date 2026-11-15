@@ -128,7 +128,7 @@ Measured across 25 consecutive diagnostic requests with full payload parsing and
 
 ## 4. Architecture & Agent Specifications
 
-The platform is designed around strict process isolation. Six specialist agents plus a synthesizer operate with independent responsibilities across dedicated microservices or in-process fallback:
+The platform is designed around strict process isolation. 7 specialist agents plus gateway and orchestrator operate across dedicated microservices (ports 8000–8008) or in-process fallback:
 
 ![NetCoop AI Architecture Diagram](docs/assets/architecture.svg)
 
