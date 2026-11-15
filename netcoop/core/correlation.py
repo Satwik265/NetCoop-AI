@@ -279,6 +279,14 @@ class OfflineCorrelationEngine:
                 "transit_link_adjacency", "upstream_link_saturation", "upstream_transit_path"
             ):
                 sup_evidence.append(e)
+            elif e.source_agent == "log_agent" and e.metric_name in (
+                "queue_drop_syslog", "queue_drops"
+            ):
+                sup_evidence.append(e)
+            elif e.source_agent == "config_agent" and e.metric_name in (
+                "qos_policy_change", "config_commit_diff"
+            ):
+                sup_evidence.append(e)
 
         # Contributing devices from supporting evidence
         devs = sorted(list({e.entity.split(":")[0] for e in sup_evidence if e.entity and (":" in e.entity or e.entity != "-")}))
@@ -392,7 +400,7 @@ class OfflineCorrelationEngine:
 
         sup_evidence = [
             e for e in evidence
-            if e.metric_name in ("interface_errors", "link_flaps", "crc_errors", "fcs_errors")
+            if e.metric_name in ("interface_errors", "link_flaps", "crc_errors", "fcs_errors", "link_flap_syslog", "crc_error_syslog")
         ]
         devs = sorted(list({e.entity.split(":")[0] for e in sup_evidence if e.entity and e.entity != "-"}))
         provided_domains = sorted(list({e.source_agent for e in sup_evidence if e.source_agent}))
@@ -556,7 +564,7 @@ class OfflineCorrelationEngine:
     ) -> Optional[DiagnosticHypothesis]:
         """Correlate MTU mismatch fault signature."""
         has_drops = any(
-            obs.metric_name in ("egress_queue_drops", "packet_loss_pct", "large_packet_drops")
+            obs.metric_name in ("egress_queue_drops", "packet_loss_pct", "large_packet_drops", "queue_drops")
             and float(obs.observed_value or 0) > 0
             for obs in observations
         )
@@ -575,6 +583,12 @@ class OfflineCorrelationEngine:
             provided_domains.append("telemetry_agent")
         if has_mtu_diff:
             provided_domains.append("config_agent")
+        has_log_mtu = any(
+            obs.category.value == "log_pattern" and any(k in str(obs.observed_value).lower() for k in ("mtu", "packet_too_big", "packet size", "exceeds mtu"))
+            for obs in observations
+        )
+        if has_log_mtu:
+            provided_domains.append("log_agent")
 
         required = ["telemetry_agent", "config_agent"]
         is_sufficient = all(d in provided_domains for d in required)

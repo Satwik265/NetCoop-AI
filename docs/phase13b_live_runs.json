@@ -1,0 +1,1919 @@
+{
+  "link_congestion_with_logs": {
+    "incident_id": "inc-ext-congestion-logs",
+    "network_id": "iit-bbs-campus-fabric",
+    "timestamp_utc": "2026-11-15T12:31:02.807337+00:00",
+    "status": "diagnosed",
+    "probable_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
+    "confidence": 0.949,
+    "affected_devices": [
+      "core-rtr-01",
+      "dist-sw-core"
+    ],
+    "affected_interfaces": [],
+    "evidence": [
+      {
+        "evidence_id": "evi-obs-2b51d175",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "core-rtr-01 latency_ms: observed 131.1 ms",
+        "interpretation": "core-rtr-01 latency_ms: observed 131.1 ms",
+        "entity": "core-rtr-01",
+        "metric_name": "latency_ms",
+        "metric": "latency_ms",
+        "value": 131.1,
+        "unit": "ms",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-2b51d175",
+        "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03",
+        "correlation_id": "inc-ext-congestion-logs",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-congestion-logs",
+          "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-a96df9b9",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "core-rtr-01 jitter_ms: observed 25.6 ms",
+        "interpretation": "core-rtr-01 jitter_ms: observed 25.6 ms",
+        "entity": "core-rtr-01",
+        "metric_name": "jitter_ms",
+        "metric": "jitter_ms",
+        "value": 25.6,
+        "unit": "ms",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-a96df9b9",
+        "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03",
+        "correlation_id": "inc-ext-congestion-logs",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-congestion-logs",
+          "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-c09b5795",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "core-rtr-01 link_utilization_pct: observed 92.57 percent",
+        "interpretation": "core-rtr-01 link_utilization_pct: observed 92.57 percent",
+        "entity": "core-rtr-01",
+        "metric_name": "link_utilization_pct",
+        "metric": "link_utilization_pct",
+        "value": 92.57,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-c09b5795",
+        "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03",
+        "correlation_id": "inc-ext-congestion-logs",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-congestion-logs",
+          "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-04490a6c",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "core-rtr-01 queue_drops: observed 1484 packets",
+        "interpretation": "core-rtr-01 queue_drops: observed 1484 packets",
+        "entity": "core-rtr-01",
+        "metric_name": "queue_drops",
+        "metric": "queue_drops",
+        "value": 1484,
+        "unit": "packets",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-04490a6c",
+        "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03",
+        "correlation_id": "inc-ext-congestion-logs",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-congestion-logs",
+          "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-2e32955a",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "core-rtr-01 packet_loss_pct: observed 5.48 percent",
+        "interpretation": "core-rtr-01 packet_loss_pct: observed 5.48 percent",
+        "entity": "core-rtr-01",
+        "metric_name": "packet_loss_pct",
+        "metric": "packet_loss_pct",
+        "value": 5.48,
+        "unit": "percent",
+        "severity": "warning",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-2e32955a",
+        "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03",
+        "correlation_id": "inc-ext-congestion-logs",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-congestion-logs",
+          "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-81a2a2b1",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dist-sw-core latency_ms: observed 147.94 ms",
+        "interpretation": "dist-sw-core latency_ms: observed 147.94 ms",
+        "entity": "dist-sw-core",
+        "metric_name": "latency_ms",
+        "metric": "latency_ms",
+        "value": 147.94,
+        "unit": "ms",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-81a2a2b1",
+        "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03",
+        "correlation_id": "inc-ext-congestion-logs",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-congestion-logs",
+          "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-173bb24e",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dist-sw-core jitter_ms: observed 28.19 ms",
+        "interpretation": "dist-sw-core jitter_ms: observed 28.19 ms",
+        "entity": "dist-sw-core",
+        "metric_name": "jitter_ms",
+        "metric": "jitter_ms",
+        "value": 28.19,
+        "unit": "ms",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-173bb24e",
+        "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03",
+        "correlation_id": "inc-ext-congestion-logs",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-congestion-logs",
+          "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-25a8752d",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dist-sw-core link_utilization_pct: observed 97.65 percent",
+        "interpretation": "dist-sw-core link_utilization_pct: observed 97.65 percent",
+        "entity": "dist-sw-core",
+        "metric_name": "link_utilization_pct",
+        "metric": "link_utilization_pct",
+        "value": 97.65,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-25a8752d",
+        "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03",
+        "correlation_id": "inc-ext-congestion-logs",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-congestion-logs",
+          "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-176f6c1b",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dist-sw-core queue_drops: observed 1019 packets",
+        "interpretation": "dist-sw-core queue_drops: observed 1019 packets",
+        "entity": "dist-sw-core",
+        "metric_name": "queue_drops",
+        "metric": "queue_drops",
+        "value": 1019,
+        "unit": "packets",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-176f6c1b",
+        "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03",
+        "correlation_id": "inc-ext-congestion-logs",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-congestion-logs",
+          "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-c6a14a41",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dist-sw-core packet_loss_pct: observed 6.4 percent",
+        "interpretation": "dist-sw-core packet_loss_pct: observed 6.4 percent",
+        "entity": "dist-sw-core",
+        "metric_name": "packet_loss_pct",
+        "metric": "packet_loss_pct",
+        "value": 6.4,
+        "unit": "percent",
+        "severity": "warning",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-c6a14a41",
+        "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03",
+        "correlation_id": "inc-ext-congestion-logs",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-congestion-logs",
+          "message_id": "8a11d0e2-3434-43f6-9315-28c619123b03"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-0d47bd9b",
+        "source_agent": "topology_agent",
+        "category": "metric_anomaly",
+        "finding": "core-rtr-01:eth0<->dist-sw-core:eth0 transit_link_adjacency: observed congested_transit_trunk_10.0gbps text",
+        "interpretation": "core-rtr-01:eth0<->dist-sw-core:eth0 transit_link_adjacency: observed congested_transit_trunk_10.0gbps text",
+        "entity": "core-rtr-01:eth0<->dist-sw-core:eth0",
+        "metric_name": "transit_link_adjacency",
+        "metric": "transit_link_adjacency",
+        "value": "congested_transit_trunk_10.0gbps",
+        "unit": "text",
+        "severity": "critical",
+        "timestamp": "2026-11-15T12:31:02Z",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-0d47bd9b",
+        "message_id": "89e3bdc8-92e7-4b8c-830b-987f62d4f893",
+        "correlation_id": "inc-ext-congestion-logs",
+        "provenance": {
+          "source_agent": "topology_agent",
+          "correlation_id": "inc-ext-congestion-logs",
+          "message_id": "89e3bdc8-92e7-4b8c-830b-987f62d4f893"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-19efeeb5",
+        "source_agent": "config_agent",
+        "category": "config_diff",
+        "finding": "core-rtr-01 config_commit_diff: observed --- running\n+++ candidate\n@@ -12,3 +12,3 @@\n interface GigabitEthernet0/0/0/1\n- service-policy output ENTERPRISE_DEFAULT\n+ service-policy output RESTRICTED_EGRESS_SHAPER text",
+        "interpretation": "core-rtr-01 config_commit_diff: observed --- running\n+++ candidate\n@@ -12,3 +12,3 @@\n interface GigabitEthernet0/0/0/1\n- service-policy output ENTERPRISE_DEFAULT\n+ service-policy output RESTRICTED_EGRESS_SHAPER text",
+        "entity": "core-rtr-01",
+        "metric_name": "config_commit_diff",
+        "metric": "config_commit_diff",
+        "value": "--- running\n+++ candidate\n@@ -12,3 +12,3 @@\n interface GigabitEthernet0/0/0/1\n- service-policy output ENTERPRISE_DEFAULT\n+ service-policy output RESTRICTED_EGRESS_SHAPER",
+        "unit": "text",
+        "severity": "warning",
+        "timestamp": "2026-11-15T09:45:00Z",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-19efeeb5",
+        "message_id": "40b244c7-5367-445c-bed9-e9b2bb59a5f2",
+        "correlation_id": "inc-ext-congestion-logs",
+        "provenance": {
+          "source_agent": "config_agent",
+          "message_id": "40b244c7-5367-445c-bed9-e9b2bb59a5f2",
+          "correlation_id": "inc-ext-congestion-logs"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-ea3ddb5c",
+        "source_agent": "config_agent",
+        "category": "config_diff",
+        "finding": "core-rtr-01 qos_policy_change: observed --- running\n+++ candidate\n@@ -12,3 +12,3 @@\n interface GigabitEthernet0/0/0/1\n- service-policy output ENTERPRISE_DEFAULT\n+ service-policy output RESTRICTED_EGRESS_SHAPER text",
+        "interpretation": "core-rtr-01 qos_policy_change: observed --- running\n+++ candidate\n@@ -12,3 +12,3 @@\n interface GigabitEthernet0/0/0/1\n- service-policy output ENTERPRISE_DEFAULT\n+ service-policy output RESTRICTED_EGRESS_SHAPER text",
+        "entity": "core-rtr-01",
+        "metric_name": "qos_policy_change",
+        "metric": "qos_policy_change",
+        "value": "--- running\n+++ candidate\n@@ -12,3 +12,3 @@\n interface GigabitEthernet0/0/0/1\n- service-policy output ENTERPRISE_DEFAULT\n+ service-policy output RESTRICTED_EGRESS_SHAPER",
+        "unit": "text",
+        "severity": "warning",
+        "timestamp": "2026-11-15T09:45:00Z",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-ea3ddb5c",
+        "message_id": "40b244c7-5367-445c-bed9-e9b2bb59a5f2",
+        "correlation_id": "inc-ext-congestion-logs",
+        "provenance": {
+          "source_agent": "config_agent",
+          "message_id": "40b244c7-5367-445c-bed9-e9b2bb59a5f2",
+          "correlation_id": "inc-ext-congestion-logs"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-95dfe9bf",
+        "source_agent": "log_agent",
+        "category": "log_pattern",
+        "finding": "core-rtr-01 queue_drop_syslog: observed %QOS-4-QUEUE_DROP: Interface GigabitEthernet0/0/0/1 egress queue 2 tail drop count 740 packets text",
+        "interpretation": "core-rtr-01 queue_drop_syslog: observed %QOS-4-QUEUE_DROP: Interface GigabitEthernet0/0/0/1 egress queue 2 tail drop count 740 packets text",
+        "entity": "core-rtr-01",
+        "metric_name": "queue_drop_syslog",
+        "metric": "queue_drop_syslog",
+        "value": "%QOS-4-QUEUE_DROP: Interface GigabitEthernet0/0/0/1 egress queue 2 tail drop count 740 packets",
+        "unit": "text",
+        "severity": "warning",
+        "timestamp": "2026-11-15T10:14:22Z",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-95dfe9bf",
+        "message_id": "fd8f1e8c-5f4c-4e76-8627-4ff17d2bd5a3",
+        "correlation_id": "inc-ext-congestion-logs",
+        "provenance": {
+          "source_agent": "log_agent",
+          "message_id": "fd8f1e8c-5f4c-4e76-8627-4ff17d2bd5a3",
+          "correlation_id": "inc-ext-congestion-logs"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-131effc5",
+        "source_agent": "log_agent",
+        "category": "log_pattern",
+        "finding": "dist-sw-core queue_drop_syslog: observed %QOS-4-BUFFER_SATURATION: Core trunk port buffer occupancy at 98% capacity, active tail-drop initiated text",
+        "interpretation": "dist-sw-core queue_drop_syslog: observed %QOS-4-BUFFER_SATURATION: Core trunk port buffer occupancy at 98% capacity, active tail-drop initiated text",
+        "entity": "dist-sw-core",
+        "metric_name": "queue_drop_syslog",
+        "metric": "queue_drop_syslog",
+        "value": "%QOS-4-BUFFER_SATURATION: Core trunk port buffer occupancy at 98% capacity, active tail-drop initiated",
+        "unit": "text",
+        "severity": "warning",
+        "timestamp": "2026-11-15T10:14:25Z",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-131effc5",
+        "message_id": "fd8f1e8c-5f4c-4e76-8627-4ff17d2bd5a3",
+        "correlation_id": "inc-ext-congestion-logs",
+        "provenance": {
+          "source_agent": "log_agent",
+          "message_id": "fd8f1e8c-5f4c-4e76-8627-4ff17d2bd5a3",
+          "correlation_id": "inc-ext-congestion-logs"
+        }
+      }
+    ],
+    "uncertainty": {
+      "score": 0.06,
+      "reasons": [],
+      "missing_evidence": [],
+      "alternative_hypotheses": [
+        {
+          "cause": "Path MTU Mismatch causing packet blackholing on jumbo frames",
+          "confidence": 0.45,
+          "discriminating_test": "Corroborate independent domain telemetry."
+        },
+        {
+          "cause": "Upstream provider or transit link congestion inducing downstream delay",
+          "confidence": 0.82,
+          "discriminating_test": "Query egress queue drops and interface utilization on upstream transit hops vs local interface counters."
+        }
+      ]
+    },
+    "remediation_actions": [
+      {
+        "action_id": "act-rebalance-core-rtr-01",
+        "title": "Rebalance traffic across ECMP next-hops from core-rtr-01 et-0/0/1",
+        "description": "Re-weight hash buckets to steer egress flows across parallel paths and relieve congestion.",
+        "device": "core-rtr-01",
+        "commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "load-interval 30",
+          "traffic-policy REBALANCE_ECMP",
+          "commit and-quit"
+        ],
+        "rollback_commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "no traffic-policy REBALANCE_ECMP",
+          "commit and-quit"
+        ],
+        "risk_level": "low",
+        "blast_radius_devices": [
+          "core-rtr-01"
+        ],
+        "is_simulated": true,
+        "status": "pending",
+        "action": "Rebalance traffic across ECMP next-hops from core-rtr-01 et-0/0/1"
+      },
+      {
+        "action_id": "act-qos-core-rtr-01",
+        "title": "Raise QoS priority and buffer reserve on core-rtr-01 et-0/0/1",
+        "description": "Prioritize delay-sensitive flows and allocate strict priority queue bandwidth.",
+        "device": "core-rtr-01",
+        "commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "service-policy type qos output EXPEDITE_VOICE_VIDEO",
+          "commit and-quit"
+        ],
+        "rollback_commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "no service-policy type qos output EXPEDITE_VOICE_VIDEO",
+          "commit and-quit"
+        ],
+        "risk_level": "low",
+        "blast_radius_devices": [
+          "core-rtr-01"
+        ],
+        "is_simulated": true,
+        "status": "pending",
+        "action": "Raise QoS priority and buffer reserve on core-rtr-01 et-0/0/1"
+      }
+    ],
+    "summary": "Incident inc-ext-congestion-logs on network iit-bbs-campus-fabric was successfully diagnosed as 'Link utilization saturation causing buffer queue drops and latency spikes' with 94% confidence impacting core-rtr-01, dist-sw-core.",
+    "processing_time_ms": 1132.62,
+    "causal_chain": [
+      "High egress traffic volume approaches interface bandwidth limit",
+      "Egress queue buffer fills to maximum allocation limit",
+      "Tail drops occur as incoming frames exceed buffer capacity",
+      "Packet serialization delays induce latency and jitter spikes",
+      "TCP endpoints detect loss and trigger congestion window backoff"
+    ],
+    "conflicts_resolved": [
+      {
+        "conflict": "QoS policy or queue buffer configuration modification on interface vs Link utilization saturation causing buffer queue drops and latency spikes",
+        "winner": "QoS policy or queue buffer configuration modification on interface",
+        "precedence": "DIRECT",
+        "rationale": "Arbitration: Selected 'QoS policy or queue buffer configuration modification on interface' by evidence precedence (DIRECT > CORRELATED).",
+        "iteration": 1
+      }
+    ],
+    "limitations": [
+      "single snapshot, no temporal context",
+      "Data quality penalty (-0.020) applied due to: telemetry values repaired: status_mapping, timestamp_parsing."
+    ],
+    "provenance": {
+      "generator": "netcoop_synthetic",
+      "timestamp_ingested": "2026-11-15T12:31:02Z",
+      "agent_execution": {
+        "telemetry_agent": {
+          "agent_id": "telemetry_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:01.682405+00:00",
+          "completed_at": "2026-11-15T12:31:02.256377+00:00",
+          "duration_ms": 573.97,
+          "retry_count": 0,
+          "observation_count": 10,
+          "hypothesis_count": 1,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-congestion-logs"
+        },
+        "topology_agent": {
+          "agent_id": "topology_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:01.685534+00:00",
+          "completed_at": "2026-11-15T12:31:02.309352+00:00",
+          "duration_ms": 623.81,
+          "retry_count": 0,
+          "observation_count": 1,
+          "hypothesis_count": 0,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-congestion-logs"
+        },
+        "config_agent": {
+          "agent_id": "config_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:01.686864+00:00",
+          "completed_at": "2026-11-15T12:31:02.317794+00:00",
+          "duration_ms": 630.92,
+          "retry_count": 0,
+          "observation_count": 2,
+          "hypothesis_count": 1,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-congestion-logs"
+        },
+        "log_agent": {
+          "agent_id": "log_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:01.687964+00:00",
+          "completed_at": "2026-11-15T12:31:02.332243+00:00",
+          "duration_ms": 644.27,
+          "retry_count": 0,
+          "observation_count": 2,
+          "hypothesis_count": 1,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-congestion-logs"
+        },
+        "wifi_services_agent": {
+          "agent_id": "wifi_services_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:01.689741+00:00",
+          "completed_at": "2026-11-15T12:31:02.285276+00:00",
+          "duration_ms": 595.53,
+          "retry_count": 0,
+          "observation_count": 0,
+          "hypothesis_count": 0,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-congestion-logs"
+        },
+        "classifier_agent": {
+          "agent_id": "classifier_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:01.690981+00:00",
+          "completed_at": "2026-11-15T12:31:02.366872+00:00",
+          "duration_ms": 675.88,
+          "retry_count": 0,
+          "observation_count": 14,
+          "hypothesis_count": 1,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-congestion-logs"
+        }
+      },
+      "inquiries_count": 0,
+      "conflicts_resolved_count": 1,
+      "conflicts_resolved": [
+        {
+          "conflict": "QoS policy or queue buffer configuration modification on interface vs Link utilization saturation causing buffer queue drops and latency spikes",
+          "winner": "QoS policy or queue buffer configuration modification on interface",
+          "precedence": "DIRECT",
+          "rationale": "Arbitration: Selected 'QoS policy or queue buffer configuration modification on interface' by evidence precedence (DIRECT > CORRELATED).",
+          "iteration": 1
+        }
+      ]
+    },
+    "confidence_breakdown": {
+      "rules_score": 0.943,
+      "model_score": 1.0,
+      "blended_score": 0.969,
+      "calibrated_confidence": 0.949,
+      "data_quality_penalty": 0.02,
+      "data_quality_score": 1.0
+    },
+    "conformal_prediction_set": [
+      "link_congestion"
+    ],
+    "confidence_category": "high",
+    "hypothesis_key": "LINK_CONGESTION",
+    "evidence_sources": [
+      "config_agent",
+      "log_agent",
+      "telemetry_agent",
+      "topology_agent"
+    ],
+    "suspected_root_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
+    "is_confidence_calibrated": true,
+    "confidence_type": "calibrated_probability"
+  },
+  "ethernet_fault_with_logs": {
+    "incident_id": "inc-ext-eth-logs",
+    "network_id": "iit-bbs-campus-fabric",
+    "timestamp_utc": "2026-11-15T12:31:04.358630+00:00",
+    "status": "diagnosed",
+    "probable_cause": "Physical layer Ethernet interface CRC errors and flapping transitions",
+    "confidence": 0.903,
+    "affected_devices": [
+      "dept-sw-cs-01"
+    ],
+    "affected_interfaces": [],
+    "evidence": [
+      {
+        "evidence_id": "evi-obs-77d36f69",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dept-sw-cs-01 interface_errors: observed 5262 packets",
+        "interpretation": "dept-sw-cs-01 interface_errors: observed 5262 packets",
+        "entity": "dept-sw-cs-01",
+        "metric_name": "interface_errors",
+        "metric": "interface_errors",
+        "value": 5262,
+        "unit": "packets",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-77d36f69",
+        "message_id": "0e664943-050d-40a2-b985-19e5c94c9fd1",
+        "correlation_id": "inc-ext-eth-logs",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-eth-logs",
+          "message_id": "0e664943-050d-40a2-b985-19e5c94c9fd1"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-10ba3a88",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dept-sw-cs-01 link_flaps: observed 10 count",
+        "interpretation": "dept-sw-cs-01 link_flaps: observed 10 count",
+        "entity": "dept-sw-cs-01",
+        "metric_name": "link_flaps",
+        "metric": "link_flaps",
+        "value": 10,
+        "unit": "count",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-10ba3a88",
+        "message_id": "0e664943-050d-40a2-b985-19e5c94c9fd1",
+        "correlation_id": "inc-ext-eth-logs",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-eth-logs",
+          "message_id": "0e664943-050d-40a2-b985-19e5c94c9fd1"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-73fab8a6",
+        "source_agent": "log_agent",
+        "category": "log_pattern",
+        "finding": "dept-sw-cs-01 crc_error_syslog: observed %ETH-4-CRC_ERR: Interface FastEthernet0/1 input CRC errors exceeded threshold (count: 2450) text",
+        "interpretation": "dept-sw-cs-01 crc_error_syslog: observed %ETH-4-CRC_ERR: Interface FastEthernet0/1 input CRC errors exceeded threshold (count: 2450) text",
+        "entity": "dept-sw-cs-01",
+        "metric_name": "crc_error_syslog",
+        "metric": "crc_error_syslog",
+        "value": "%ETH-4-CRC_ERR: Interface FastEthernet0/1 input CRC errors exceeded threshold (count: 2450)",
+        "unit": "text",
+        "severity": "critical",
+        "timestamp": "2026-11-15T11:02:14Z",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-73fab8a6",
+        "message_id": "d6b71b30-1cb0-45d9-a8bf-0fe5fe97c09d",
+        "correlation_id": "inc-ext-eth-logs",
+        "provenance": {
+          "source_agent": "log_agent",
+          "message_id": "d6b71b30-1cb0-45d9-a8bf-0fe5fe97c09d",
+          "correlation_id": "inc-ext-eth-logs"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-d0c88fc4",
+        "source_agent": "log_agent",
+        "category": "log_pattern",
+        "finding": "dept-sw-cs-01 link_flap_syslog: observed %LINK-3-UPDOWN: Interface FastEthernet0/1, changed state to down text",
+        "interpretation": "dept-sw-cs-01 link_flap_syslog: observed %LINK-3-UPDOWN: Interface FastEthernet0/1, changed state to down text",
+        "entity": "dept-sw-cs-01",
+        "metric_name": "link_flap_syslog",
+        "metric": "link_flap_syslog",
+        "value": "%LINK-3-UPDOWN: Interface FastEthernet0/1, changed state to down",
+        "unit": "text",
+        "severity": "critical",
+        "timestamp": "2026-11-15T11:02:20Z",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-d0c88fc4",
+        "message_id": "d6b71b30-1cb0-45d9-a8bf-0fe5fe97c09d",
+        "correlation_id": "inc-ext-eth-logs",
+        "provenance": {
+          "source_agent": "log_agent",
+          "message_id": "d6b71b30-1cb0-45d9-a8bf-0fe5fe97c09d",
+          "correlation_id": "inc-ext-eth-logs"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-9b605586",
+        "source_agent": "log_agent",
+        "category": "log_pattern",
+        "finding": "dept-sw-cs-01 link_flap_syslog: observed %LINEPROTO-5-UPDOWN: Line protocol on Interface FastEthernet0/1, changed state to up text",
+        "interpretation": "dept-sw-cs-01 link_flap_syslog: observed %LINEPROTO-5-UPDOWN: Line protocol on Interface FastEthernet0/1, changed state to up text",
+        "entity": "dept-sw-cs-01",
+        "metric_name": "link_flap_syslog",
+        "metric": "link_flap_syslog",
+        "value": "%LINEPROTO-5-UPDOWN: Line protocol on Interface FastEthernet0/1, changed state to up",
+        "unit": "text",
+        "severity": "critical",
+        "timestamp": "2026-11-15T11:02:23Z",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-9b605586",
+        "message_id": "d6b71b30-1cb0-45d9-a8bf-0fe5fe97c09d",
+        "correlation_id": "inc-ext-eth-logs",
+        "provenance": {
+          "source_agent": "log_agent",
+          "message_id": "d6b71b30-1cb0-45d9-a8bf-0fe5fe97c09d",
+          "correlation_id": "inc-ext-eth-logs"
+        }
+      }
+    ],
+    "uncertainty": {
+      "score": 0.14,
+      "reasons": [],
+      "missing_evidence": [],
+      "alternative_hypotheses": [
+        {
+          "cause": "Path MTU Mismatch causing packet blackholing on jumbo frames",
+          "confidence": 0.45,
+          "discriminating_test": "Corroborate independent domain telemetry."
+        }
+      ]
+    },
+    "remediation_actions": [
+      {
+        "action_id": "act-clear-counters-dept-sw-cs-01",
+        "title": "Clear interface counters and queue drops on dept-sw-cs-01 et-0/0/1",
+        "description": "Reset transient CRC and buffer overflow metrics to verify remediation efficacy.",
+        "device": "dept-sw-cs-01",
+        "commands": [
+          "clear counters et-0/0/1",
+          "clear interface et-0/0/1 queue-drops"
+        ],
+        "rollback_commands": [],
+        "risk_level": "low",
+        "blast_radius_devices": [
+          "dept-sw-cs-01"
+        ],
+        "is_simulated": true,
+        "status": "pending",
+        "action": "Clear interface counters and queue drops on dept-sw-cs-01 et-0/0/1"
+      },
+      {
+        "action_id": "act-failover-dept-sw-cs-01",
+        "title": "Fail over link dept-sw-cs-01:et-0/0/1 to redundant secondary circuit",
+        "description": "Isolate degraded link to trigger instantaneous failover to secondary path.",
+        "device": "dept-sw-cs-01",
+        "commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "shutdown",
+          "commit and-quit"
+        ],
+        "rollback_commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "no shutdown",
+          "commit and-quit"
+        ],
+        "risk_level": "medium",
+        "blast_radius_devices": [
+          "dept-sw-cs-01",
+          "spine-02"
+        ],
+        "is_simulated": true,
+        "status": "pending",
+        "action": "Fail over link dept-sw-cs-01:et-0/0/1 to redundant secondary circuit"
+      }
+    ],
+    "summary": "Incident inc-ext-eth-logs on network iit-bbs-campus-fabric was successfully diagnosed as 'Physical layer Ethernet interface CRC errors and flapping transitions' with 86% confidence impacting dept-sw-cs-01.",
+    "processing_time_ms": 1089.55,
+    "causal_chain": [
+      "Damaged patch cable, bent fiber, or failing transceiver PHY",
+      "Electrical noise or optical power attenuation corrupts frame bits in transit",
+      "Ethernet receiver MAC rejects malformed frames with CRC/FCS checksum errors",
+      "PHY auto-negotiation or loss of sync triggers physical link flaps",
+      "Higher-layer protocols experience intermittent connectivity loss"
+    ],
+    "conflicts_resolved": [],
+    "limitations": [
+      "single snapshot, no temporal context",
+      "Data quality penalty (-0.020) applied due to: telemetry values repaired: status_mapping, timestamp_parsing."
+    ],
+    "provenance": {
+      "generator": "netcoop_synthetic",
+      "timestamp_ingested": "2026-11-15T12:31:04Z",
+      "agent_execution": {
+        "telemetry_agent": {
+          "agent_id": "telemetry_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:03.272015+00:00",
+          "completed_at": "2026-11-15T12:31:03.784664+00:00",
+          "duration_ms": 512.64,
+          "retry_count": 0,
+          "observation_count": 3,
+          "hypothesis_count": 1,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-eth-logs"
+        },
+        "topology_agent": {
+          "agent_id": "topology_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:03.273374+00:00",
+          "completed_at": "2026-11-15T12:31:03.893398+00:00",
+          "duration_ms": 620.02,
+          "retry_count": 0,
+          "observation_count": 0,
+          "hypothesis_count": 0,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-eth-logs"
+        },
+        "config_agent": {
+          "agent_id": "config_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:03.274413+00:00",
+          "completed_at": "2026-11-15T12:31:03.861630+00:00",
+          "duration_ms": 587.21,
+          "retry_count": 0,
+          "observation_count": 0,
+          "hypothesis_count": 0,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-eth-logs"
+        },
+        "log_agent": {
+          "agent_id": "log_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:03.275506+00:00",
+          "completed_at": "2026-11-15T12:31:03.877097+00:00",
+          "duration_ms": 601.58,
+          "retry_count": 0,
+          "observation_count": 4,
+          "hypothesis_count": 1,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-eth-logs"
+        },
+        "wifi_services_agent": {
+          "agent_id": "wifi_services_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:03.277026+00:00",
+          "completed_at": "2026-11-15T12:31:03.884376+00:00",
+          "duration_ms": 607.34,
+          "retry_count": 0,
+          "observation_count": 0,
+          "hypothesis_count": 0,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-eth-logs"
+        },
+        "classifier_agent": {
+          "agent_id": "classifier_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:03.279066+00:00",
+          "completed_at": "2026-11-15T12:31:03.896195+00:00",
+          "duration_ms": 617.12,
+          "retry_count": 0,
+          "observation_count": 6,
+          "hypothesis_count": 1,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-eth-logs"
+        }
+      },
+      "inquiries_count": 0,
+      "conflicts_resolved_count": 0,
+      "conflicts_resolved": []
+    },
+    "confidence_breakdown": {
+      "rules_score": 0.86,
+      "model_score": 1.0,
+      "blended_score": 0.923,
+      "calibrated_confidence": 0.903,
+      "data_quality_penalty": 0.02,
+      "data_quality_score": 1.0
+    },
+    "conformal_prediction_set": [
+      "ethernet_interface_fault"
+    ],
+    "confidence_category": "high",
+    "hypothesis_key": "ETHERNET_INTERFACE_FAULT",
+    "evidence_sources": [
+      "log_agent",
+      "telemetry_agent"
+    ],
+    "suspected_root_cause": "Physical layer Ethernet interface CRC errors and flapping transitions",
+    "is_confidence_calibrated": true,
+    "confidence_type": "calibrated_probability"
+  },
+  "mtu_mismatch_with_config": {
+    "incident_id": "inc-ext-mtu-config",
+    "network_id": "iit-bbs-campus-fabric",
+    "timestamp_utc": "2026-11-15T12:31:06.018385+00:00",
+    "status": "diagnosed",
+    "probable_cause": "Path MTU Mismatch causing packet blackholing on jumbo frames",
+    "confidence": 0.93,
+    "affected_devices": [
+      "dist-sw-core",
+      "core-rtr-01"
+    ],
+    "affected_interfaces": [],
+    "evidence": [
+      {
+        "evidence_id": "evi-obs-c960c5c7",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "core-rtr-01 jitter_ms: observed 25.6 ms",
+        "interpretation": "core-rtr-01 jitter_ms: observed 25.6 ms",
+        "entity": "core-rtr-01",
+        "metric_name": "jitter_ms",
+        "metric": "jitter_ms",
+        "value": 25.6,
+        "unit": "ms",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-c960c5c7",
+        "message_id": "09cc07c1-f965-410a-819e-21f8e394d413",
+        "correlation_id": "inc-ext-mtu-config",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-mtu-config",
+          "message_id": "09cc07c1-f965-410a-819e-21f8e394d413"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-9fe397d8",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "core-rtr-01 packet_loss_pct: observed 18.5 percent",
+        "interpretation": "core-rtr-01 packet_loss_pct: observed 18.5 percent",
+        "entity": "core-rtr-01",
+        "metric_name": "packet_loss_pct",
+        "metric": "packet_loss_pct",
+        "value": 18.5,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-9fe397d8",
+        "message_id": "09cc07c1-f965-410a-819e-21f8e394d413",
+        "correlation_id": "inc-ext-mtu-config",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-mtu-config",
+          "message_id": "09cc07c1-f965-410a-819e-21f8e394d413"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-878b27b3",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dist-sw-core jitter_ms: observed 28.19 ms",
+        "interpretation": "dist-sw-core jitter_ms: observed 28.19 ms",
+        "entity": "dist-sw-core",
+        "metric_name": "jitter_ms",
+        "metric": "jitter_ms",
+        "value": 28.19,
+        "unit": "ms",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-878b27b3",
+        "message_id": "09cc07c1-f965-410a-819e-21f8e394d413",
+        "correlation_id": "inc-ext-mtu-config",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-mtu-config",
+          "message_id": "09cc07c1-f965-410a-819e-21f8e394d413"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-75532413",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dist-sw-core packet_loss_pct: observed 18.5 percent",
+        "interpretation": "dist-sw-core packet_loss_pct: observed 18.5 percent",
+        "entity": "dist-sw-core",
+        "metric_name": "packet_loss_pct",
+        "metric": "packet_loss_pct",
+        "value": 18.5,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-75532413",
+        "message_id": "09cc07c1-f965-410a-819e-21f8e394d413",
+        "correlation_id": "inc-ext-mtu-config",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-mtu-config",
+          "message_id": "09cc07c1-f965-410a-819e-21f8e394d413"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-056e4de2",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dept-sw-cs-01 packet_loss_pct: observed 18.5 percent",
+        "interpretation": "dept-sw-cs-01 packet_loss_pct: observed 18.5 percent",
+        "entity": "dept-sw-cs-01",
+        "metric_name": "packet_loss_pct",
+        "metric": "packet_loss_pct",
+        "value": 18.5,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-056e4de2",
+        "message_id": "09cc07c1-f965-410a-819e-21f8e394d413",
+        "correlation_id": "inc-ext-mtu-config",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-mtu-config",
+          "message_id": "09cc07c1-f965-410a-819e-21f8e394d413"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-613217ef",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "host-cs-lab-01 packet_loss_pct: observed 18.5 percent",
+        "interpretation": "host-cs-lab-01 packet_loss_pct: observed 18.5 percent",
+        "entity": "host-cs-lab-01",
+        "metric_name": "packet_loss_pct",
+        "metric": "packet_loss_pct",
+        "value": 18.5,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-613217ef",
+        "message_id": "09cc07c1-f965-410a-819e-21f8e394d413",
+        "correlation_id": "inc-ext-mtu-config",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-mtu-config",
+          "message_id": "09cc07c1-f965-410a-819e-21f8e394d413"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-51c9b415",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dist-sw-hostel packet_loss_pct: observed 18.5 percent",
+        "interpretation": "dist-sw-hostel packet_loss_pct: observed 18.5 percent",
+        "entity": "dist-sw-hostel",
+        "metric_name": "packet_loss_pct",
+        "metric": "packet_loss_pct",
+        "value": 18.5,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-51c9b415",
+        "message_id": "09cc07c1-f965-410a-819e-21f8e394d413",
+        "correlation_id": "inc-ext-mtu-config",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-mtu-config",
+          "message_id": "09cc07c1-f965-410a-819e-21f8e394d413"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-4eb624c1",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "ap-hostel-b1 packet_loss_pct: observed 18.5 percent",
+        "interpretation": "ap-hostel-b1 packet_loss_pct: observed 18.5 percent",
+        "entity": "ap-hostel-b1",
+        "metric_name": "packet_loss_pct",
+        "metric": "packet_loss_pct",
+        "value": 18.5,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-4eb624c1",
+        "message_id": "09cc07c1-f965-410a-819e-21f8e394d413",
+        "correlation_id": "inc-ext-mtu-config",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-mtu-config",
+          "message_id": "09cc07c1-f965-410a-819e-21f8e394d413"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-884fc4d5",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "host-student-01 packet_loss_pct: observed 18.5 percent",
+        "interpretation": "host-student-01 packet_loss_pct: observed 18.5 percent",
+        "entity": "host-student-01",
+        "metric_name": "packet_loss_pct",
+        "metric": "packet_loss_pct",
+        "value": 18.5,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-884fc4d5",
+        "message_id": "09cc07c1-f965-410a-819e-21f8e394d413",
+        "correlation_id": "inc-ext-mtu-config",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-mtu-config",
+          "message_id": "09cc07c1-f965-410a-819e-21f8e394d413"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-f16f15f0",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "ap-lecture-lh1 packet_loss_pct: observed 18.5 percent",
+        "interpretation": "ap-lecture-lh1 packet_loss_pct: observed 18.5 percent",
+        "entity": "ap-lecture-lh1",
+        "metric_name": "packet_loss_pct",
+        "metric": "packet_loss_pct",
+        "value": 18.5,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-f16f15f0",
+        "message_id": "09cc07c1-f965-410a-819e-21f8e394d413",
+        "correlation_id": "inc-ext-mtu-config",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-mtu-config",
+          "message_id": "09cc07c1-f965-410a-819e-21f8e394d413"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-b43a58fc",
+        "source_agent": "config_agent",
+        "category": "config_diff",
+        "finding": "core-rtr-01 config_commit_diff: observed --- running\n+++ candidate\n@@ -5,2 +5,2 @@\n interface eth0\n+ mtu 9000 text",
+        "interpretation": "core-rtr-01 config_commit_diff: observed --- running\n+++ candidate\n@@ -5,2 +5,2 @@\n interface eth0\n+ mtu 9000 text",
+        "entity": "core-rtr-01",
+        "metric_name": "config_commit_diff",
+        "metric": "config_commit_diff",
+        "value": "--- running\n+++ candidate\n@@ -5,2 +5,2 @@\n interface eth0\n+ mtu 9000",
+        "unit": "text",
+        "severity": "warning",
+        "timestamp": "2026-11-15T08:30:00Z",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-b43a58fc",
+        "message_id": "16078148-93d0-4835-a280-b4d17dd7fbe5",
+        "correlation_id": "inc-ext-mtu-config",
+        "provenance": {
+          "source_agent": "config_agent",
+          "message_id": "16078148-93d0-4835-a280-b4d17dd7fbe5",
+          "correlation_id": "inc-ext-mtu-config"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-754f49a0",
+        "source_agent": "config_agent",
+        "category": "config_diff",
+        "finding": "core-rtr-01:eth0 mtu_mismatch: observed 9000 bytes",
+        "interpretation": "core-rtr-01:eth0 mtu_mismatch: observed 9000 bytes",
+        "entity": "core-rtr-01:eth0",
+        "metric_name": "mtu_mismatch",
+        "metric": "mtu_mismatch",
+        "value": 9000,
+        "unit": "bytes",
+        "severity": "warning",
+        "timestamp": "2026-11-15T12:31:06Z",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-754f49a0",
+        "message_id": "16078148-93d0-4835-a280-b4d17dd7fbe5",
+        "correlation_id": "inc-ext-mtu-config",
+        "provenance": {
+          "source_agent": "config_agent",
+          "message_id": "16078148-93d0-4835-a280-b4d17dd7fbe5",
+          "correlation_id": "inc-ext-mtu-config"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-9509c335",
+        "source_agent": "config_agent",
+        "category": "config_diff",
+        "finding": "dist-sw-core:eth0 mtu_mismatch: observed 1500 bytes",
+        "interpretation": "dist-sw-core:eth0 mtu_mismatch: observed 1500 bytes",
+        "entity": "dist-sw-core:eth0",
+        "metric_name": "mtu_mismatch",
+        "metric": "mtu_mismatch",
+        "value": 1500,
+        "unit": "bytes",
+        "severity": "critical",
+        "timestamp": "2026-11-15T12:31:06Z",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-9509c335",
+        "message_id": "16078148-93d0-4835-a280-b4d17dd7fbe5",
+        "correlation_id": "inc-ext-mtu-config",
+        "provenance": {
+          "source_agent": "config_agent",
+          "message_id": "16078148-93d0-4835-a280-b4d17dd7fbe5",
+          "correlation_id": "inc-ext-mtu-config"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-1502d0b7",
+        "source_agent": "log_agent",
+        "category": "log_pattern",
+        "finding": "core-rtr-01 mtu_exceeded_syslog: observed %IP-4-PACKET_TOO_BIG: Packet size 9000 bytes exceeds peer MTU (1500) on eth0 text",
+        "interpretation": "core-rtr-01 mtu_exceeded_syslog: observed %IP-4-PACKET_TOO_BIG: Packet size 9000 bytes exceeds peer MTU (1500) on eth0 text",
+        "entity": "core-rtr-01",
+        "metric_name": "mtu_exceeded_syslog",
+        "metric": "mtu_exceeded_syslog",
+        "value": "%IP-4-PACKET_TOO_BIG: Packet size 9000 bytes exceeds peer MTU (1500) on eth0",
+        "unit": "text",
+        "severity": "warning",
+        "timestamp": "2026-11-15T08:35:10Z",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-1502d0b7",
+        "message_id": "d8992a25-4cda-4d89-bac4-4ef72d4a7f32",
+        "correlation_id": "inc-ext-mtu-config",
+        "provenance": {
+          "source_agent": "log_agent",
+          "message_id": "d8992a25-4cda-4d89-bac4-4ef72d4a7f32",
+          "correlation_id": "inc-ext-mtu-config"
+        }
+      }
+    ],
+    "uncertainty": {
+      "score": 0.05,
+      "reasons": [],
+      "missing_evidence": [],
+      "alternative_hypotheses": []
+    },
+    "remediation_actions": [
+      {
+        "action_id": "act-mtu-dist-sw-core",
+        "title": "Harmonize MTU to 9000 bytes on dist-sw-core et-0/0/1",
+        "description": "Align MTU along transit path to prevent Path MTU blackholing on jumbo frames.",
+        "device": "dist-sw-core",
+        "commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "mtu 9000",
+          "commit and-quit"
+        ],
+        "rollback_commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "mtu 1500",
+          "commit and-quit"
+        ],
+        "risk_level": "low",
+        "blast_radius_devices": [
+          "dist-sw-core"
+        ],
+        "is_simulated": true,
+        "status": "pending",
+        "action": "Harmonize MTU to 9000 bytes on dist-sw-core et-0/0/1"
+      }
+    ],
+    "summary": "Incident inc-ext-mtu-config on network iit-bbs-campus-fabric was successfully diagnosed as 'Path MTU Mismatch causing packet blackholing on jumbo frames' with 95% confidence impacting dist-sw-core, core-rtr-01.",
+    "processing_time_ms": 1199.2,
+    "causal_chain": [
+      "Empirical threshold breach detected on monitored telemetry metric",
+      "Buffer or queue resources exceeded operational capacity",
+      "Downstream packet delivery and transport delay impacted"
+    ],
+    "conflicts_resolved": [],
+    "limitations": [
+      "single snapshot, no temporal context",
+      "Data quality penalty (-0.020) applied due to: telemetry values repaired: status_mapping, timestamp_parsing."
+    ],
+    "provenance": {
+      "generator": "netcoop_synthetic",
+      "timestamp_ingested": "2026-11-15T12:31:06Z",
+      "agent_execution": {
+        "telemetry_agent": {
+          "agent_id": "telemetry_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:04.821839+00:00",
+          "completed_at": "2026-11-15T12:31:05.461824+00:00",
+          "duration_ms": 639.97,
+          "retry_count": 0,
+          "observation_count": 10,
+          "hypothesis_count": 0,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-mtu-config"
+        },
+        "topology_agent": {
+          "agent_id": "topology_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:04.823118+00:00",
+          "completed_at": "2026-11-15T12:31:05.519521+00:00",
+          "duration_ms": 696.4,
+          "retry_count": 0,
+          "observation_count": 0,
+          "hypothesis_count": 0,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-mtu-config"
+        },
+        "config_agent": {
+          "agent_id": "config_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:04.824353+00:00",
+          "completed_at": "2026-11-15T12:31:05.514934+00:00",
+          "duration_ms": 690.57,
+          "retry_count": 0,
+          "observation_count": 3,
+          "hypothesis_count": 1,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-mtu-config"
+        },
+        "log_agent": {
+          "agent_id": "log_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:04.825313+00:00",
+          "completed_at": "2026-11-15T12:31:05.530044+00:00",
+          "duration_ms": 704.72,
+          "retry_count": 0,
+          "observation_count": 1,
+          "hypothesis_count": 0,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-mtu-config"
+        },
+        "wifi_services_agent": {
+          "agent_id": "wifi_services_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:04.826367+00:00",
+          "completed_at": "2026-11-15T12:31:05.533562+00:00",
+          "duration_ms": 707.19,
+          "retry_count": 0,
+          "observation_count": 0,
+          "hypothesis_count": 0,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-mtu-config"
+        },
+        "classifier_agent": {
+          "agent_id": "classifier_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:04.827499+00:00",
+          "completed_at": "2026-11-15T12:31:05.527499+00:00",
+          "duration_ms": 699.99,
+          "retry_count": 0,
+          "observation_count": 24,
+          "hypothesis_count": 0,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-mtu-config"
+        }
+      },
+      "inquiries_count": 0,
+      "conflicts_resolved_count": 0,
+      "conflicts_resolved": []
+    },
+    "confidence_breakdown": {
+      "rules_score": 0.95,
+      "model_score": 0.95,
+      "blended_score": 0.95,
+      "calibrated_confidence": 0.93,
+      "data_quality_penalty": 0.02,
+      "data_quality_score": 1.0
+    },
+    "conformal_prediction_set": [
+      "mtu_mismatch_blackhole"
+    ],
+    "confidence_category": "high",
+    "hypothesis_key": "MTU_MISMATCH_BLACKHOLE",
+    "evidence_sources": [
+      "config_agent",
+      "log_agent",
+      "telemetry_agent"
+    ],
+    "suspected_root_cause": "Path MTU Mismatch causing packet blackholing on jumbo frames",
+    "is_confidence_calibrated": true,
+    "confidence_type": "calibrated_probability"
+  },
+  "conflicting_evidence": {
+    "incident_id": "inc-ext-conflicting",
+    "network_id": "iit-bbs-campus-fabric",
+    "timestamp_utc": "2026-11-15T12:31:07.513647+00:00",
+    "status": "diagnosed",
+    "probable_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
+    "confidence": 0.949,
+    "affected_devices": [
+      "core-rtr-01",
+      "dist-sw-core"
+    ],
+    "affected_interfaces": [],
+    "evidence": [
+      {
+        "evidence_id": "evi-obs-d9b71be7",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "core-rtr-01 latency_ms: observed 131.1 ms",
+        "interpretation": "core-rtr-01 latency_ms: observed 131.1 ms",
+        "entity": "core-rtr-01",
+        "metric_name": "latency_ms",
+        "metric": "latency_ms",
+        "value": 131.1,
+        "unit": "ms",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-d9b71be7",
+        "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d",
+        "correlation_id": "inc-ext-conflicting",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-conflicting",
+          "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-6647248b",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "core-rtr-01 jitter_ms: observed 25.6 ms",
+        "interpretation": "core-rtr-01 jitter_ms: observed 25.6 ms",
+        "entity": "core-rtr-01",
+        "metric_name": "jitter_ms",
+        "metric": "jitter_ms",
+        "value": 25.6,
+        "unit": "ms",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-6647248b",
+        "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d",
+        "correlation_id": "inc-ext-conflicting",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-conflicting",
+          "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-13918df1",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "core-rtr-01 link_utilization_pct: observed 92.57 percent",
+        "interpretation": "core-rtr-01 link_utilization_pct: observed 92.57 percent",
+        "entity": "core-rtr-01",
+        "metric_name": "link_utilization_pct",
+        "metric": "link_utilization_pct",
+        "value": 92.57,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-13918df1",
+        "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d",
+        "correlation_id": "inc-ext-conflicting",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-conflicting",
+          "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-6544b0f0",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "core-rtr-01 queue_drops: observed 1484 packets",
+        "interpretation": "core-rtr-01 queue_drops: observed 1484 packets",
+        "entity": "core-rtr-01",
+        "metric_name": "queue_drops",
+        "metric": "queue_drops",
+        "value": 1484,
+        "unit": "packets",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-6544b0f0",
+        "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d",
+        "correlation_id": "inc-ext-conflicting",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-conflicting",
+          "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-ce8fed66",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "core-rtr-01 packet_loss_pct: observed 5.48 percent",
+        "interpretation": "core-rtr-01 packet_loss_pct: observed 5.48 percent",
+        "entity": "core-rtr-01",
+        "metric_name": "packet_loss_pct",
+        "metric": "packet_loss_pct",
+        "value": 5.48,
+        "unit": "percent",
+        "severity": "warning",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-ce8fed66",
+        "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d",
+        "correlation_id": "inc-ext-conflicting",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-conflicting",
+          "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-6a2309ac",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dist-sw-core latency_ms: observed 147.94 ms",
+        "interpretation": "dist-sw-core latency_ms: observed 147.94 ms",
+        "entity": "dist-sw-core",
+        "metric_name": "latency_ms",
+        "metric": "latency_ms",
+        "value": 147.94,
+        "unit": "ms",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-6a2309ac",
+        "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d",
+        "correlation_id": "inc-ext-conflicting",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-conflicting",
+          "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-e0a007f5",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dist-sw-core jitter_ms: observed 28.19 ms",
+        "interpretation": "dist-sw-core jitter_ms: observed 28.19 ms",
+        "entity": "dist-sw-core",
+        "metric_name": "jitter_ms",
+        "metric": "jitter_ms",
+        "value": 28.19,
+        "unit": "ms",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-e0a007f5",
+        "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d",
+        "correlation_id": "inc-ext-conflicting",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-conflicting",
+          "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-9f027390",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dist-sw-core link_utilization_pct: observed 97.65 percent",
+        "interpretation": "dist-sw-core link_utilization_pct: observed 97.65 percent",
+        "entity": "dist-sw-core",
+        "metric_name": "link_utilization_pct",
+        "metric": "link_utilization_pct",
+        "value": 97.65,
+        "unit": "percent",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-9f027390",
+        "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d",
+        "correlation_id": "inc-ext-conflicting",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-conflicting",
+          "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-37d18cfb",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dist-sw-core queue_drops: observed 1019 packets",
+        "interpretation": "dist-sw-core queue_drops: observed 1019 packets",
+        "entity": "dist-sw-core",
+        "metric_name": "queue_drops",
+        "metric": "queue_drops",
+        "value": 1019,
+        "unit": "packets",
+        "severity": "critical",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-37d18cfb",
+        "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d",
+        "correlation_id": "inc-ext-conflicting",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-conflicting",
+          "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-077e7f71",
+        "source_agent": "telemetry_agent",
+        "category": "metric_anomaly",
+        "finding": "dist-sw-core packet_loss_pct: observed 6.4 percent",
+        "interpretation": "dist-sw-core packet_loss_pct: observed 6.4 percent",
+        "entity": "dist-sw-core",
+        "metric_name": "packet_loss_pct",
+        "metric": "packet_loss_pct",
+        "value": 6.4,
+        "unit": "percent",
+        "severity": "warning",
+        "timestamp": "2026-10-31T12:00:00+00:00",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-077e7f71",
+        "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d",
+        "correlation_id": "inc-ext-conflicting",
+        "provenance": {
+          "source_agent": "telemetry_agent",
+          "correlation_id": "inc-ext-conflicting",
+          "message_id": "7cd164a9-b661-45fe-bb07-f9412e99987d"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-de9f87f5",
+        "source_agent": "topology_agent",
+        "category": "metric_anomaly",
+        "finding": "core-rtr-01:eth0<->dist-sw-core:eth0 transit_link_adjacency: observed congested_transit_trunk_10.0gbps text",
+        "interpretation": "core-rtr-01:eth0<->dist-sw-core:eth0 transit_link_adjacency: observed congested_transit_trunk_10.0gbps text",
+        "entity": "core-rtr-01:eth0<->dist-sw-core:eth0",
+        "metric_name": "transit_link_adjacency",
+        "metric": "transit_link_adjacency",
+        "value": "congested_transit_trunk_10.0gbps",
+        "unit": "text",
+        "severity": "critical",
+        "timestamp": "2026-11-15T12:31:07Z",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-de9f87f5",
+        "message_id": "7791eba8-9ee5-4907-a09d-48abc5da976b",
+        "correlation_id": "inc-ext-conflicting",
+        "provenance": {
+          "source_agent": "topology_agent",
+          "correlation_id": "inc-ext-conflicting",
+          "message_id": "7791eba8-9ee5-4907-a09d-48abc5da976b"
+        }
+      },
+      {
+        "evidence_id": "evi-obs-2e338600",
+        "source_agent": "config_agent",
+        "category": "config_diff",
+        "finding": "core-rtr-01 config_commit_diff: observed --- running\n+++ candidate\n@@ -10,2 +10,2 @@\n interface eth0\n+ spanning-tree bpdufilter enable text",
+        "interpretation": "core-rtr-01 config_commit_diff: observed --- running\n+++ candidate\n@@ -10,2 +10,2 @@\n interface eth0\n+ spanning-tree bpdufilter enable text",
+        "entity": "core-rtr-01",
+        "metric_name": "config_commit_diff",
+        "metric": "config_commit_diff",
+        "value": "--- running\n+++ candidate\n@@ -10,2 +10,2 @@\n interface eth0\n+ spanning-tree bpdufilter enable",
+        "unit": "text",
+        "severity": "warning",
+        "timestamp": "2026-11-15T09:00:00Z",
+        "timestamp_window": null,
+        "weight": 1.0,
+        "observation_id": "obs-2e338600",
+        "message_id": "efde758f-e5c5-456f-87dc-8bc485369f1c",
+        "correlation_id": "inc-ext-conflicting",
+        "provenance": {
+          "source_agent": "config_agent",
+          "message_id": "efde758f-e5c5-456f-87dc-8bc485369f1c",
+          "correlation_id": "inc-ext-conflicting"
+        }
+      }
+    ],
+    "uncertainty": {
+      "score": 0.06,
+      "reasons": [],
+      "missing_evidence": [],
+      "alternative_hypotheses": [
+        {
+          "cause": "Spanning Tree Forwarding Loop / Broadcast Storm",
+          "confidence": 0.5,
+          "discriminating_test": "Corroborate independent domain telemetry."
+        },
+        {
+          "cause": "Path MTU Mismatch causing packet blackholing on jumbo frames",
+          "confidence": 0.45,
+          "discriminating_test": "Corroborate independent domain telemetry."
+        },
+        {
+          "cause": "Upstream provider or transit link congestion inducing downstream delay",
+          "confidence": 0.82,
+          "discriminating_test": "Query egress queue drops and interface utilization on upstream transit hops vs local interface counters."
+        }
+      ]
+    },
+    "remediation_actions": [
+      {
+        "action_id": "act-rebalance-core-rtr-01",
+        "title": "Rebalance traffic across ECMP next-hops from core-rtr-01 et-0/0/1",
+        "description": "Re-weight hash buckets to steer egress flows across parallel paths and relieve congestion.",
+        "device": "core-rtr-01",
+        "commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "load-interval 30",
+          "traffic-policy REBALANCE_ECMP",
+          "commit and-quit"
+        ],
+        "rollback_commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "no traffic-policy REBALANCE_ECMP",
+          "commit and-quit"
+        ],
+        "risk_level": "low",
+        "blast_radius_devices": [
+          "core-rtr-01"
+        ],
+        "is_simulated": true,
+        "status": "pending",
+        "action": "Rebalance traffic across ECMP next-hops from core-rtr-01 et-0/0/1"
+      },
+      {
+        "action_id": "act-qos-core-rtr-01",
+        "title": "Raise QoS priority and buffer reserve on core-rtr-01 et-0/0/1",
+        "description": "Prioritize delay-sensitive flows and allocate strict priority queue bandwidth.",
+        "device": "core-rtr-01",
+        "commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "service-policy type qos output EXPEDITE_VOICE_VIDEO",
+          "commit and-quit"
+        ],
+        "rollback_commands": [
+          "configure terminal",
+          "interface et-0/0/1",
+          "no service-policy type qos output EXPEDITE_VOICE_VIDEO",
+          "commit and-quit"
+        ],
+        "risk_level": "low",
+        "blast_radius_devices": [
+          "core-rtr-01"
+        ],
+        "is_simulated": true,
+        "status": "pending",
+        "action": "Raise QoS priority and buffer reserve on core-rtr-01 et-0/0/1"
+      }
+    ],
+    "summary": "Incident inc-ext-conflicting on network iit-bbs-campus-fabric was successfully diagnosed as 'Link utilization saturation causing buffer queue drops and latency spikes' with 94% confidence impacting core-rtr-01, dist-sw-core.",
+    "processing_time_ms": 1111.34,
+    "causal_chain": [
+      "High egress traffic volume approaches interface bandwidth limit",
+      "Egress queue buffer fills to maximum allocation limit",
+      "Tail drops occur as incoming frames exceed buffer capacity",
+      "Packet serialization delays induce latency and jitter spikes",
+      "TCP endpoints detect loss and trigger congestion window backoff"
+    ],
+    "conflicts_resolved": [
+      {
+        "conflict": "STP Loop vs CPU Overload",
+        "winner": "BPDU filter configuration enabled on trunk or cross-connect link",
+        "precedence": "DIRECT",
+        "rationale": "Arbitration: BPDU filter misconfiguration causing catastrophic broadcast loop takes direct precedence over general CPU overload.",
+        "iteration": 1
+      }
+    ],
+    "limitations": [
+      "single snapshot, no temporal context",
+      "Data quality penalty (-0.020) applied due to: telemetry values repaired: status_mapping, timestamp_parsing."
+    ],
+    "provenance": {
+      "generator": "netcoop_synthetic",
+      "timestamp_ingested": "2026-11-15T12:31:07Z",
+      "agent_execution": {
+        "telemetry_agent": {
+          "agent_id": "telemetry_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:06.405754+00:00",
+          "completed_at": "2026-11-15T12:31:06.985601+00:00",
+          "duration_ms": 579.84,
+          "retry_count": 0,
+          "observation_count": 10,
+          "hypothesis_count": 1,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-conflicting"
+        },
+        "topology_agent": {
+          "agent_id": "topology_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:06.407713+00:00",
+          "completed_at": "2026-11-15T12:31:07.096756+00:00",
+          "duration_ms": 689.04,
+          "retry_count": 0,
+          "observation_count": 1,
+          "hypothesis_count": 0,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-conflicting"
+        },
+        "config_agent": {
+          "agent_id": "config_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:06.409121+00:00",
+          "completed_at": "2026-11-15T12:31:07.112487+00:00",
+          "duration_ms": 703.36,
+          "retry_count": 0,
+          "observation_count": 2,
+          "hypothesis_count": 1,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-conflicting"
+        },
+        "log_agent": {
+          "agent_id": "log_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:06.410336+00:00",
+          "completed_at": "2026-11-15T12:31:07.081045+00:00",
+          "duration_ms": 670.7,
+          "retry_count": 0,
+          "observation_count": 1,
+          "hypothesis_count": 1,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-conflicting"
+        },
+        "wifi_services_agent": {
+          "agent_id": "wifi_services_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:06.411725+00:00",
+          "completed_at": "2026-11-15T12:31:07.092412+00:00",
+          "duration_ms": 680.68,
+          "retry_count": 0,
+          "observation_count": 0,
+          "hypothesis_count": 0,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-conflicting"
+        },
+        "classifier_agent": {
+          "agent_id": "classifier_agent",
+          "execution_status": "success",
+          "started_at": "2026-11-15T12:31:06.412910+00:00",
+          "completed_at": "2026-11-15T12:31:07.152465+00:00",
+          "duration_ms": 739.54,
+          "retry_count": 0,
+          "observation_count": 14,
+          "hypothesis_count": 1,
+          "inquiry_count": 0,
+          "error_code": null,
+          "correlation_id": "inc-ext-conflicting"
+        }
+      },
+      "inquiries_count": 0,
+      "conflicts_resolved_count": 1,
+      "conflicts_resolved": [
+        {
+          "conflict": "STP Loop vs CPU Overload",
+          "winner": "BPDU filter configuration enabled on trunk or cross-connect link",
+          "precedence": "DIRECT",
+          "rationale": "Arbitration: BPDU filter misconfiguration causing catastrophic broadcast loop takes direct precedence over general CPU overload.",
+          "iteration": 1
+        }
+      ]
+    },
+    "confidence_breakdown": {
+      "rules_score": 0.943,
+      "model_score": 1.0,
+      "blended_score": 0.969,
+      "calibrated_confidence": 0.949,
+      "data_quality_penalty": 0.02,
+      "data_quality_score": 1.0
+    },
+    "conformal_prediction_set": [
+      "link_congestion"
+    ],
+    "confidence_category": "high",
+    "hypothesis_key": "LINK_CONGESTION",
+    "evidence_sources": [
+      "config_agent",
+      "telemetry_agent",
+      "topology_agent"
+    ],
+    "suspected_root_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
+    "is_confidence_calibrated": true,
+    "confidence_type": "calibrated_probability"
+  }
+}

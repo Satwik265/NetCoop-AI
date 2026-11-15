@@ -163,6 +163,19 @@ class TelemetryAgent(BaseAgent):
                             context={"agent_domain": "telemetry_agent", "device_id": dev},
                         )
                     )
+                if loss is not None and loss > 1.0:
+                    observations.append(
+                        Observation(
+                            category=ObservationCategory.METRIC_ANOMALY,
+                            entity=dev,
+                            metric_name="packet_loss_pct",
+                            observed_value=loss,
+                            unit="percent",
+                            severity=Severity.CRITICAL if loss > 10.0 else Severity.WARNING,
+                            timestamp_start=ts,
+                            context={"agent_domain": "telemetry_agent", "device_id": dev},
+                        )
+                    )
                 if rssi is not None and rssi < -78.0:
                     observations.append(
                         Observation(
@@ -435,7 +448,7 @@ class TelemetryAgent(BaseAgent):
         elif has_errs:
             response.payload.hypotheses.append(
                 Hypothesis(
-                    probable_cause="Ethernet physical layer interface degradation and packet corruption",
+                    probable_cause="Physical layer Ethernet interface CRC errors and flapping transitions",
                     confidence=0.92,
                     supporting_observation_ids=obs_ids,
                     required_corroboration=["telemetry_agent"],

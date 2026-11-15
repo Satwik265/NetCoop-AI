@@ -800,6 +800,7 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         "agent_execution": state.get("agent_execution", {}),
         "inquiries_count": len(state.get("inquiries_history", [])),
         "conflicts_resolved_count": len(state.get("conflicts_resolved", [])),
+        "conflicts_resolved": state.get("conflicts_resolved", []),
     }
     if raw_data.get("topology", {}).get("is_assumed"):
         provenance["topology"] = "assumed"
