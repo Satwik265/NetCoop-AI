@@ -38,6 +38,14 @@ from eval.run_eval import (
 from joblib import Parallel, delayed
 
 def eval_single(sc, s, spec):
+    os.environ["AGENTS_MODE"] = "in_process"
+    os.environ["IN_PROCESS_FALLBACK"] = "true"
+    os.environ["ALLOW_DEV_IN_PROCESS_FALLBACK"] = "true"
+    from netcoop.config import settings
+    settings.agents_mode = "in_process"
+    settings.in_process_fallback = True
+    settings.allow_dev_in_process_fallback = True
+
     rng = np.random.RandomState(s)
     sev = spec.severities[rng.randint(0, len(spec.severities))]
     n_shape = spec.noise_shapes[rng.randint(0, len(spec.noise_shapes))]

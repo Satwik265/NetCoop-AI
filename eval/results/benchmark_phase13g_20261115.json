@@ -1,0 +1,727 @@
+{
+  "version": "2.0.0",
+  "phase": "13G",
+  "evaluation_timestamp": "2026-11-16T09:20:50.940965+00:00",
+  "git_commit": "4a6bc7ab8c3ec15388cc9a3d189059f6b2c89da1",
+  "splits": {
+    "validation_conformal": {
+      "overall_coverage": 0.9475,
+      "by_noise_level": {
+        "uniform": 0.9803,
+        "burst": 0.9265,
+        "gaussian": 0.9286
+      },
+      "by_class": {
+        "normal_operation": 0.88,
+        "link_congestion": 0.96,
+        "weak_wifi_signal": 1.0,
+        "ethernet_interface_fault": 0.92,
+        "dns_failure": 1.0,
+        "dhcp_failure": 0.92,
+        "device_cpu_overload": 0.94,
+        "upstream_failure_cascade": 0.96
+      }
+    },
+    "in_distribution": {
+      "dataset_name": "in_distribution_301_325",
+      "total_samples": 250,
+      "coverage": 0.512,
+      "selective_accuracy": 0.9922,
+      "selective_risk": 0.0078,
+      "macro_f1": 0.769,
+      "safe_abstention_rate_ambiguous": 1.0,
+      "faults_called_normal": 0,
+      "conformal_coverage": 0.85,
+      "ece_all": 0.044,
+      "ece_accepted": 0.069,
+      "brier_all": 0.008,
+      "brier_accepted": 0.0126,
+      "per_class": {
+        "normal_operation": {
+          "precision": 1.0,
+          "recall": 0.6,
+          "f1": 0.75,
+          "support": 25,
+          "abstentions": 10
+        },
+        "link_congestion": {
+          "precision": 0.944,
+          "recall": 0.68,
+          "f1": 0.791,
+          "support": 25,
+          "abstentions": 8
+        },
+        "weak_wifi_signal": {
+          "precision": 1.0,
+          "recall": 0.6,
+          "f1": 0.75,
+          "support": 25,
+          "abstentions": 10
+        },
+        "ethernet_interface_fault": {
+          "precision": 1.0,
+          "recall": 0.56,
+          "f1": 0.718,
+          "support": 25,
+          "abstentions": 11
+        },
+        "dns_failure": {
+          "precision": 1.0,
+          "recall": 0.72,
+          "f1": 0.837,
+          "support": 25,
+          "abstentions": 7
+        },
+        "dhcp_failure": {
+          "precision": 1.0,
+          "recall": 0.68,
+          "f1": 0.81,
+          "support": 25,
+          "abstentions": 8
+        },
+        "device_cpu_overload": {
+          "precision": 1.0,
+          "recall": 0.44,
+          "f1": 0.611,
+          "support": 25,
+          "abstentions": 14
+        },
+        "upstream_failure_cascade": {
+          "precision": 1.0,
+          "recall": 0.8,
+          "f1": 0.889,
+          "support": 25,
+          "abstentions": 4
+        }
+      },
+      "class_conformal": {
+        "normal_operation": 0.6,
+        "link_congestion": 0.88,
+        "weak_wifi_signal": 0.92,
+        "ethernet_interface_fault": 0.8,
+        "dns_failure": 1.0,
+        "dhcp_failure": 0.84,
+        "device_cpu_overload": 0.88,
+        "upstream_failure_cascade": 0.88
+      },
+      "confusion_matrix": [
+        [
+          15,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          10
+        ],
+        [
+          0,
+          17,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          8
+        ],
+        [
+          0,
+          0,
+          15,
+          0,
+          0,
+          0,
+          0,
+          0,
+          10
+        ],
+        [
+          0,
+          0,
+          0,
+          14,
+          0,
+          0,
+          0,
+          0,
+          11
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          18,
+          0,
+          0,
+          0,
+          7
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          17,
+          0,
+          0,
+          8
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          11,
+          0,
+          14
+        ],
+        [
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          20,
+          4
+        ]
+      ]
+    },
+    "in_distribution_conformal_by_noise": {
+      "burst": 0.8417,
+      "gaussian": 0.8625
+    },
+    "heldout_historical_501_515": {
+      "dataset_name": "heldout_historical_501_515",
+      "total_samples": 150,
+      "coverage": 0.14,
+      "selective_accuracy": 1.0,
+      "selective_risk": 0.0,
+      "macro_f1": 0.279,
+      "safe_abstention_rate_ambiguous": 1.0,
+      "faults_called_normal": 0,
+      "conformal_coverage": 0.8667,
+      "ece_all": 0.012,
+      "ece_accepted": 0.067,
+      "brier_all": 0.0023,
+      "brier_accepted": 0.0132,
+      "per_class": {
+        "normal_operation": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 15,
+          "abstentions": 15
+        },
+        "link_congestion": {
+          "precision": 1.0,
+          "recall": 0.4,
+          "f1": 0.571,
+          "support": 15,
+          "abstentions": 9
+        },
+        "weak_wifi_signal": {
+          "precision": 1.0,
+          "recall": 0.133,
+          "f1": 0.235,
+          "support": 15,
+          "abstentions": 13
+        },
+        "ethernet_interface_fault": {
+          "precision": 1.0,
+          "recall": 0.133,
+          "f1": 0.235,
+          "support": 15,
+          "abstentions": 13
+        },
+        "dns_failure": {
+          "precision": 1.0,
+          "recall": 0.2,
+          "f1": 0.333,
+          "support": 15,
+          "abstentions": 12
+        },
+        "dhcp_failure": {
+          "precision": 1.0,
+          "recall": 0.067,
+          "f1": 0.125,
+          "support": 15,
+          "abstentions": 14
+        },
+        "device_cpu_overload": {
+          "precision": 1.0,
+          "recall": 0.333,
+          "f1": 0.5,
+          "support": 15,
+          "abstentions": 10
+        },
+        "upstream_failure_cascade": {
+          "precision": 1.0,
+          "recall": 0.133,
+          "f1": 0.235,
+          "support": 15,
+          "abstentions": 13
+        }
+      },
+      "class_conformal": {
+        "normal_operation": 0.0,
+        "link_congestion": 0.9333,
+        "weak_wifi_signal": 1.0,
+        "ethernet_interface_fault": 1.0,
+        "dns_failure": 1.0,
+        "dhcp_failure": 1.0,
+        "device_cpu_overload": 1.0,
+        "upstream_failure_cascade": 1.0
+      },
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          15
+        ],
+        [
+          0,
+          6,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          9
+        ],
+        [
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          13
+        ],
+        [
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          13
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          3,
+          0,
+          0,
+          0,
+          12
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          14
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          5,
+          0,
+          10
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          13
+        ]
+      ]
+    },
+    "heldout_blind_601_615": {
+      "dataset_name": "heldout_blind_601_615",
+      "total_samples": 150,
+      "coverage": 0.08,
+      "selective_accuracy": 0.9167,
+      "selective_risk": 0.0833,
+      "macro_f1": 0.156,
+      "safe_abstention_rate_ambiguous": 1.0,
+      "faults_called_normal": 0,
+      "conformal_coverage": 0.8583,
+      "ece_all": 0.013,
+      "ece_accepted": 0.133,
+      "brier_all": 0.0117,
+      "brier_accepted": 0.117,
+      "per_class": {
+        "normal_operation": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 15,
+          "abstentions": 15
+        },
+        "link_congestion": {
+          "precision": 1.0,
+          "recall": 0.267,
+          "f1": 0.421,
+          "support": 15,
+          "abstentions": 11
+        },
+        "weak_wifi_signal": {
+          "precision": 1.0,
+          "recall": 0.067,
+          "f1": 0.125,
+          "support": 15,
+          "abstentions": 14
+        },
+        "ethernet_interface_fault": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 15,
+          "abstentions": 15
+        },
+        "dns_failure": {
+          "precision": 1.0,
+          "recall": 0.133,
+          "f1": 0.235,
+          "support": 15,
+          "abstentions": 13
+        },
+        "dhcp_failure": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 15,
+          "abstentions": 15
+        },
+        "device_cpu_overload": {
+          "precision": 1.0,
+          "recall": 0.133,
+          "f1": 0.235,
+          "support": 15,
+          "abstentions": 13
+        },
+        "upstream_failure_cascade": {
+          "precision": 1.0,
+          "recall": 0.133,
+          "f1": 0.235,
+          "support": 15,
+          "abstentions": 13
+        }
+      },
+      "class_conformal": {
+        "normal_operation": 0.0,
+        "link_congestion": 0.8667,
+        "weak_wifi_signal": 1.0,
+        "ethernet_interface_fault": 1.0,
+        "dns_failure": 1.0,
+        "dhcp_failure": 1.0,
+        "device_cpu_overload": 1.0,
+        "upstream_failure_cascade": 1.0
+      },
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          15
+        ],
+        [
+          0,
+          4,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          11
+        ],
+        [
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          14
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          15
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          13
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          15
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          13
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          13
+        ]
+      ]
+    },
+    "combined_primary": {
+      "dataset_name": "combined_primary_400",
+      "total_samples": 400,
+      "coverage": 0.35,
+      "selective_accuracy": 0.9857,
+      "selective_risk": 0.0143,
+      "macro_f1": 0.597,
+      "safe_abstention_rate_ambiguous": 1.0,
+      "faults_called_normal": 0,
+      "conformal_coverage": 0.8531,
+      "ece_all": 0.029,
+      "ece_accepted": 0.066,
+      "brier_all": 0.0094,
+      "brier_accepted": 0.0215,
+      "per_class": {
+        "normal_operation": {
+          "precision": 1.0,
+          "recall": 0.375,
+          "f1": 0.545,
+          "support": 40,
+          "abstentions": 25
+        },
+        "link_congestion": {
+          "precision": 0.955,
+          "recall": 0.525,
+          "f1": 0.677,
+          "support": 40,
+          "abstentions": 19
+        },
+        "weak_wifi_signal": {
+          "precision": 1.0,
+          "recall": 0.4,
+          "f1": 0.571,
+          "support": 40,
+          "abstentions": 24
+        },
+        "ethernet_interface_fault": {
+          "precision": 1.0,
+          "recall": 0.35,
+          "f1": 0.519,
+          "support": 40,
+          "abstentions": 26
+        },
+        "dns_failure": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.667,
+          "support": 40,
+          "abstentions": 20
+        },
+        "dhcp_failure": {
+          "precision": 1.0,
+          "recall": 0.425,
+          "f1": 0.596,
+          "support": 40,
+          "abstentions": 23
+        },
+        "device_cpu_overload": {
+          "precision": 1.0,
+          "recall": 0.325,
+          "f1": 0.491,
+          "support": 40,
+          "abstentions": 27
+        },
+        "upstream_failure_cascade": {
+          "precision": 1.0,
+          "recall": 0.55,
+          "f1": 0.71,
+          "support": 40,
+          "abstentions": 17
+        }
+      },
+      "class_conformal": {
+        "normal_operation": 0.375,
+        "link_congestion": 0.875,
+        "weak_wifi_signal": 0.95,
+        "ethernet_interface_fault": 0.875,
+        "dns_failure": 1.0,
+        "dhcp_failure": 0.9,
+        "device_cpu_overload": 0.925,
+        "upstream_failure_cascade": 0.925
+      },
+      "confusion_matrix": [
+        [
+          15,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          25
+        ],
+        [
+          0,
+          21,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          19
+        ],
+        [
+          0,
+          0,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          24
+        ],
+        [
+          0,
+          0,
+          0,
+          14,
+          0,
+          0,
+          0,
+          0,
+          26
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          20,
+          0,
+          0,
+          0,
+          20
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          17,
+          0,
+          0,
+          23
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          13,
+          0,
+          27
+        ],
+        [
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          22,
+          17
+        ]
+      ]
+    },
+    "organizer": {
+      "total_samples": 900,
+      "set_match_accuracy": 1.0,
+      "exact_match_accuracy": 0.5744
+    }
+  }
+}

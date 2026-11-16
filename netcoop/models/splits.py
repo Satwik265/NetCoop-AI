@@ -49,15 +49,15 @@ class DatasetSplitter:
         onset_offset_range=(0.0, 60.0),
     )
 
-    # 2. Evaluate nonconformity scores using the fixed calibrator on conformal_calib partition
+    # 2. Evaluate nonconformity scores using the fixed calibrator on noise-stratified conformal_calib partition
     CONFORMAL_CALIB_SPEC = SplitSpec(
         name="conformal_calib",
         seed_start=226,
         seed_end=250,
-        severities=(SeverityLevel.LOW, SeverityLevel.MEDIUM),
-        noise_shapes=(NoiseShape.GAUSSIAN, NoiseShape.UNIFORM),
-        missing_rate_range=(0.0, 0.2),
-        onset_offset_range=(0.0, 60.0),
+        severities=(SeverityLevel.LOW, SeverityLevel.MEDIUM, SeverityLevel.HIGH),
+        noise_shapes=(NoiseShape.GAUSSIAN, NoiseShape.UNIFORM, NoiseShape.BURST),
+        missing_rate_range=(0.0, 0.40),
+        onset_offset_range=(0.0, 90.0),
     )
 
     # Composite calibration split encompassing both sub-partitions (seeds 201-250)

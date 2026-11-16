@@ -860,36 +860,139 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     detected_format = raw_data.get("detected_format") or ""
     is_organizer_format = "organizer" in str(detected_format)
 
-    # In organizer format, single-device telemetry has sparse multi-device feature vectors,
-    # so we verify nominal operation directly from the validated telemetry records
+    # In Phase 13G, we implement a calibrated healthy-confirmation engine:
+    # Hard constraint: the rate of faults called normal must not increase.
+    # 1. Complete absence of degraded/offline/down device statuses.
+    # 2. Critical network switches must not have unobserved interface health.
+    # 3. All observed telemetry metrics must reside within validated nominal operational bounds.
+    # 4. Zero unhandled high/critical syslog errors or configuration diff anomalies.
+    # 5. Classifier must not predict an active fault with high confidence (>= 0.50).
     telemetry_records = raw_data.get("telemetry", [])
     telemetry_is_nominal = False
-    if is_organizer_format and telemetry_records and not specialist_obs and not hypothesis:
-        all_records_nominal = True
+    has_unhealthy_signal = False
+
+    if telemetry_records and not specialist_obs and not hypothesis:
         for r in telemetry_records:
-            rec_metrics = r.get("metrics", r)
-            loss = float(rec_metrics.get("packet_loss_pct") or rec_metrics.get("loss_pct") or 0.0)
-            drops = float(rec_metrics.get("queue_drops") or rec_metrics.get("drops") or 0.0)
-            lat = float(rec_metrics.get("latency_ms") or rec_metrics.get("rtt") or rec_metrics.get("delay") or 0.0)
-            cpu = float(rec_metrics.get("cpu_pct") or rec_metrics.get("cpu_utilization_pct") or 0.0)
-            util = float(rec_metrics.get("link_utilization_pct") or rec_metrics.get("utilization") or 0.0)
-            status_val = str(r.get("device_status") or r.get("status") or rec_metrics.get("status") or "").lower()
-            if (
-                loss > 1.0
-                or drops > 5
-                or lat > 35.0
-                or cpu > 60.0
-                or util > 65.0
-                or status_val in ("critical", "degraded", "warning", "down")
-            ):
-                all_records_nominal = False
+            if not isinstance(r, dict):
+                continue
+            rec_metrics = r.get("metrics", r) if isinstance(r.get("metrics"), dict) else r
+            st_raw = r.get("device_status") or r.get("status") or rec_metrics.get("status") or ""
+            st_val = str(getattr(st_raw, "value", st_raw)).lower()
+            if any(bad in st_val for bad in ("critical", "degraded", "warning", "down", "offline", "error", "fault")):
+                has_unhealthy_signal = True
                 break
-        telemetry_is_nominal = all_records_nominal
+
+            # Switch unobserved interface health check
+            dev_type = str(getattr(r.get("device_type"), "value", r.get("device_type") or "")).lower()
+            if dev_type == "switch":
+                if (
+                    (r.get("device_status") is None or st_val == "")
+                    and (rec_metrics.get("interface_errors") is None and r.get("interface_errors") is None)
+                    and (rec_metrics.get("link_flaps") is None and r.get("link_flaps") is None)
+                    and (rec_metrics.get("packet_loss_pct") is None and r.get("packet_loss_pct") is None)
+                ):
+                    has_unhealthy_signal = True
+                    break
+
+            # Metric nominal threshold checks
+            loss = rec_metrics.get("packet_loss_pct") or r.get("packet_loss_pct") or rec_metrics.get("loss_pct")
+            if loss is not None and float(loss) > 2.0:
+                has_unhealthy_signal = True
+                break
+            drops = rec_metrics.get("queue_drops") or r.get("queue_drops") or rec_metrics.get("drops")
+            if drops is not None and float(drops) > 5:
+                has_unhealthy_signal = True
+                break
+            lat = rec_metrics.get("latency_ms") or r.get("latency_ms") or rec_metrics.get("rtt") or rec_metrics.get("delay")
+            if lat is not None and float(lat) > 40.0:
+                has_unhealthy_signal = True
+                break
+            cpu = rec_metrics.get("cpu_pct") or r.get("cpu_pct") or rec_metrics.get("cpu_utilization_pct")
+            if cpu is not None and float(cpu) > 75.0:
+                has_unhealthy_signal = True
+                break
+            util = rec_metrics.get("link_utilization_pct") or r.get("link_utilization_pct") or rec_metrics.get("utilization")
+            if util is not None and float(util) > 75.0:
+                has_unhealthy_signal = True
+                break
+            if_errs = (
+                rec_metrics.get("interface_errors")
+                or r.get("interface_errors")
+                or rec_metrics.get("interface_crc_errors")
+                or rec_metrics.get("fcs_error_rate")
+                or rec_metrics.get("fcs_errors")
+                or rec_metrics.get("crc_errors")
+            )
+            if if_errs is not None and float(if_errs) > 10:
+                has_unhealthy_signal = True
+                break
+            flaps = (
+                rec_metrics.get("link_flaps")
+                or r.get("link_flaps")
+                or rec_metrics.get("carrier_transitions")
+            )
+            if flaps is not None and float(flaps) > 0:
+                has_unhealthy_signal = True
+                break
+            opt_power = (
+                rec_metrics.get("optical_tx_power_dbm")
+                or r.get("optical_tx_power_dbm")
+                or rec_metrics.get("optical_rx_power")
+                or rec_metrics.get("rx_power_dbm")
+            )
+            if opt_power is not None and (float(opt_power) < -13.0 or float(opt_power) > -5.0):
+                has_unhealthy_signal = True
+                break
+            dns_f = rec_metrics.get("dns_failure_pct") or r.get("dns_failure_pct")
+            if dns_f is not None and float(dns_f) > 5.0:
+                has_unhealthy_signal = True
+                break
+            dhcp_f = rec_metrics.get("dhcp_failure_pct") or r.get("dhcp_failure_pct")
+            if dhcp_f is not None and float(dhcp_f) > 5.0:
+                has_unhealthy_signal = True
+                break
+
+        if not has_unhealthy_signal and not is_organizer_format and len(telemetry_records) < 3:
+            # Sparse campus telemetry cannot establish network-wide nominal health
+            has_unhealthy_signal = True
+
+        if not has_unhealthy_signal:
+            # Host unobserved endpoint health check: if host devices exist but all are unobserved
+            hosts = [r for r in telemetry_records if str(getattr(r.get("device_type"), "value", r.get("device_type") or "")).lower() == "host"]
+            if hosts and all(
+                (h.get("device_status") is None or str(getattr(h.get("device_status"), "value", h.get("device_status"))).lower() == "")
+                and (h.get("dhcp_failure_pct") is None and (h.get("metrics") or {}).get("dhcp_failure_pct") is None)
+                and (h.get("dns_failure_pct") is None and (h.get("metrics") or {}).get("dns_failure_pct") is None)
+                for h in hosts
+            ):
+                has_unhealthy_signal = True
+
+        if not has_unhealthy_signal:
+            logs = raw_data.get("logs", [])
+            for log in logs:
+                lvl = str(log.get("severity") or log.get("level") or "").upper()
+                if lvl in ("CRITICAL", "ERROR", "ALERT", "EMERGENCY"):
+                    has_unhealthy_signal = True
+                    break
+
+        # Rejection if any active fault class has significant calibrated probability (>= 0.35)
+        has_active_fault_prob = any(
+            prob >= 0.35
+            for cls, prob in classifier_calib_probs.items()
+            if cls not in ("normal_operation", "insufficient_evidence")
+        )
+        if has_active_fault_prob:
+            has_unhealthy_signal = True
+
+        if not has_unhealthy_signal and (not top_class or top_class == "normal_operation" or top_prob < 0.50):
+            telemetry_is_nominal = True
 
     is_benign_normal = (
         not specialist_obs
         and not hypothesis
-        and dq_score >= 0.75
+        and dq_score >= 0.70
+        and not has_unhealthy_signal
+        and not any(c not in ("normal_operation", "insufficient_evidence") for c in classifier_conformal_set)
         and ((top_class == "normal_operation" and top_prob >= normal_threshold) or telemetry_is_nominal)
     )
 
