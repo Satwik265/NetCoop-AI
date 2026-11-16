@@ -963,6 +963,8 @@ def node_report(state: GraphState) -> Dict[str, Any]:
                 (h.get("device_status") is None or str(getattr(h.get("device_status"), "value", h.get("device_status"))).lower() == "")
                 and (h.get("dhcp_failure_pct") is None and (h.get("metrics") or {}).get("dhcp_failure_pct") is None)
                 and (h.get("dns_failure_pct") is None and (h.get("metrics") or {}).get("dns_failure_pct") is None)
+                and (h.get("packet_loss_pct") is None and (h.get("metrics") or {}).get("packet_loss_pct") is None)
+                and (h.get("latency_ms") is None and (h.get("metrics") or {}).get("latency_ms") is None)
                 for h in hosts
             ):
                 has_unhealthy_signal = True
