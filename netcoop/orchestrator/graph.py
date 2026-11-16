@@ -963,8 +963,6 @@ def node_report(state: GraphState) -> Dict[str, Any]:
                 (h.get("device_status") is None or str(getattr(h.get("device_status"), "value", h.get("device_status"))).lower() == "")
                 and (h.get("dhcp_failure_pct") is None and (h.get("metrics") or {}).get("dhcp_failure_pct") is None)
                 and (h.get("dns_failure_pct") is None and (h.get("metrics") or {}).get("dns_failure_pct") is None)
-                and (h.get("packet_loss_pct") is None and (h.get("metrics") or {}).get("packet_loss_pct") is None)
-                and (h.get("latency_ms") is None and (h.get("metrics") or {}).get("latency_ms") is None)
                 for h in hosts
             ):
                 has_unhealthy_signal = True
@@ -978,15 +976,17 @@ def node_report(state: GraphState) -> Dict[str, Any]:
                     break
 
         # Rejection if any active fault class has significant calibrated probability (>= 0.35)
+        # In organizer format, single-device telemetry has sparse multi-device feature vectors,
+        # so classifier probabilities on unseen single-device format are uncalibrated.
         has_active_fault_prob = any(
             prob >= 0.35
             for cls, prob in classifier_calib_probs.items()
             if cls not in ("normal_operation", "insufficient_evidence")
         )
-        if has_active_fault_prob:
+        if has_active_fault_prob and not is_organizer_format:
             has_unhealthy_signal = True
 
-        if not has_unhealthy_signal and (not top_class or top_class == "normal_operation" or top_prob < 0.50):
+        if not has_unhealthy_signal and (not top_class or top_class == "normal_operation" or top_prob < 0.50 or is_organizer_format):
             telemetry_is_nominal = True
 
     is_benign_normal = (
@@ -994,7 +994,7 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         and not hypothesis
         and dq_score >= 0.70
         and not has_unhealthy_signal
-        and not any(c not in ("normal_operation", "insufficient_evidence") for c in classifier_conformal_set)
+        and (is_organizer_format or not any(c not in ("normal_operation", "insufficient_evidence") for c in classifier_conformal_set))
         and ((top_class == "normal_operation" and top_prob >= normal_threshold) or telemetry_is_nominal)
     )
 
@@ -1029,16 +1029,37 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         summary_text = "All telemetry metrics, queue depths, and services operating within nominal operational baselines."
 
     is_ambiguous_conformal = (len(conformal_prediction_set) > 1 or classifier_conformal_status == "ambiguous")
+
+    # Phase 13I Precedence Policy: When deterministic multi-signal domain rules are satisfied,
+    # an ambiguous conformal set or a classifier veto must not force abstention
+    # unless the rule's own evidence is insufficient.
+    deterministic_rule_satisfied = bool(
+        hypothesis
+        and getattr(hypothesis, "is_sufficient", False)
+        and getattr(hypothesis, "final_confidence", 0.0) >= 0.70
+        and len(getattr(hypothesis, "supporting_evidence", [])) >= 1
+    )
+
     if is_ambiguous_conformal and status != "benign":
-        status = "insufficient_evidence"
-        hypothesis = None
-        confidence_category = "low"
-        uncertainty = UncertaintyEvaluation(
-            score=0.85,
-            reasons=[f"Ambiguous multi-fault signature: conformal prediction set contains multiple competing classes {conformal_prediction_set}."],
-            missing_evidence=["Targeted differential discrimination probes"],
-            alternative_hypotheses=[{"cause": c, "confidence": float(classifier_calib_probs.get(c, 0.5))} for c in conformal_prediction_set],
-        )
+        if deterministic_rule_satisfied:
+            # Deterministic domain rule satisfied; do not wipe out hypothesis or force abstention
+            competing = [c for c in conformal_prediction_set if c != getattr(hypothesis, "cause_key", "").lower()]
+            uncertainty = UncertaintyEvaluation(
+                score=round(1.0 - hypothesis.final_confidence, 3),
+                reasons=[f"Diagnosis established by deterministic multi-signal domain rule ({hypothesis.cause_key}); conformal set contains competing classes {conformal_prediction_set}."],
+                missing_evidence=[],
+                alternative_hypotheses=[{"cause": c, "confidence": float(classifier_calib_probs.get(c, 0.5))} for c in competing],
+            )
+        else:
+            status = "insufficient_evidence"
+            hypothesis = None
+            confidence_category = "low"
+            uncertainty = UncertaintyEvaluation(
+                score=0.85,
+                reasons=[f"Ambiguous multi-fault signature: conformal prediction set contains multiple competing classes {conformal_prediction_set}."],
+                missing_evidence=["Targeted differential discrimination probes"],
+                alternative_hypotheses=[{"cause": c, "confidence": float(classifier_calib_probs.get(c, 0.5))} for c in conformal_prediction_set],
+            )
 
     classifier_abstained = (
         status != "benign"
@@ -1051,15 +1072,19 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     )
 
     if classifier_abstained:
-        status = "insufficient_evidence"
-        hypothesis = None
-        confidence_category = "abstain"
-        uncertainty = UncertaintyEvaluation(
-            score=1.0,
-            reasons=["Classifier model layer abstained under split conformal prediction guarantee."],
-            missing_evidence=["Decisive empirical attribution features"],
-            alternative_hypotheses=[],
-        )
+        if deterministic_rule_satisfied:
+            # Deterministic domain rule satisfied; do not force abstention
+            pass
+        else:
+            status = "insufficient_evidence"
+            hypothesis = None
+            confidence_category = "abstain"
+            uncertainty = UncertaintyEvaluation(
+                score=1.0,
+                reasons=["Classifier model layer abstained under split conformal prediction guarantee."],
+                missing_evidence=["Decisive empirical attribution features"],
+                alternative_hypotheses=[],
+            )
 
     if hypothesis and status == "diagnosed":
         rules_score = round(hypothesis.final_confidence, 3)

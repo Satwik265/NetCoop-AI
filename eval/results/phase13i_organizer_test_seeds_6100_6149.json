@@ -1,0 +1,4709 @@
+{
+  "evaluation_timestamp": "2026-11-16T13:16:35Z",
+  "seeds_evaluated": "6100-6149",
+  "total_samples": 300,
+  "overall_exact_match_rate": 1.0,
+  "categories": [
+    {
+      "category": "snapshot_hardware_failure",
+      "total": 50,
+      "exact_matches": 50,
+      "exact_match_rate": 1.0,
+      "set_matches": 50,
+      "set_match_rate": 1.0,
+      "statuses": {
+        "diagnosed": 50
+      },
+      "causes": {
+        "device_hardware_failure": 50
+      },
+      "confidence_stats": {
+        "mean": 0.827,
+        "std": 0.0,
+        "min": 0.827,
+        "max": 0.827
+      }
+    },
+    {
+      "category": "snapshot_latency_spike",
+      "total": 50,
+      "exact_matches": 50,
+      "exact_match_rate": 1.0,
+      "set_matches": 50,
+      "set_match_rate": 1.0,
+      "statuses": {
+        "diagnosed": 50
+      },
+      "causes": {
+        "link_congestion": 50
+      },
+      "confidence_stats": {
+        "mean": 0.5663,
+        "std": 0.1087,
+        "min": 0.426,
+        "max": 0.705
+      }
+    },
+    {
+      "category": "snapshot_normal",
+      "total": 50,
+      "exact_matches": 50,
+      "exact_match_rate": 1.0,
+      "set_matches": 50,
+      "set_match_rate": 1.0,
+      "statuses": {
+        "benign": 50
+      },
+      "causes": {
+        "normal_operation": 50
+      },
+      "confidence_stats": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "category": "windowed_hardware_failure",
+      "total": 50,
+      "exact_matches": 50,
+      "exact_match_rate": 1.0,
+      "set_matches": 50,
+      "set_match_rate": 1.0,
+      "statuses": {
+        "diagnosed": 50
+      },
+      "causes": {
+        "device_hardware_failure": 50
+      },
+      "confidence_stats": {
+        "mean": 0.827,
+        "std": 0.0,
+        "min": 0.827,
+        "max": 0.827
+      }
+    },
+    {
+      "category": "windowed_latency_spike",
+      "total": 50,
+      "exact_matches": 50,
+      "exact_match_rate": 1.0,
+      "set_matches": 50,
+      "set_match_rate": 1.0,
+      "statuses": {
+        "diagnosed": 50
+      },
+      "causes": {
+        "link_congestion": 50
+      },
+      "confidence_stats": {
+        "mean": 0.6321,
+        "std": 0.1072,
+        "min": 0.449,
+        "max": 0.705
+      }
+    },
+    {
+      "category": "windowed_normal",
+      "total": 50,
+      "exact_matches": 50,
+      "exact_match_rate": 1.0,
+      "set_matches": 50,
+      "set_match_rate": 1.0,
+      "statuses": {
+        "benign": 50
+      },
+      "causes": {
+        "normal_operation": 50
+      },
+      "confidence_stats": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      }
+    }
+  ],
+  "raw_results": [
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6100,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1019.9880599975586
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6101,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 899.2903232574463
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6102,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1719.9547290802002
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6103,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1352.0655632019043
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6104,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 602.8685569763184
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6105,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 340.7597541809082
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6106,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 693.7897205352783
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6107,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1378.5927295684814
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6108,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1394.5274353027344
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6109,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 288.5851860046387
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6110,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 527.5580883026123
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6111,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 725.0254154205322
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6112,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 373.0490207672119
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6113,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 320.1587200164795
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6114,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 952.7368545532227
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6115,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1152.4906158447266
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6116,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1441.4973258972168
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6117,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 505.0668716430664
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6118,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1982.5212955474854
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6119,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 329.1139602661133
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6120,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 416.53966903686523
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6121,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 367.1603202819824
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6122,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 534.4898700714111
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6123,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 727.9021739959717
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6124,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 995.6381320953369
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6125,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 242.59448051452637
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6126,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 843.9846038818359
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6127,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2618.7798976898193
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6128,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2316.0252571105957
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6129,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3377.7477741241455
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6130,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3374.804735183716
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6131,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 615.4754161834717
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6132,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 425.3213405609131
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6133,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 790.7235622406006
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6134,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 335.16454696655273
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6135,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 464.55907821655273
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6136,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1300.9376525878906
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6137,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 540.2586460113525
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6138,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 573.3170509338379
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6139,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1652.6341438293457
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6140,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 603.452205657959
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6141,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 398.3750343322754
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6142,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 394.1659927368164
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6143,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3116.1510944366455
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6144,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2467.247486114502
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6145,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 4187.20817565918
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6146,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 266.52026176452637
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6147,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2042.5310134887695
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6148,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1574.0818977355957
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6149,
+      "is_window": true,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 408.9486598968506
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6100,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1959.2392444610596
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6101,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.695,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 280.89404106140137
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6102,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.68,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 233.50167274475098
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6103,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.686,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 402.5106430053711
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6104,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.68,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 399.4255065917969
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6105,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3419.0211296081543
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6106,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.466,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 590.5165672302246
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6107,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.46,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1812.107801437378
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6108,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.702,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 471.0681438446045
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6109,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 265.4917240142822
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6110,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.702,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 902.3103713989258
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6111,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.454,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 264.68443870544434
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6112,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 216.54367446899414
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6113,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 409.7940921783447
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6114,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.692,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2742.626905441284
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6115,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.7,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1496.3428974151611
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6116,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.686,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1552.4249076843262
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6117,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 653.4247398376465
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6118,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 517.2121524810791
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6119,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.466,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 345.06821632385254
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6120,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.466,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 424.0765571594238
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6121,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.701,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1219.4621562957764
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6122,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 725.9719371795654
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6123,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.456,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 575.7656097412109
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6124,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.691,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 333.6977958679199
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6125,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.466,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1396.2211608886719
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6126,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.693,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 786.381721496582
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6127,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1322.4987983703613
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6128,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.466,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 210.90078353881836
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6129,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 395.5860137939453
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6130,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 984.7664833068848
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6131,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.682,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2795.7050800323486
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6132,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 364.5455837249756
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6133,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 698.9400386810303
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6134,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 397.43590354919434
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6135,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2645.204544067383
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6136,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1476.4001369476318
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6137,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.455,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 337.1260166168213
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6138,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.466,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1667.694091796875
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6139,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.685,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 436.01536750793457
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6140,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.466,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1066.2031173706055
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6141,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.692,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 346.94695472717285
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6142,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.697,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 720.7813262939453
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6143,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.452,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 973.9749431610107
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6144,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.702,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 681.4837455749512
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6145,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.702,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1392.3835754394531
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6146,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.704,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 880.6877136230469
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6147,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.462,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 759.871244430542
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6148,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.449,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 317.62027740478516
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6149,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 773.7472057342529
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6100,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 770.1342105865479
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6101,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1895.3938484191895
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6102,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 436.8598461151123
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6103,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 588.9689922332764
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6104,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2434.6556663513184
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6105,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 725.7075309753418
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6106,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 239.8681640625
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6107,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 431.499719619751
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6108,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 937.0839595794678
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6109,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2086.5907669067383
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6110,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2695.0974464416504
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6111,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1258.3374977111816
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6112,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 242.40517616271973
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6113,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 282.18936920166016
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6114,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 671.4777946472168
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6115,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 900.9504318237305
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6116,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2046.3612079620361
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6117,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 639.3985748291016
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6118,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1509.4294548034668
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6119,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 625.521183013916
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6120,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 408.1883430480957
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6121,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 343.45269203186035
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6122,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1037.3766422271729
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6123,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 531.0549736022949
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6124,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3905.07435798645
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6125,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 798.142671585083
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6126,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 793.4246063232422
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6127,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3129.490375518799
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6128,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3863.734722137451
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6129,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3901.334285736084
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6130,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 823.0619430541992
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6131,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 753.9358139038086
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6132,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 713.5987281799316
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6133,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 882.5168609619141
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6134,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 826.4937400817871
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6135,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 743.985652923584
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6136,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 769.8986530303955
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6137,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2719.9666500091553
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6138,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2850.835084915161
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6139,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 743.3204650878906
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6140,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 235.52846908569336
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6141,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2004.5604705810547
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6142,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1728.5418510437012
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6143,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 913.9862060546875
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6144,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1143.2828903198242
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6145,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 779.6969413757324
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6146,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 610.5422973632812
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6147,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2350.675582885742
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6148,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2355.854034423828
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6149,
+      "is_window": true,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 474.0581512451172
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6100,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 338.3362293243408
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6101,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 442.0812129974365
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6102,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 762.7801895141602
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6103,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 241.6999340057373
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6104,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 293.44916343688965
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6105,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 635.2427005767822
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6106,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 476.1998653411865
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6107,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2548.018217086792
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6108,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 469.13647651672363
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6109,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2117.8810596466064
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6110,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2011.49582862854
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6111,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1698.1103420257568
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6112,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 708.4529399871826
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6113,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 960.6368541717529
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6114,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1754.3292045593262
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6115,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 392.4260139465332
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6116,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 827.5270462036133
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6117,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 241.0874366760254
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6118,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1825.9012699127197
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6119,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 370.5739974975586
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6120,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 415.2801036834717
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6121,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 963.3197784423828
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6122,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 405.3225517272949
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6123,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 531.2826633453369
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6124,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1287.6839637756348
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6125,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 633.7740421295166
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6126,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 356.03976249694824
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6127,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 713.2155895233154
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6128,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3498.962640762329
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6129,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 441.648006439209
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6130,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 4284.444808959961
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6131,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 4096.896409988403
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6132,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1472.7303981781006
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6133,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 304.912805557251
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6134,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 296.97322845458984
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6135,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 223.91319274902344
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6136,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 188.60244750976562
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6137,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 272.38988876342773
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6138,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 378.66711616516113
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6139,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 435.6560707092285
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6140,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 388.4124755859375
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6141,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 633.8763236999512
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6142,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 411.6661548614502
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6143,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3304.6388626098633
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6144,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3950.8159160614014
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6145,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 782.7603816986084
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6146,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 539.0434265136719
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6147,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 261.6746425628662
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6148,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 426.8524646759033
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "normal",
+      "seed": 6149,
+      "is_window": false,
+      "status": "benign",
+      "confidence": 1.0,
+      "conformal_prediction_set": [
+        "normal_operation"
+      ],
+      "predicted_class": "normal_operation",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3161.6735458374023
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6100,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.478,
+      "conformal_prediction_set": [
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 456.2492370605469
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6101,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.434,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2366.791009902954
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6102,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.667,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 400.0575542449951
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6103,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.663,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 359.36808586120605
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6104,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.678,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1948.87375831604
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6105,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.646,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1514.6543979644775
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6106,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.437,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 682.1560859680176
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6107,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.436,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1002.8133392333984
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6108,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.457,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 337.85176277160645
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6109,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.458,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 882.4975490570068
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6110,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.439,
+      "conformal_prediction_set": [
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1136.960506439209
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6111,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.684,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 341.73011779785156
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6112,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.685,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3520.3216075897217
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6113,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.656,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3544.327974319458
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6114,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.647,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 921.8480587005615
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6115,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.441,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 347.13053703308105
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6116,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.686,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 231.69779777526855
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6117,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.429,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1735.8288764953613
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6118,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.665,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3271.711826324463
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6119,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.466,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 290.65895080566406
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6120,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.447,
+      "conformal_prediction_set": [
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 420.1703071594238
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6121,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.668,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1604.010820388794
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6122,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.673,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1941.7054653167725
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6123,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.445,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 516.2816047668457
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6124,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.638,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 807.0290088653564
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6125,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.537,
+      "conformal_prediction_set": [
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1401.7491340637207
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6126,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.651,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3907.904624938965
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6127,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.44,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 983.4141731262207
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6128,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.705,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 643.892765045166
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6129,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.682,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2987.537622451782
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6130,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.66,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3293.186902999878
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6131,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.658,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3161.3736152648926
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6132,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.637,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1130.7213306427002
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6133,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.691,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 5374.24898147583
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6134,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.439,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 4199.978590011597
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6135,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.668,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 5184.904336929321
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6136,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.44,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1470.4861640930176
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6137,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.432,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1204.3681144714355
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6138,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.648,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1464.1590118408203
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6139,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.639,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 577.7058601379395
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6140,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.466,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 960.3679180145264
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6141,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.692,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1293.447494506836
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6142,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.667,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1057.7523708343506
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6143,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.434,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2213.3243083953857
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6144,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.499,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1558.6895942687988
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6145,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.646,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1158.0939292907715
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6146,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.644,
+      "conformal_prediction_set": [
+        "link_congestion"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 602.5443077087402
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6147,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.426,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2430.598020553589
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6148,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.429,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2031.8148136138916
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "latency_spike",
+      "seed": 6149,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.463,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "link_congestion",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2103.92427444458
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6100,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2276.000499725342
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6101,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1293.2119369506836
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6102,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 6140.988111495972
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6103,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 4738.721609115601
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6104,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 5746.798038482666
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6105,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 4846.376180648804
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6106,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 401.8220901489258
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6107,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 729.7468185424805
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6108,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1450.164556503296
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6109,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 772.5238800048828
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6110,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2861.9353771209717
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6111,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1713.9325141906738
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6112,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2018.2650089263916
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6113,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 497.5316524505615
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6114,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 961.5449905395508
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6115,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 817.1453475952148
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6116,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2833.6234092712402
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6117,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2021.6834545135498
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6118,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2863.783121109009
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6119,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3497.727632522583
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6120,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 5224.061727523804
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6121,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1848.8223552703857
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6122,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 4024.1429805755615
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6123,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3310.718059539795
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6124,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 570.9614753723145
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6125,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1596.5361595153809
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6126,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1261.681318283081
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6127,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1149.4805812835693
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6128,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1420.2046394348145
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6129,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1948.1964111328125
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6130,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 855.9331893920898
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6131,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1764.1026973724365
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6132,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 710.9010219573975
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6133,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1710.4928493499756
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6134,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1522.9787826538086
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6135,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 897.2780704498291
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6136,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2463.493824005127
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6137,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2799.3593215942383
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6138,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2289.722681045532
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6139,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 3101.1035442352295
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6140,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 6739.695072174072
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6141,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 6511.686086654663
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6142,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 1224.839687347412
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6143,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 4878.113508224487
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6144,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 514.4128799438477
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6145,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 593.5935974121094
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6146,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 2919.520139694214
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6147,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 478.58595848083496
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6148,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 694.6051120758057
+    },
+    {
+      "dataset": "organizer",
+      "fault_type": "hardware_failure",
+      "seed": 6149,
+      "is_window": false,
+      "status": "diagnosed",
+      "confidence": 0.827,
+      "conformal_prediction_set": [
+        "device_cpu_overload",
+        "upstream_failure_cascade"
+      ],
+      "predicted_class": "device_hardware_failure",
+      "exact_match": true,
+      "set_match": true,
+      "latency_ms": 278.12838554382324
+    }
+  ]
+}
