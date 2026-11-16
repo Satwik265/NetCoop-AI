@@ -1,0 +1,196 @@
+version: "1.0.0"
+description: "NetCoop AI Operational Parameters, Thresholds, and Evidence Catalog"
+parameters:
+  # Conformal Prediction & Statistical Calibration
+  conformal_alpha:
+    value: 0.10
+    unit: "ratio"
+    type: "hard safety"
+    category: "conformal_and_uncertainty"
+    evidence: "Split conformal error budget targeting nominal 90% finite-sample prediction set coverage (1 - alpha = 0.90)."
+
+  conformal_q_hat:
+    value: 0.6786
+    unit: "nonconformity_score"
+    type: "fitted"
+    category: "conformal_and_uncertainty"
+    evidence: "Calibrated 90th percentile nonconformity score on CONFORMAL_CALIB partition (seeds 151-175)."
+
+  weights_rules:
+    value: 0.55
+    unit: "weight"
+    type: "fitted"
+    category: "decision_blending"
+    evidence: "Validation split optimization (weights.json); rules provide conservative baseline against unseen topologies."
+
+  weights_model:
+    value: 0.45
+    unit: "weight"
+    type: "fitted"
+    category: "decision_blending"
+    evidence: "Validation split optimization (weights.json); calibrated multi-class gradient-boosted probability weight."
+
+  normal_operation_prob:
+    value: 0.80
+    unit: "probability"
+    type: "fitted"
+    category: "conformal_and_uncertainty"
+    evidence: "Calibrated threshold for normal benign confirmation when all specialist agents observe zero metric anomalies."
+
+  ood_mahalanobis_threshold:
+    value: 12.20
+    unit: "mahalanobis_distance"
+    type: "fitted"
+    category: "ood_gating"
+    evidence: "99th percentile * 1.35 multiplier fitted on PCA-reduced multi-topology training features."
+
+  # Multi-Agent Corroboration & Sufficiency
+  min_independent_domains:
+    value: 2
+    unit: "domain_count"
+    type: "hard safety"
+    category: "multi_agent_corroboration"
+    evidence: "Multi-agent corroboration requirement; high-impact diagnoses must derive from >= 2 independent direct evidence domains or are marked limited."
+
+  acceptance_confidence_threshold:
+    value: 0.70
+    unit: "confidence"
+    type: "hard safety"
+    category: "decision_gating"
+    evidence: "Minimum blended confidence cutoff for declaring a diagnosis rather than abstaining with insufficient_evidence."
+
+  high_confidence_threshold:
+    value: 0.85
+    unit: "confidence"
+    type: "heuristic"
+    category: "decision_gating"
+    evidence: "High-assurance threshold for automated remediation dispatch without mandatory HITL confirmation."
+
+  medium_confidence_threshold:
+    value: 0.70
+    unit: "confidence"
+    type: "heuristic"
+    category: "decision_gating"
+    evidence: "Medium confidence threshold presenting diagnosed root cause with required HITL operator confirmation."
+
+  # Data Quality & Ingestion
+  dq_threshold:
+    value: 0.70
+    unit: "quality_score"
+    type: "hard safety"
+    category: "data_quality"
+    evidence: "Minimum required data quality score to prevent garbage-in-garbage-out hallucinations on corrupted payloads."
+
+  # Orchestrator & Communication Resilience
+  max_inquiry_iterations:
+    value: 3
+    unit: "iterations"
+    type: "hard safety"
+    category: "orchestration"
+    evidence: "Hard cap on cross-examination inquiry iterations between orchestrator and specialist agents to prevent infinite loops."
+
+  agent_timeout_seconds:
+    value: 3.0
+    unit: "seconds"
+    type: "hard safety"
+    category: "orchestration"
+    evidence: "Per-agent HTTP request timeout before failing fast and recording degraded mode limitations."
+
+  circuit_breaker_failure_threshold:
+    value: 2
+    unit: "failures"
+    type: "hard safety"
+    category: "orchestration"
+    evidence: "Consecutive specialist agent failures before circuit breaker trips open to protect overall system response time."
+
+  circuit_breaker_recovery_timeout_s:
+    value: 30.0
+    unit: "seconds"
+    type: "hard safety"
+    category: "orchestration"
+    evidence: "Cooldown duration before probing a tripped agent in half-open state."
+
+  # Deterministic Fault Thresholds
+  link_utilization_congestion_pct:
+    value: 55.0
+    unit: "percent"
+    type: "heuristic"
+    category: "fault_signatures"
+    evidence: "Utilization threshold above which sustained egress queue drops indicate active link congestion."
+
+  link_utilization_critical_pct:
+    value: 85.0
+    unit: "percent"
+    type: "heuristic"
+    category: "fault_signatures"
+    evidence: "Severe saturation threshold where buffer overflow induces packet loss and latency spikes."
+
+  queue_drops_threshold:
+    value: 5
+    unit: "packets"
+    type: "heuristic"
+    category: "fault_signatures"
+    evidence: "Interface egress buffer drop count indicating persistent queue saturation."
+
+  latency_spike_threshold_ms:
+    value: 25.0
+    unit: "milliseconds"
+    type: "heuristic"
+    category: "fault_signatures"
+    evidence: "Round-trip delay or jitter elevation indicative of queueing delay or transit impairment."
+
+  packet_loss_critical_pct:
+    value: 0.5
+    unit: "percent"
+    type: "heuristic"
+    category: "fault_signatures"
+    evidence: "Active packet loss threshold signifying path impairment or congestion discard."
+
+  wifi_rssi_weak_dbm:
+    value: -78.0
+    unit: "dBm"
+    type: "heuristic"
+    category: "fault_signatures"
+    evidence: "802.11 signal power threshold below which modulation drops and packet retransmissions escalate."
+
+  wifi_retransmission_critical_pct:
+    value: 20.0
+    unit: "percent"
+    type: "heuristic"
+    category: "fault_signatures"
+    evidence: "802.11 frame retry rate indicating severe RF contention, interference, or coverage gap."
+
+  optical_rx_power_warn_dbm:
+    value: -14.0
+    unit: "dBm"
+    type: "hard safety"
+    category: "fault_signatures"
+    evidence: "SFP/QSFP transceiver warning threshold indicating optical degradation before complete loss of signal."
+
+  optical_rx_power_crit_dbm:
+    value: -18.0
+    unit: "dBm"
+    type: "hard safety"
+    category: "fault_signatures"
+    evidence: "Critical optical power threshold indicating dirty connectors, macro-bends, or dying lasers."
+
+  cpu_overload_pct:
+    value: 85.0
+    unit: "percent"
+    type: "heuristic"
+    category: "fault_signatures"
+    evidence: "Device control plane CPU utilization threshold triggering process inspection and control plane protection."
+
+  ethernet_error_packet_threshold:
+    value: 100
+    unit: "packets"
+    type: "heuristic"
+    category: "fault_signatures"
+    evidence: "FCS/CRC error count indicating physical layer cable degradation or transceiver defect."
+
+  ethernet_flap_threshold:
+    value: 3
+    unit: "flaps"
+    type: "heuristic"
+    category: "fault_signatures"
+    evidence: "Carrier state transition count indicating link instability or faulty auto-negotiation."

@@ -4,6 +4,7 @@ from netcoop.core.signatures import HypothesisKey, SIGNATURE_REGISTRY
 from typing import Dict, List, Optional, Tuple
 from core.envelope import Observation
 from core.evidence import DiagnosticHypothesis, EvidenceItem, UncertaintyEvaluation
+from netcoop.core.parameters import get_parameter
 
 
 class OfflineCorrelationEngine:
@@ -12,7 +13,7 @@ class OfflineCorrelationEngine:
     Strict rule: Never claim an exact root cause when evidence is insufficient or ambiguous.
     """
 
-    ACCEPTANCE_CONFIDENCE_THRESHOLD = 0.70
+    ACCEPTANCE_CONFIDENCE_THRESHOLD = float(get_parameter("acceptance_confidence_threshold", 0.70))
 
     @classmethod
     def evaluate(
@@ -53,6 +54,36 @@ class OfflineCorrelationEngine:
             msg_id = obs.context.get("message_id") or (obs.provenance.get("message_id") if obs.provenance else None)
             corr_id = obs.context.get("correlation_id") or (obs.provenance.get("correlation_id") if obs.provenance else None)
             domains_present.add(domain)
+
+            # Map source domain to canonical source_type
+            source_type = domain
+            if "telemetry" in domain:
+                source_type = "telemetry"
+            elif "topology" in domain:
+                source_type = "topology"
+            elif "log" in domain or "syslog" in domain:
+                source_type = "syslog"
+            elif "config" in domain:
+                source_type = "configuration"
+            elif "wifi" in domain or "service" in domain:
+                source_type = "wifi_services"
+            elif "classifier" in domain or "model" in domain:
+                source_type = "classifier"
+
+            indep_class = "direct"
+            derived_from = []
+            if obs.context.get("independence_class"):
+                indep_class = str(obs.context["independence_class"])
+            elif obs.provenance and obs.provenance.get("independence_class"):
+                indep_class = str(obs.provenance["independence_class"])
+            elif "classifier" in domain or "model" in domain:
+                indep_class = "derived"
+
+            if obs.context.get("derived_from"):
+                derived_from = list(obs.context["derived_from"])
+            elif obs.provenance and obs.provenance.get("derived_from"):
+                derived_from = list(obs.provenance["derived_from"])
+
             evidence_items.append(
                 EvidenceItem(
                     source_agent=domain,
@@ -68,6 +99,9 @@ class OfflineCorrelationEngine:
                     message_id=msg_id,
                     correlation_id=corr_id,
                     provenance=obs.provenance or obs.context,
+                    independence_class=indep_class,
+                    derived_from=derived_from,
+                    source_type=source_type,
                 )
             )
 

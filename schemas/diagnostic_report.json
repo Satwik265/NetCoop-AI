@@ -168,6 +168,22 @@
           },
           "weight": {
             "type": "number"
+          },
+          "independence_class": {
+            "type": "string",
+            "enum": ["direct", "derived", "inferred"]
+          },
+          "derived_from": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source_type": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       }

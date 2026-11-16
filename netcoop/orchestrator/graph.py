@@ -1206,6 +1206,19 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         else:
             confidence_category = "low"
 
+    # Phase 13K Sufficiency Policy: High-impact diagnoses require >= 2 independent domains or are marked limited
+    if hypothesis and status == "diagnosed" and hypothesis.cause_key != "NO_FAULT":
+        indep_domains = hypothesis.get_independent_domains()
+        if len(indep_domains) < 2:
+            lim_msg = (
+                f"limited: high-impact diagnosis '{hypothesis.cause_key}' corroborated by only {len(indep_domains)} "
+                f"independent domain(s) ({', '.join(indep_domains) or 'none'}; requires >= 2)"
+            )
+            if lim_msg not in limitations:
+                limitations.append(lim_msg)
+            if confidence_category == "high":
+                confidence_category = "medium"
+
     report = ReportBuilder.build_report(
         incident_id=incident_id,
         network_id=network_id,

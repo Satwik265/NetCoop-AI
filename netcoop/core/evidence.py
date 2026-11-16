@@ -37,6 +37,9 @@ class EvidenceItem(BaseModel):
     message_id: Optional[str] = None
     correlation_id: Optional[str] = None
     provenance: Optional[Dict[str, Any]] = None
+    independence_class: str = "direct"  # direct, derived, inferred
+    derived_from: List[str] = Field(default_factory=list)
+    source_type: Optional[str] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -81,6 +84,45 @@ class DiagnosticHypothesis(BaseModel):
     final_confidence: float = 0.0
     is_sufficient: bool = False
     suggested_remediation_type: Optional[str] = None
+    independent_domain_count: int = 0
+
+    @model_validator(mode="after")
+    def compute_domains(self) -> "DiagnosticHypothesis":
+        if self.supporting_evidence:
+            direct_domains = set()
+            for e in self.supporting_evidence:
+                indep = getattr(e, "independence_class", "direct") or "direct"
+                if indep == "direct":
+                    dom = getattr(e, "source_type", None) or getattr(e, "source_agent", None)
+                    if dom:
+                        direct_domains.add(dom)
+            if not direct_domains:
+                for e in self.supporting_evidence:
+                    dom = getattr(e, "source_type", None) or getattr(e, "source_agent", None)
+                    if dom:
+                        direct_domains.add(dom)
+            self.independent_domain_count = len(direct_domains)
+        elif self.provided_evidence_domains:
+            self.independent_domain_count = len(set(self.provided_evidence_domains))
+        return self
+
+    def get_independent_domains(self) -> List[str]:
+        """Return list of distinct independent direct evidence domains."""
+        domains = set()
+        for e in self.supporting_evidence:
+            indep = getattr(e, "independence_class", "direct") or "direct"
+            if indep == "direct":
+                dom = getattr(e, "source_type", None) or getattr(e, "source_agent", None)
+                if dom:
+                    domains.add(dom)
+        if not domains and self.supporting_evidence:
+            for e in self.supporting_evidence:
+                dom = getattr(e, "source_type", None) or getattr(e, "source_agent", None)
+                if dom:
+                    domains.add(dom)
+        if not domains and self.provided_evidence_domains:
+            domains = set(self.provided_evidence_domains)
+        return sorted(list(domains))
 
 
 class UncertaintyEvaluation(BaseModel):

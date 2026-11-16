@@ -127,6 +127,45 @@ Measured across 25 consecutive diagnostic requests with full payload parsing and
 | **In-Process Engine** | 369.2 ms | **314.2 ms** | 1303.4 ms | 1824.7 ms | 25 | 0 |
 | **HTTP REST Service (`/api/diagnose`)** | 2666.8 ms | **2476.8 ms** | 2935.7 ms | 3000.6 ms | 25 | 0 |
 
+### 3.6 Comprehensive Phase 13K Versioned Evaluation Scorecard (`demo_artifacts/scorecard.md`)
+
+Automated evaluation produced by `scripts/bench.py` covering 2,115 evaluation samples across six splits, frozen baseline ablations, 200 timed HTTP runs, and 50-seed parallel-vs-serial determinism verification. See [`demo_artifacts/scorecard.md`](demo_artifacts/scorecard.md), [`demo_artifacts/scorecard.json`](demo_artifacts/scorecard.json), and [`docs/parameters.md`](docs/parameters.md) for full audit trails and operational threshold rationales.
+
+#### 1. Primary Benchmark Splits Summary
+
+| Split / Dataset | Samples | Accepted (Cov %) | Abstained | Sel. Acc | Sel. Risk (Wilson 95% CI) | Faults Called Normal (Rule-of-3) | Accepted ECE | P95 Latency |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **In-Distribution Primary (400)** | 400 | 320 (80.0%) | 80 | 100.0% | 0.0% [0.0%, 1.2%] | 0 (<= 1.07%) | 0.0525 | 7853.4 ms |
+| **Unseen Blind Topologies (300)** | 300 | 254 (84.67%) | 46 | 94.1% | 5.9% [3.6%, 9.5%] | 0 (<= 1.43%) | 0.0467 | 7953.0 ms |
+| **Organizer Telemetry Suite (900)** | 900 | 900 (100.0%) | 0 | 100.0% | 0.0% [0.0%, 0.4%] | 0 (<= 0.50%) | 0.2120 | 8294.6 ms |
+| **Interop Suite (8)** | 8 | 6 (75.0%) | 2 | 0.0% | 100.0% [61.0%, 100.0%] | 0 (<= 37.50%) | 0.9030 | 9446.5 ms |
+| **Evidence Suite (7)** | 7 | 4 (57.14%) | 3 | 0.0% | 100.0% [51.0%, 100.0%] | 0 (<= 60.00%) | 0.9572 | 5645.5 ms |
+| **Noise Stress Suite (500)** | 500 | 405 (81.0%) | 95 | 98.5% | 1.5% [0.7%, 3.2%] | 0 (<= 0.86%) | 0.0373 | 7021.1 ms |
+
+#### 2. Baselines Comparison (Identical Frozen Set of 100 Samples)
+
+| Baseline Configuration | Accepted | Selective Acc | Selective Risk | Abstentions | Transitions: Diagnosed -> Abstain | Misdiagnosed -> Diagnosed | Identical |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Full System (Reference)** | 80 | 100.0% | 0.0% | 20 | 0 | 0 | 100 |
+| **Threshold Rules Only** | 71 | 95.8% | 4.2% | 29 | 0 | 0 | 85 |
+| **Classifier Only** | 91 | 41.8% | 58.2% | 9 | 0 | 42 | 47 |
+| **Full Without Inquiry** | 80 | 100.0% | 0.0% | 20 | 0 | 0 | 100 |
+| **Ablation: -telemetry_agent** | 30 | 100.0% | 0.0% | 70 | 0 | 0 | 50 |
+| **Ablation: -topology_agent** | 80 | 100.0% | 0.0% | 20 | 0 | 0 | 100 |
+| **Ablation: -config_agent** | 80 | 100.0% | 0.0% | 20 | 0 | 0 | 100 |
+| **Ablation: -log_agent** | 80 | 100.0% | 0.0% | 20 | 0 | 0 | 100 |
+| **Ablation: -wifi_services_agent** | 81 | 96.3% | 3.7% | 19 | 0 | 0 | 95 |
+| **Ablation: -classifier_agent** | 80 | 100.0% | 0.0% | 20 | 0 | 0 | 100 |
+
+#### 3. Operational Latency & Determinism Verification
+
+- **HTTP Timed Runs Evaluated**: 200 runs via `/api/diagnose` (`TestClient(app)`).
+- **P50 Latency (Median)**: `2358.08 ms`
+- **P95 Latency**: `4843.98 ms`
+- **Mean Latency**: `2597.96 ms`
+- **Parallel vs. Serial Determinism**: 50 test seeds evaluated concurrently across 4 workers vs. serial execution. **0 differing seeds** (Perfect Determinism: `True`).
+- **Operational Parameters Catalog**: Documented in [`docs/parameters.md`](docs/parameters.md) and [`config/parameters.yaml`](config/parameters.yaml) across 27 parameters (hard safety, fitted, heuristic).
+
 ---
 
 ## 4. Architecture & Agent Specifications
