@@ -4,42 +4,79 @@
   "conformal_calib_samples": 300,
   "validation_samples": 600,
   "test_samples": 720,
-  "ece_calibration": 0.0014,
-  "ece_test": 0.0372,
-  "conformal_test_coverage": 0.8444,
-  "selective_accuracy": 0.9825,
+  "ece_calibration": 0.0056,
+  "ece_test": 0.0232,
+  "conformal_test_coverage": 0.8458,
+  "selective_accuracy": 0.9939,
+  "calibration_by_topology": {
+    "train_branch_4": {
+      "device_count": 4,
+      "sample_count": 300,
+      "ece_uncalibrated": 0.0255,
+      "ece_calibrated": 0.0202,
+      "brier_score": 0.0519
+    },
+    "train_campus_8": {
+      "device_count": 8,
+      "sample_count": 300,
+      "ece_uncalibrated": 0.021,
+      "ece_calibrated": 0.0166,
+      "brier_score": 0.0487
+    },
+    "train_distribution_12": {
+      "device_count": 12,
+      "sample_count": 300,
+      "ece_uncalibrated": 0.0168,
+      "ece_calibrated": 0.0144,
+      "brier_score": 0.048
+    },
+    "train_datacenter_16": {
+      "device_count": 16,
+      "sample_count": 300,
+      "ece_uncalibrated": 0.0189,
+      "ece_calibrated": 0.0165,
+      "brier_score": 0.0487
+    },
+    "validation_mesh_7": {
+      "device_count": 7,
+      "sample_count": 300,
+      "ece_uncalibrated": 0.0264,
+      "ece_calibrated": 0.0222,
+      "brier_score": 0.0522
+    }
+  },
   "cutoffs": {
     "high": 0.8,
     "medium": 0.6,
     "low": 0.4
   },
   "precisions": {
-    "high": 0.981,
-    "medium": 0.979,
-    "low": 0.972
+    "high": 1.0,
+    "medium": 1.0,
+    "low": 0.979
   },
   "threshold_metadata": {
     "high": {
       "target_precision": 0.95,
-      "actual_empirical_precision": 0.981,
-      "accepted_sample_count": 530,
-      "correct_prediction_count": 520,
+      "actual_empirical_precision": 1.0,
+      "accepted_sample_count": 376,
+      "correct_prediction_count": 376,
       "selected_threshold": 0.8,
       "estimation_status": "estimated"
     },
     "medium": {
       "target_precision": 0.85,
-      "actual_empirical_precision": 0.979,
-      "accepted_sample_count": 536,
-      "correct_prediction_count": 525,
+      "actual_empirical_precision": 1.0,
+      "accepted_sample_count": 376,
+      "correct_prediction_count": 376,
       "selected_threshold": 0.6,
       "estimation_status": "estimated"
     },
     "low": {
       "target_precision": 0.7,
-      "actual_empirical_precision": 0.972,
-      "accepted_sample_count": 541,
-      "correct_prediction_count": 526,
+      "actual_empirical_precision": 0.979,
+      "accepted_sample_count": 387,
+      "correct_prediction_count": 379,
       "selected_threshold": 0.4,
       "estimation_status": "estimated"
     }

@@ -18,10 +18,12 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.multioutput import MultiOutputClassifier
 
 from netcoop.data.generator import SyntheticNetworkGenerator
+from netcoop.data.topology_generator import TopologyRandomizedGenerator
 from netcoop.models.splits import DatasetSplitter, SplitSpec
 from netcoop.models.features import WindowFeatureExtractor
 from netcoop.models.calibration import ProbabilityCalibrator
 from netcoop.models.conformal import ConformalAbstentionEngine
+from netcoop.models.ood_gate import OODGate
 
 console = Console()
 ARTIFACTS_DIR = Path(__file__).parent.parent / "netcoop" / "models" / "artifacts"
@@ -54,33 +56,39 @@ SCENARIO_TO_LABELS: Dict[str, List[str]] = {
 }
 
 
-def generate_single_sample(scenario: str, seed: int, spec: SplitSpec) -> Tuple[np.ndarray, np.ndarray]:
-    """Generate one synthetic scenario run and extract aggregated feature vector."""
+def generate_single_sample(
+    scenario: str,
+    seed: int,
+    spec: SplitSpec,
+    topology_name: Optional[str] = None,
+) -> Tuple[np.ndarray, np.ndarray, str]:
+    """Generate one scenario run on designated topology and extract topology-invariant feature vector."""
     sev = spec.severities[seed % len(spec.severities)]
     n_shape = spec.noise_shapes[seed % len(spec.noise_shapes)]
     miss_rate = spec.missing_rate_range[0] + (seed % 10) * 0.02
-    onset = spec.onset_offset_range[0] + (seed % 5) * 10.0
 
-    incident = SyntheticNetworkGenerator.generate(
+    if topology_name is None:
+        if spec.name in ("train", "calibrator_fit", "conformal_calib"):
+            topos = TopologyRandomizedGenerator.TRAIN_TOPOLOGIES
+            topology_name = topos[seed % len(topos)]
+        elif spec.name == "validation":
+            topology_name = TopologyRandomizedGenerator.VALIDATION_TOPOLOGY
+        else:
+            topos = TopologyRandomizedGenerator.TRAIN_TOPOLOGIES
+            topology_name = topos[seed % len(topos)]
+
+    incident = TopologyRandomizedGenerator.generate(
         scenario=scenario,
         seed=seed,
+        topology_name=topology_name,
         severity=sev,
-        noise_level=0.1,
+        noise_level=0.08,
         noise_shape=n_shape,
         missing_sample_rate=miss_rate,
-        onset_offset_seconds=onset,
     )
 
-    # Extract incident features
-    matrix, _, _ = WindowFeatureExtractor.extract_incident_features(incident)
-    # Aggregate device vectors into incident vector (max and mean across devices)
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", category=RuntimeWarning)
-        feat_max = np.nanmax(matrix, axis=0)
-        feat_mean = np.nanmean(matrix, axis=0)
-        feat_max = np.nan_to_num(feat_max, nan=0.0)
-        feat_mean = np.nan_to_num(feat_mean, nan=0.0)
-    x = np.hstack([feat_max, feat_mean])
+    # Extract topology-invariant features
+    x, _ = WindowFeatureExtractor.extract_topology_invariant_features(incident)
 
     # Build binary multi-label target
     target_labels = SCENARIO_TO_LABELS.get(scenario, [])
@@ -89,26 +97,31 @@ def generate_single_sample(scenario: str, seed: int, spec: SplitSpec) -> Tuple[n
         if lbl in CLASSES:
             y[CLASSES.index(lbl)] = 1
 
-    return x, y
+    return x, y, topology_name
 
 
-def build_split_dataset(spec: SplitSpec, n_jobs: int = -1) -> Tuple[np.ndarray, np.ndarray]:
+def build_split_dataset(
+    spec: SplitSpec,
+    specific_topology: Optional[str] = None,
+    n_jobs: int = -1,
+) -> Tuple[np.ndarray, np.ndarray, List[str]]:
     """Generate all scenario runs for a split using joblib parallelism."""
     tasks = []
     scenarios = list(SCENARIO_TO_LABELS.keys())
 
     for seed in spec.seeds:
         for scen in scenarios:
-            tasks.append((scen, seed, spec))
+            tasks.append((scen, seed, spec, specific_topology))
 
     console.print(f"Generating [bold]{spec.name}[/bold] split: {len(tasks)} samples (seeds {spec.seed_start}-{spec.seed_end})...")
     results = joblib.Parallel(n_jobs=n_jobs)(
-        joblib.delayed(generate_single_sample)(scen, seed, spec) for scen, seed, spec in tasks
+        joblib.delayed(generate_single_sample)(scen, seed, spec, topo) for scen, seed, spec, topo in tasks
     )
 
     X_list = [r[0] for r in results]
     Y_list = [r[1] for r in results]
-    return np.array(X_list, dtype=np.float32), np.array(Y_list, dtype=np.int32)
+    topos = [r[2] for r in results]
+    return np.array(X_list, dtype=np.float32), np.array(Y_list, dtype=np.int32), topos
 
 
 def get_probabilities(model: Any, X: np.ndarray) -> np.ndarray:
@@ -132,11 +145,18 @@ def train_models() -> Dict[str, Any]:
     DatasetSplitter.verify_no_seed_overlap()
 
     # 1. Generate Non-Overlapping Disjoint Partitions
-    X_train, Y_train = build_split_dataset(DatasetSplitter.TRAIN_SPEC)
-    X_calib_fit, Y_calib_fit = build_split_dataset(DatasetSplitter.CALIBRATOR_FIT_SPEC)
-    X_conf_calib, Y_conf_calib = build_split_dataset(DatasetSplitter.CONFORMAL_CALIB_SPEC)
-    X_val, Y_val = build_split_dataset(DatasetSplitter.VALIDATION_SPEC)
-    X_test, Y_test = build_split_dataset(DatasetSplitter.TEST_SPEC)
+    X_train, Y_train, topos_train = build_split_dataset(DatasetSplitter.TRAIN_SPEC)
+    X_calib_fit, Y_calib_fit, _ = build_split_dataset(DatasetSplitter.CALIBRATOR_FIT_SPEC)
+    X_conf_calib, Y_conf_calib, _ = build_split_dataset(DatasetSplitter.CONFORMAL_CALIB_SPEC)
+    X_val, Y_val, _ = build_split_dataset(DatasetSplitter.VALIDATION_SPEC)
+    X_test, Y_test, _ = build_split_dataset(DatasetSplitter.TEST_SPEC)
+
+    # Fit OOD Gate on Multi-Topology Training Features
+    console.print("[bold]Fitting OOD Gate on Multi-Topology Training Features...[/bold]")
+    ood_gate = OODGate(range_margin=0.25, pca_components=15)
+    ood_gate.fit(X_train, WindowFeatureExtractor.get_topology_invariant_feature_names())
+    ood_gate.save(ARTIFACTS_DIR / "ood_gate.joblib")
+    console.print(f"OOD Gate fitted (threshold: {ood_gate.threshold:.2f}). Saved to {ARTIFACTS_DIR / 'ood_gate.joblib'}")
 
     # 2. Train Base Multi-Label Classifier on TRAIN partition
     console.print("[bold]Fitting Multi-Output Gradient Boosting Classifier on Train Split...[/bold]")
@@ -236,7 +256,63 @@ def train_models() -> Dict[str, Any]:
     console.print(f"Test Split Empirical Conformal Coverage: [bold green]{empirical_coverage * 100:.1f}%[/bold green]")
     console.print(f"Test Diagnosed Count: {diagnosed_cnt}/{len(test_probs)} | Selective Accuracy: {selective_acc * 100:.1f}%")
 
-    # 8. Compute Evidence Weights for Blending
+    # 8. Report Calibration by Topology (Phase 13J)
+    console.print("\n[bold]Evaluating Calibration by Topology (Phase 13J)...[/bold]")
+    topo_table = Table(title="Calibration by Topology (Phase 13J Report)")
+    topo_table.add_column("Topology Name", style="cyan")
+    topo_table.add_column("Device Count", style="white")
+    topo_table.add_column("Sample Count", style="dim")
+    topo_table.add_column("ECE (Uncalibrated)", style="yellow")
+    topo_table.add_column("ECE (Calibrated)", style="green")
+    topo_table.add_column("Brier Score", style="magenta")
+
+    eval_topologies = [
+        ("train_branch_4", 4),
+        ("train_campus_8", 8),
+        ("train_distribution_12", 12),
+        ("train_datacenter_16", 16),
+        ("validation_mesh_7", 7),
+    ]
+    calibration_by_topology: Dict[str, Dict[str, Any]] = {}
+    for topo_name, dev_cnt in eval_topologies:
+        tasks_topo = [
+            (scen, seed, DatasetSplitter.VALIDATION_SPEC, topo_name)
+            for seed in range(251, 276)
+            for scen in list(SCENARIO_TO_LABELS.keys())
+        ]
+        res_topo = joblib.Parallel(n_jobs=-1)(
+            joblib.delayed(generate_single_sample)(scen, seed, spec, t_name)
+            for scen, seed, spec, t_name in tasks_topo
+        )
+        x_topo = np.array([r[0] for r in res_topo], dtype=np.float32)
+        y_topo = np.array([r[1] for r in res_topo], dtype=np.int32)
+
+        raw_p = get_probabilities(clf, x_topo)
+        cal_p = calibrator.calibrate(raw_p, CLASSES)
+
+        ece_raw, _ = ProbabilityCalibrator.compute_ece(raw_p.flatten(), y_topo.flatten())
+        ece_cal, _ = ProbabilityCalibrator.compute_ece(cal_p.flatten(), y_topo.flatten())
+        brier = float(np.mean((cal_p - y_topo) ** 2))
+
+        calibration_by_topology[topo_name] = {
+            "device_count": dev_cnt,
+            "sample_count": len(x_topo),
+            "ece_uncalibrated": round(float(ece_raw), 4),
+            "ece_calibrated": round(float(ece_cal), 4),
+            "brier_score": round(float(brier), 4),
+        }
+
+        topo_table.add_row(
+            topo_name,
+            str(dev_cnt),
+            str(len(x_topo)),
+            f"{ece_raw:.4f}",
+            f"{ece_cal:.4f}",
+            f"{brier:.4f}",
+        )
+    console.print(topo_table)
+
+    # 9. Compute Evidence Weights for Blending
     weights_data = {
         "classes": CLASSES,
         "conformal_q_hat": q_hat,
@@ -288,6 +364,7 @@ def train_models() -> Dict[str, Any]:
         "ece_test": round(ece_test, 4),
         "conformal_test_coverage": round(empirical_coverage, 4),
         "selective_accuracy": round(selective_acc, 4),
+        "calibration_by_topology": calibration_by_topology,
         "cutoffs": cutoffs,
         "precisions": {k: (round(v, 4) if v is not None else None) for k, v in precisions.items()},
         "threshold_metadata": threshold_metadata,

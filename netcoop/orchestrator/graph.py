@@ -86,6 +86,9 @@ class GraphState(TypedDict):
     classifier_conformal_set: List[str]
     classifier_calib_probs: Dict[str, float]
     classifier_conformal_status: str
+    is_ood: bool
+    ood_reasons: List[str]
+    ood_score: float
 
 
 mediator = AgentMediator()
@@ -393,6 +396,9 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
     classifier_conformal_set: List[str] = list(state.get("classifier_conformal_set", []))
     classifier_calib_probs: Dict[str, float] = dict(state.get("classifier_calib_probs", {}))
     classifier_conformal_status: str = state.get("classifier_conformal_status", "single")
+    is_ood: bool = bool(state.get("is_ood", False))
+    ood_reasons: List[str] = list(state.get("ood_reasons", []))
+    ood_score: float = float(state.get("ood_score", 0.0))
 
     # Detect snapshot mode
     raw_telemetry = raw_data.get("telemetry", [])
@@ -423,6 +429,10 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
             context={"iteration": state.get("iteration", 0)},
         )
         dispatch_envelopes.append(dispatch_env)
+
+    # Ensure mediator operational mode tracks settings
+    if mediator.mode != settings.agents_mode:
+        mediator.mode = settings.agents_mode
 
     # Concurrently dispatch to all specialist microservices
     responses = mediator.dispatch_concurrent(dispatch_envelopes)
@@ -480,6 +490,18 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
                 classifier_conformal_status = dq["conformal_status"]
             if "conformal_prediction_set" in dq and not classifier_conformal_set:
                 classifier_conformal_set = dq["conformal_prediction_set"]
+            if "is_ood" in dq:
+                is_ood = bool(dq["is_ood"])
+            elif "is_ood" in response_env.context:
+                is_ood = bool(response_env.context["is_ood"])
+            if "ood_reasons" in dq:
+                ood_reasons = list(dq["ood_reasons"])
+            elif "ood_reasons" in response_env.context:
+                ood_reasons = list(response_env.context["ood_reasons"])
+            if "ood_score" in dq:
+                ood_score = float(dq["ood_score"])
+            elif "ood_score" in response_env.context:
+                ood_score = float(response_env.context["ood_score"])
 
         for obs in response_env.payload.observations:
             d = obs.model_dump()
@@ -518,6 +540,9 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
         "classifier_conformal_set": classifier_conformal_set,
         "classifier_calib_probs": classifier_calib_probs,
         "classifier_conformal_status": classifier_conformal_status,
+        "is_ood": is_ood,
+        "ood_reasons": ood_reasons,
+        "ood_score": ood_score,
     }
     if settings.feature_resume:
         save_checkpoint(session_id=incident_id, node_name="specialists", state_dict={**state, **res}, iteration=state.get("iteration", 0), is_paused=state.get("is_paused", False))
@@ -809,6 +834,8 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     classifier_calib_probs = state.get("classifier_calib_probs", {})
     classifier_conformal_set = state.get("classifier_conformal_set", [])
     classifier_conformal_status = state.get("classifier_conformal_status", "single")
+    is_ood = bool(state.get("is_ood", False))
+    ood_reasons = list(state.get("ood_reasons", []))
 
     weights_path = Path("netcoop/models/artifacts/weights.json")
     weights_data = {}
@@ -975,18 +1002,18 @@ def node_report(state: GraphState) -> Dict[str, Any]:
                     has_unhealthy_signal = True
                     break
 
-        # Rejection if any active fault class has significant calibrated probability (>= 0.35)
-        # In organizer format, single-device telemetry has sparse multi-device feature vectors,
-        # so classifier probabilities on unseen single-device format are uncalibrated.
+        # Rejection if any active fault class has significant calibrated probability (>= 0.50)
+        # In organizer format or when OOD, single-device or novel topologies have uncalibrated probabilities,
+        # so classifier veto is ignored.
         has_active_fault_prob = any(
-            prob >= 0.35
+            prob >= 0.50
             for cls, prob in classifier_calib_probs.items()
             if cls not in ("normal_operation", "insufficient_evidence")
         )
-        if has_active_fault_prob and not is_organizer_format:
+        if has_active_fault_prob and not (is_organizer_format or is_ood):
             has_unhealthy_signal = True
 
-        if not has_unhealthy_signal and (not top_class or top_class == "normal_operation" or top_prob < 0.50 or is_organizer_format):
+        if not has_unhealthy_signal and (not top_class or top_class == "normal_operation" or top_prob < 0.50 or is_organizer_format or is_ood):
             telemetry_is_nominal = True
 
     is_benign_normal = (
@@ -994,7 +1021,7 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         and not hypothesis
         and dq_score >= 0.70
         and not has_unhealthy_signal
-        and (is_organizer_format or not any(c not in ("normal_operation", "insufficient_evidence") for c in classifier_conformal_set))
+        and (is_organizer_format or is_ood or telemetry_is_nominal or not any(c not in ("normal_operation", "insufficient_evidence") for c in classifier_conformal_set))
         and ((top_class == "normal_operation" and top_prob >= normal_threshold) or telemetry_is_nominal)
     )
 
@@ -1014,7 +1041,6 @@ def node_report(state: GraphState) -> Dict[str, Any]:
             cause_key="NO_FAULT",
             title="Normal Operation",
             description="Normal network operation within nominal operational boundaries; zero anomalous observations reported.",
-            confidence=benign_conf,
             affected_devices=state.get("scope_devices", []),
             supporting_evidence=[],
             suggested_remediation_type="none",
@@ -1030,9 +1056,8 @@ def node_report(state: GraphState) -> Dict[str, Any]:
 
     is_ambiguous_conformal = (len(conformal_prediction_set) > 1 or classifier_conformal_status == "ambiguous")
 
-    # Phase 13I Precedence Policy: When deterministic multi-signal domain rules are satisfied,
-    # an ambiguous conformal set or a classifier veto must not force abstention
-    # unless the rule's own evidence is insufficient.
+    # Phase 13I & 13J Precedence Policy: When deterministic multi-signal domain rules are satisfied
+    # OR when OOD, an ambiguous conformal set or classifier veto must not force abstention.
     deterministic_rule_satisfied = bool(
         hypothesis
         and getattr(hypothesis, "is_sufficient", False)
@@ -1040,13 +1065,20 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         and len(getattr(hypothesis, "supporting_evidence", [])) >= 1
     )
 
+    override_classifier_veto = deterministic_rule_satisfied or (is_ood and bool(hypothesis))
+
     if is_ambiguous_conformal and status != "benign":
-        if deterministic_rule_satisfied:
-            # Deterministic domain rule satisfied; do not wipe out hypothesis or force abstention
+        if override_classifier_veto:
+            # Deterministic domain rule or OOD rule reliance; do not wipe out hypothesis or force abstention
             competing = [c for c in conformal_prediction_set if c != getattr(hypothesis, "cause_key", "").lower()]
+            reasons_msg = (
+                f"OOD topology detected ({'; '.join(ood_reasons) if ood_reasons else 'novel distribution'}); relied on domain rules."
+                if is_ood else
+                f"Diagnosis established by deterministic multi-signal domain rule ({hypothesis.cause_key}); conformal set contains competing classes {conformal_prediction_set}."
+            )
             uncertainty = UncertaintyEvaluation(
                 score=round(1.0 - hypothesis.final_confidence, 3),
-                reasons=[f"Diagnosis established by deterministic multi-signal domain rule ({hypothesis.cause_key}); conformal set contains competing classes {conformal_prediction_set}."],
+                reasons=[reasons_msg],
                 missing_evidence=[],
                 alternative_hypotheses=[{"cause": c, "confidence": float(classifier_calib_probs.get(c, 0.5))} for c in competing],
             )
@@ -1072,8 +1104,8 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     )
 
     if classifier_abstained:
-        if deterministic_rule_satisfied:
-            # Deterministic domain rule satisfied; do not force abstention
+        if override_classifier_veto:
+            # Deterministic domain rule or OOD rule reliance; do not force abstention
             pass
         else:
             status = "insufficient_evidence"
@@ -1150,6 +1182,14 @@ def node_report(state: GraphState) -> Dict[str, Any]:
             if lim_str not in limitations:
                 limitations.append(lim_str)
 
+        if is_ood:
+            calibrated_confidence = min(calibrated_confidence, 0.80)
+            if hypothesis:
+                hypothesis.final_confidence = min(hypothesis.final_confidence, 0.80)
+            if uncertainty is not None:
+                reason_str = "; ".join(ood_reasons) if ood_reasons else "out-of-distribution topology/telemetry"
+                uncertainty.reasons.append(f"OOD gate active ({reason_str}); relied on domain rules and capped confidence to {calibrated_confidence:.2f}.")
+
         confidence_breakdown = {
             "rules_score": rules_score,
             "model_score": model_score,
@@ -1187,14 +1227,19 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     if status == "benign":
         report.confidence = 1.0
         report.probable_cause = _NormalOperationProbableCause(report.probable_cause or "Normal Operation")
+        if is_ood and report.uncertainty:
+            reason_str = "; ".join(ood_reasons) if ood_reasons else "out-of-distribution topology/telemetry"
+            report.uncertainty.reasons.append(f"OOD gate active ({reason_str}); capped confidence to 0.80.")
         if not report.summary or "insufficient" in report.summary.lower() or "status benign" in report.summary.lower():
             report.summary = (
-                "Normal network operation verified with 100% confidence. No anomalous faults detected."
+                "Normal network operation verified. No anomalous faults detected."
             )
     elif status in ("insufficient_evidence", "inconclusive", "invalid", "failed"):
         report.confidence = 0.0
         report.probable_cause = None
         report.suspected_root_cause = None
+        if report.uncertainty:
+            report.uncertainty.score = 1.0
 
     # Schema validation against schemas/diagnostic_report.json
     _validate_report_schema(report)
@@ -1311,6 +1356,9 @@ def run_diagnosis(incident_data: Dict[str, Any]) -> UnifiedDiagnosticReport:
         "classifier_conformal_set": [],
         "classifier_calib_probs": {},
         "classifier_conformal_status": "single",
+        "is_ood": False,
+        "ood_reasons": [],
+        "ood_score": 0.0,
     }
 
     config = {"configurable": {"thread_id": incident_id}}

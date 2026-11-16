@@ -21,6 +21,7 @@ from netcoop.core.envelope import (
 from netcoop.models.features import WindowFeatureExtractor
 from netcoop.models.calibration import ProbabilityCalibrator
 from netcoop.models.conformal import ConformalAbstentionEngine
+from netcoop.models.ood_gate import OODGate
 
 ARTIFACTS_DIR = Path(__file__).parent.parent.parent / "models" / "artifacts"
 
@@ -108,20 +109,25 @@ class ClassifierAgent(BaseAgent):
             except Exception:
                 pass
 
+        # 5. Load OOD Gate
+        o_path = ARTIFACTS_DIR / "ood_gate.joblib"
+        self.ood_gate = OODGate.load(o_path)
+
     def handle_envelope(self, envelope: AgentEnvelope) -> AgentEnvelope:
         """Process incoming raw telemetry, run inference, and return observations and hypotheses."""
         response = self.create_response_envelope(envelope, MessageType.FINDING_SUBMISSION)
         raw_data = envelope.payload.raw_data or {}
 
-        # 1. Extract incident features
-        matrix, dev_ids, metas = WindowFeatureExtractor.extract_incident_features(raw_data)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=RuntimeWarning)
-            feat_max = np.nanmax(matrix, axis=0)
-            feat_mean = np.nanmean(matrix, axis=0)
-            feat_max = np.nan_to_num(feat_max, nan=0.0)
-            feat_mean = np.nan_to_num(feat_mean, nan=0.0)
-        x = np.hstack([feat_max, feat_mean]).reshape(1, -1)
+        # 1. Extract topology-invariant features
+        x, _ = WindowFeatureExtractor.extract_topology_invariant_features(raw_data)
+        x = x.reshape(1, -1)
+
+        # OOD Gate evaluation
+        is_ood = False
+        ood_reasons: List[str] = []
+        ood_dist = 0.0
+        if self.ood_gate is not None:
+            is_ood, ood_reasons, ood_dist = self.ood_gate.predict(x)
 
         # 2. Model prediction
         raw_probs: Dict[str, float] = {}
@@ -150,6 +156,7 @@ class ClassifierAgent(BaseAgent):
 
         # 5. Generate Observations (Feature Attribution Evidence)
         observations: List[Observation] = []
+        matrix, dev_ids, _ = WindowFeatureExtractor.extract_incident_features(raw_data)
         feat_names = WindowFeatureExtractor.get_feature_names()
 
         # Find abnormal metrics across devices
@@ -186,12 +193,23 @@ class ClassifierAgent(BaseAgent):
                         )
                         observations.append(obs)
 
+        # Grounding: when zero metric anomalies are observed across sufficient telemetry, enforce nominal normal operation
+        telemetry_records = raw_data.get("telemetry", []) if isinstance(raw_data.get("telemetry"), list) else []
+        if len(observations) == 0 and len(telemetry_records) >= 3:
+            calib_probs = {c: 0.0 for c in CLASSES}
+            calib_probs["normal_operation"] = 1.0
+            prediction_set = ["normal_operation"]
+            conformal_status = "single"
+            top_conf = 1.0
+
         # 6. Generate Hypotheses: only if positive evidence exists (never emit exact fault diagnoses on empty/insufficient evidence)
         hypotheses: List[Hypothesis] = []
-        if conformal_status != "insufficient_evidence" or len(prediction_set) > 0:
+        if (conformal_status != "insufficient_evidence" or len(prediction_set) > 0) and len(observations) > 0:
             active_classes = prediction_set if prediction_set else [max(calib_probs, key=calib_probs.get)]
 
             for cname in active_classes:
+                if cname in ("normal_operation", "insufficient_evidence"):
+                    continue
                 prob = calib_probs.get(cname, 0.0)
                 if prob >= 0.15:
                     hyp = Hypothesis(
@@ -212,6 +230,12 @@ class ClassifierAgent(BaseAgent):
             "calibrated_probabilities": calib_probs,
             "conformal_prediction_set": prediction_set,
             "conformal_status": conformal_status,
+            "is_ood": is_ood,
+            "ood_reasons": ood_reasons,
+            "ood_score": ood_dist,
         }
         response.context["classifier_conformal_set"] = prediction_set
+        response.context["is_ood"] = is_ood
+        response.context["ood_reasons"] = ood_reasons
+        response.context["ood_score"] = ood_dist
         return response

@@ -1,7 +1,7 @@
 {
   "alpha": 0.1,
-  "q_hat": 0.4809,
-  "calibration_samples": 800,
+  "q_hat": 0.6786,
+  "calibration_samples": 300,
   "is_calibrated": true,
-  "min_probability_threshold": 0.5191
+  "min_probability_threshold": 0.3214
 }
