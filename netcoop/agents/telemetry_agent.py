@@ -56,6 +56,23 @@ class TelemetryAgent(BaseAgent):
                 inq.answer = f"Telemetry inquiry processed across {len(raw_telemetry)} records."
 
         response.payload.inquiries = inquiries
+        corr_id = envelope.header.correlation_id
+        msg_id = envelope.header.message_id
+        for obs in observations:
+            obs.context.setdefault("correlation_id", corr_id)
+            obs.context.setdefault("message_id", msg_id)
+            obs.context.setdefault("agent_domain", "telemetry_agent")
+            if not obs.provenance:
+                obs.provenance = {
+                    "source_agent": "telemetry_agent",
+                    "correlation_id": corr_id,
+                    "message_id": msg_id,
+                }
+            else:
+                obs.provenance.setdefault("source_agent", "telemetry_agent")
+                obs.provenance.setdefault("correlation_id", corr_id)
+                obs.provenance.setdefault("message_id", msg_id)
+
         response.payload.observations = observations
         if limitations:
             response.context["limitations"] = limitations
@@ -84,6 +101,7 @@ class TelemetryAgent(BaseAgent):
                 lat = item.get("latency_ms")
                 jit = item.get("jitter_ms")
                 errs = item.get("interface_errors")
+                crc = item.get("crc_errors")
                 flaps = item.get("link_flaps")
                 rssi = item.get("wifi_rssi_dbm")
                 retx = item.get("wifi_retransmission_pct")
@@ -145,6 +163,19 @@ class TelemetryAgent(BaseAgent):
                             context={"agent_domain": "telemetry_agent", "device_id": dev},
                         )
                     )
+                if loss is not None and loss > 1.0:
+                    observations.append(
+                        Observation(
+                            category=ObservationCategory.METRIC_ANOMALY,
+                            entity=dev,
+                            metric_name="packet_loss_pct",
+                            observed_value=loss,
+                            unit="percent",
+                            severity=Severity.CRITICAL if loss > 10.0 else Severity.WARNING,
+                            timestamp_start=ts,
+                            context={"agent_domain": "telemetry_agent", "device_id": dev},
+                        )
+                    )
                 if rssi is not None and rssi < -78.0:
                     observations.append(
                         Observation(
@@ -180,6 +211,19 @@ class TelemetryAgent(BaseAgent):
                             observed_value=errs,
                             unit="packets",
                             severity=Severity.CRITICAL,
+                            timestamp_start=ts,
+                            context={"agent_domain": "telemetry_agent", "device_id": dev},
+                        )
+                    )
+                if crc is not None and crc > 0:
+                    observations.append(
+                        Observation(
+                            category=ObservationCategory.METRIC_ANOMALY,
+                            entity=dev,
+                            metric_name="crc_errors",
+                            observed_value=crc,
+                            unit="count",
+                            severity=Severity.CRITICAL if crc > 100 else Severity.WARNING,
                             timestamp_start=ts,
                             context={"agent_domain": "telemetry_agent", "device_id": dev},
                         )
@@ -255,7 +299,12 @@ class TelemetryAgent(BaseAgent):
                 device = item.get("device", "unknown")
                 interface = item.get("interface", "system")
                 metric = item.get("metric", "")
-                raw_val = item.get("value", 0)
+                raw_val = item.get("value")
+                if raw_val is None:
+                    lim_msg = f"missing telemetry metric value for '{metric}' on {device}"
+                    if lim_msg not in limitations:
+                        limitations.append(lim_msg)
+                    continue
                 raw_unit = item.get("unit", "count")
                 ts = item.get("timestamp_utc")
 
@@ -335,6 +384,23 @@ class TelemetryAgent(BaseAgent):
                         )
                     )
 
+        corr_id = envelope.header.correlation_id
+        msg_id = envelope.header.message_id
+        for obs in observations:
+            obs.context.setdefault("correlation_id", corr_id)
+            obs.context.setdefault("message_id", msg_id)
+            obs.context.setdefault("agent_domain", "telemetry_agent")
+            if not obs.provenance:
+                obs.provenance = {
+                    "source_agent": "telemetry_agent",
+                    "correlation_id": corr_id,
+                    "message_id": msg_id,
+                }
+            else:
+                obs.provenance.setdefault("source_agent", "telemetry_agent")
+                obs.provenance.setdefault("correlation_id", corr_id)
+                obs.provenance.setdefault("message_id", msg_id)
+
         response.payload.observations = observations
 
         obs_ids = [o.observation_id for o in observations]
@@ -382,7 +448,7 @@ class TelemetryAgent(BaseAgent):
         elif has_errs:
             response.payload.hypotheses.append(
                 Hypothesis(
-                    probable_cause="Ethernet physical layer interface degradation and packet corruption",
+                    probable_cause="Physical layer Ethernet interface CRC errors and flapping transitions",
                     confidence=0.92,
                     supporting_observation_ids=obs_ids,
                     required_corroboration=["telemetry_agent"],

@@ -33,7 +33,9 @@
         "diagnosed",
         "insufficient_evidence",
         "inconclusive",
-        "benign"
+        "benign",
+        "failed",
+        "invalid"
       ]
     },
     "probable_cause": {
@@ -97,7 +99,10 @@
             ]
           },
           "unit": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "severity": {
             "type": "string",
@@ -108,6 +113,73 @@
             ]
           },
           "timestamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "interpretation": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metric": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timestamp_window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observation_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "correlation_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provenance": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "weight": {
+            "type": "number"
+          },
+          "independence_class": {
+            "type": "string",
+            "enum": ["direct", "derived", "inferred"]
+          },
+          "derived_from": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source_type": {
             "type": [
               "string",
               "null"
@@ -309,6 +381,31 @@
         null
       ],
       "description": "Empirical confidence tier based on precision cutoffs"
+    },
+    "evidence_sources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Distinct specialist agent domains that contributed verified evidence"
+    },
+    "suspected_root_cause": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Hackathon PS compatibility alias for probable_cause"
+    },
+    "is_confidence_calibrated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Indicates whether confidence score is statistically calibrated"
+    },
+    "confidence_type": {
+      "type": "string",
+      "default": "uncalibrated_heuristic",
+      "description": "Semantics of confidence metric: calibrated_probability, uncalibrated_heuristic, or abstain"
     }
   }
 }

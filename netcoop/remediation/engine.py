@@ -133,6 +133,15 @@ class RemediationEngine:
             else None
         )
 
+        from netcoop.core.taxonomy import get_remediation_for_cause
+        canonical_actions = get_remediation_for_cause(
+            cause,
+            devices=[campus_dev, campus_peer] if campus_peer else [campus_dev],
+            interfaces=[campus_iface] if campus_iface else None,
+        )
+        if canonical_actions:
+            return canonical_actions
+
         if cause == "MTU_MISMATCH_BLACKHOLE":
             actions.append(
                 RemediationCatalog.create_mtu_harmonization_action(

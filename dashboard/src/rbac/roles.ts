@@ -53,16 +53,22 @@ export const ROLE_DEFINITIONS: Record<UserRole, RoleDefinition> = {
       "view_diagnostic_evidence",
       "create_remediation_proposals",
       "execute_remediation", // Simulation sandbox execution
+      "approve_remediation",
     ],
     primaryView: "engineer",
-    badgeClass: "border-[#5E7A6A] text-[#5E7A6A] bg-[#5E7A6A]/10",
+    badgeClass: "border-[#2D5A43] text-[#2D5A43] bg-[#2D5A43]/10",
   },
   network_admin: {
     id: "network_admin",
     title: "Network Administrator",
     department: "Systems & Infrastructure",
     description: "Manages physical and virtual device inventories, interface configurations, and maintenance schedules.",
-    permissions: ["view_incidents", "manage_network_devices", "view_audit_records"],
+    permissions: [
+      "view_incidents",
+      "manage_network_devices",
+      "view_audit_records",
+      "approve_remediation",
+    ],
     primaryView: "admin",
     badgeClass: "border-[#A08A5B] text-[#A08A5B] bg-[#A08A5B]/10",
   },
@@ -109,7 +115,7 @@ export const ROLE_DEFINITIONS: Record<UserRole, RoleDefinition> = {
     description: "Triages user support tickets, views impacted campus buildings, and tracks incident resolution progress.",
     permissions: ["view_incidents", "edit_incident_assignments"],
     primaryView: "helpdesk",
-    badgeClass: "border-[#5E7A6A] text-[#5E7A6A] bg-[#5E7A6A]/10",
+    badgeClass: "border-[#2D5A43] text-[#2D5A43] bg-[#2D5A43]/10",
   },
 };
 

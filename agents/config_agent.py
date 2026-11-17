@@ -6,6 +6,7 @@ from netcoop.core.envelope import (
     AgentEnvelope,
     AgentRole,
     Hypothesis,
+    Inquiry,
     MessageType,
     Observation,
     ObservationCategory,
@@ -22,8 +23,41 @@ class ConfigAgent(BaseAgent):
             name="Configuration & Audit Analyzer",
         )
 
+    def _handle_inquiry(self, envelope: AgentEnvelope) -> AgentEnvelope:
+        """Answer targeted configuration inquiries from peer agents or orchestrator."""
+        response = self.create_response_envelope(envelope, MessageType.INQUIRY_RESPONSE)
+        raw_configs = (envelope.payload.raw_data or {}).get("configurations", [])
+        inquiries = envelope.payload.inquiries
+
+        for inq in inquiries:
+            q_lower = inq.question.lower()
+            if "mtu" in q_lower:
+                mtus: Dict[str, int] = {}
+                for cfg in raw_configs:
+                    dev = cfg.get("device", "unknown")
+                    interfaces = (cfg.get("running_config") or {}).get("interfaces", {})
+                    for if_name, if_data in interfaces.items():
+                        if isinstance(if_data, dict) and "mtu" in if_data:
+                            mtus[f"{dev}:{if_name}"] = int(if_data["mtu"])
+                if len(set(mtus.values())) > 1:
+                    mtu_summary = ", ".join(f"{k}={v}" for k, v in sorted(mtus.items()))
+                    inq.answer = f"Confirmed MTU disparity: {mtu_summary}"
+                    inq.status = "answered"
+                else:
+                    inq.answer = "MTU configuration nominal across all audited interfaces."
+                    inq.status = "answered"
+            else:
+                inq.answer = f"Configuration audit completed across {len(raw_configs)} configurations."
+                inq.status = "answered"
+
+        response.payload.inquiries = inquiries
+        return response
+
     def handle_envelope(self, envelope: AgentEnvelope) -> AgentEnvelope:
         """Process configurations to find parameter mismatches and recent diffs."""
+        if envelope.header.message_type == MessageType.INQUIRY_REQUEST:
+            return self._handle_inquiry(envelope)
+
         response = self.create_response_envelope(envelope, MessageType.FINDING_SUBMISSION)
         raw_configs = (envelope.payload.raw_data or {}).get("configurations", [])
 
@@ -50,6 +84,22 @@ class ConfigAgent(BaseAgent):
                         context={"diff": diff, "agent_domain": "config_agent"},
                     )
                 )
+
+                # Check for QoS policy changes in candidate diff
+                diff_lower = diff.lower()
+                if any(k in diff_lower for k in ("service-policy", "qos", "traffic-shape", "bandwidth", "queue-limit", "priority-queue")):
+                    observations.append(
+                        Observation(
+                            category=ObservationCategory.CONFIG_DIFF,
+                            entity=dev,
+                            metric_name="qos_policy_change",
+                            observed_value=diff,
+                            unit="text",
+                            severity=Severity.WARNING,
+                            timestamp_start=ts,
+                            context={"diff": diff, "agent_domain": "config_agent"},
+                        )
+                    )
 
             # Check interface MTUs
             interfaces = running.get("interfaces", {})
@@ -98,6 +148,7 @@ class ConfigAgent(BaseAgent):
         obs_ids = [o.observation_id for o in observations]
         has_mtu_mismatch = any(o.metric_name == "mtu_mismatch" for o in observations)
         has_bpdu_filter = any(o.metric_name == "bpdu_filter" for o in observations)
+        has_qos_change = any(o.metric_name == "qos_policy_change" for o in observations)
 
         if has_mtu_mismatch:
             response.payload.hypotheses.append(
@@ -117,6 +168,14 @@ class ConfigAgent(BaseAgent):
                     required_corroboration=["topology_agent:verify_stp_loop_state"],
                 )
             )
+        elif has_qos_change:
+            response.payload.hypotheses.append(
+                Hypothesis(
+                    probable_cause="QoS policy or queue buffer configuration modification on interface",
+                    confidence=0.75,
+                    supporting_observation_ids=obs_ids,
+                    required_corroboration=["telemetry_agent:verify_queue_drops"],
+                )
+            )
 
         return response
-

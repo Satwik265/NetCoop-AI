@@ -1,0 +1,18 @@
+{
+  "overall_coverage": 0.9475,
+  "by_noise_level": {
+    "uniform": 0.9803,
+    "burst": 0.9265,
+    "gaussian": 0.9286
+  },
+  "by_class": {
+    "normal_operation": 0.88,
+    "link_congestion": 0.96,
+    "weak_wifi_signal": 1.0,
+    "ethernet_interface_fault": 0.92,
+    "dns_failure": 1.0,
+    "dhcp_failure": 0.92,
+    "device_cpu_overload": 0.94,
+    "upstream_failure_cascade": 0.96
+  }
+}

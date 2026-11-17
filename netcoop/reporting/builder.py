@@ -72,6 +72,11 @@ class DiagnosticReportBuilder:
             probable_cause = None
             conf_val: Optional[float] = None
             root_cause_status = RootCauseStatus.INCONCLUSIVE
+        elif raw_status in ("invalid", "failed"):
+            diag_status = DiagnosticStatus.INSUFFICIENT_EVIDENCE
+            probable_cause = None
+            conf_val = None
+            root_cause_status = RootCauseStatus.INCONCLUSIVE
         elif raw_status == "abstained":
             diag_status = DiagnosticStatus.ABSTAINED
             probable_cause = None
@@ -839,23 +844,28 @@ def export_hackathon_report_json(unified_report: Any) -> Dict[str, Any]:
 
     incident_id = data.get("incident_id")
     status = data.get("status")
-    suspected_root_cause = data.get("probable_cause")
-    confidence = data.get("confidence", 0.0)
+    suspected_root_cause = data.get("suspected_root_cause") or data.get("probable_cause")
+    confidence = float(data.get("confidence", 0.0))
     affected_devices = list(data.get("affected_devices") or [])
+
+    # If status is uncorroborated, insufficient, or errored, root cause is null and confidence is 0.0
+    if status in ("insufficient_evidence", "inconclusive", "invalid", "failed"):
+        suspected_root_cause = None
+        confidence = 0.0
 
     raw_evidence = data.get("evidence") or []
     supporting_evidence = []
-    evidence_sources_set = set()
+    evidence_sources_set = set(data.get("evidence_sources") or [])
     for ev in raw_evidence:
         if isinstance(ev, dict):
-            metric = ev.get("metric_name")
+            metric = ev.get("metric") or ev.get("metric_name")
             val = ev.get("value")
-            interp = ev.get("finding") or ev.get("interpretation")
+            interp = ev.get("interpretation") or ev.get("finding")
             src = ev.get("source_agent")
         else:
-            metric = getattr(ev, "metric_name", None)
+            metric = getattr(ev, "metric", None) or getattr(ev, "metric_name", None)
             val = getattr(ev, "value", None)
-            interp = getattr(ev, "finding", None) or getattr(ev, "interpretation", None)
+            interp = getattr(ev, "interpretation", None) or getattr(ev, "finding", None)
             src = getattr(ev, "source_agent", None)
         if src:
             evidence_sources_set.add(src)
@@ -876,19 +886,21 @@ def export_hackathon_report_json(unified_report: Any) -> Dict[str, Any]:
         if cause:
             alternative_causes.append(cause)
 
+    # Remediation actions are only justified when the incident is positively diagnosed
     raw_actions = data.get("remediation_actions") or []
     recommended_actions = []
-    for act in raw_actions:
-        if isinstance(act, str):
-            recommended_actions.append(act)
-        elif isinstance(act, dict):
-            action_str = act.get("action") or act.get("description") or act.get("title")
-            if action_str:
-                recommended_actions.append(action_str)
-        else:
-            action_str = getattr(act, "action", None) or getattr(act, "description", None) or getattr(act, "title", None)
-            if action_str:
-                recommended_actions.append(action_str)
+    if status == "diagnosed":
+        for act in raw_actions:
+            if isinstance(act, str):
+                recommended_actions.append(act)
+            elif isinstance(act, dict):
+                action_str = act.get("action") or act.get("description") or act.get("title")
+                if action_str:
+                    recommended_actions.append(action_str)
+            else:
+                action_str = getattr(act, "action", None) or getattr(act, "description", None) or getattr(act, "title", None)
+                if action_str:
+                    recommended_actions.append(action_str)
 
     evidence_sources = sorted(list(evidence_sources_set))
     limitations = list(data.get("limitations") or [])

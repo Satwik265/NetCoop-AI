@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import {
+  DataProvenance,
   EnvelopeLogItem,
   ScenarioMeta,
   UnifiedDiagnosticReport,
 } from "./types/protocol";
+import { SupportedTimezone, TIMEZONE_OPTIONS } from "./utils/i18n";
 import { UserRole, ROLE_DEFINITIONS, hasPermission } from "./rbac/roles";
 import { Sidebar } from "./components/Sidebar";
 import { AgentGraph } from "./components/AgentGraph";
@@ -215,6 +217,8 @@ export const App: React.FC = () => {
   const [selectedScenario, setSelectedScenario] = useState<string>("");
   const [report, setReport] = useState<UnifiedDiagnosticReport | null>(null);
   const [isSampleData, setIsSampleData] = useState<boolean>(false);
+  const [provenance, setProvenance] = useState<DataProvenance>("LIVE");
+  const [timezone, setTimezone] = useState<SupportedTimezone>("UTC");
   const [envelopes, setEnvelopes] = useState<EnvelopeLogItem[]>(MOCK_ENVELOPES);
   const [currentIndex, setCurrentIndex] = useState<number>(MOCK_ENVELOPES.length - 1);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -412,13 +416,36 @@ export const App: React.FC = () => {
         if (data && data.incident_id) {
           setReport(data);
           setIsSampleData(false);
+          setProvenance("LIVE");
         }
       })
       .catch(() => {
         setIsSampleData(true);
+        setProvenance("OFFLINE");
         setReport(FALLBACK_SAMPLE_REPORT);
       });
   }, []);
+
+  const handleRetryConnect = () => {
+    setLoading(true);
+    fetch("/api/reports/latest")
+      .then((res) => {
+        if (!res.ok) throw new Error("Endpoint returned error");
+        return res.json();
+      })
+      .then((data: UnifiedDiagnosticReport) => {
+        if (data && data.incident_id) {
+          setReport(data);
+          setIsSampleData(false);
+          setProvenance("LIVE");
+        }
+      })
+      .catch(() => {
+        setIsSampleData(true);
+        setProvenance("OFFLINE");
+      })
+      .finally(() => setLoading(false));
+  };
 
   // Fetch campus topology on startup
   useEffect(() => {
@@ -559,35 +586,25 @@ export const App: React.FC = () => {
         setPreviousRunId(data.previous_run_id || null);
         setExecutionStatus("completed");
         setIsSampleData(false);
+
+        // Derive provenance from scenario characteristics
+        if (selectedScenario.toLowerCase().includes("organizer") || selectedScenario.toLowerCase().includes("colab")) {
+          setProvenance("ORGANIZER_SAMPLE");
+        } else if (selectedScenario.toLowerCase().includes("synthetic") || selectedScenario.toLowerCase().includes("mock")) {
+          setProvenance("SYNTHETIC_DEMO");
+        } else {
+          setProvenance("LIVE");
+        }
       } else {
         const err = await res.json().catch(() => ({ detail: "Diagnostic execution failed" }));
         setExecutionStatus("failed");
         setRunErrorMessage(err.detail || "Diagnostic execution failed.");
-        setIsSampleData(true);
-        setReport((prev) => {
-          const base = prev || FALLBACK_SAMPLE_REPORT;
-          return {
-            ...base,
-            summary: base.summary.includes("[SAMPLE DATA]") ? base.summary : `[SAMPLE DATA] ${base.summary}`,
-          };
-        });
-        setEnvelopes(MOCK_ENVELOPES);
-        setCurrentIndex(MOCK_ENVELOPES.length - 1);
+        setProvenance("OFFLINE");
       }
     } catch (e: any) {
       setExecutionStatus("failed");
       setRunErrorMessage(e?.message || "Network error connecting to diagnostic service.");
-      setIsSampleData(true);
-      setReport((prev) => {
-        const base = prev || FALLBACK_SAMPLE_REPORT;
-        return {
-          ...base,
-          is_sample_data: true,
-          summary: base.summary.includes("[SAMPLE DATA]") ? base.summary : `[SAMPLE DATA] ${base.summary}`,
-        };
-      });
-      setEnvelopes(MOCK_ENVELOPES);
-      setCurrentIndex(MOCK_ENVELOPES.length - 1);
+      setProvenance("OFFLINE");
     } finally {
       setLoading(false);
     }
@@ -616,7 +633,18 @@ export const App: React.FC = () => {
   const isNavAuthorized = isAuthorizedForNav(activeNav, user?.role);
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0B132B] text-[#0F172A] dark:text-[#F1F5F9] overflow-hidden font-sans antialiased">
+    <div
+      dir="ltr"
+      className="flex h-screen bg-[#F8FAFC] dark:bg-[#0B132B] text-[#0F172A] dark:text-[#F1F5F9] overflow-hidden font-sans antialiased"
+    >
+      {/* WCAG 2.2 AA Accessible Skip Link */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-[#0B2545] focus:text-white focus:outline-none focus:ring-2 focus:ring-[#3A86FF] text-xs font-bold uppercase tracking-wider shadow-lg"
+      >
+        Skip to main content
+      </a>
+
       {/* Role-isolated Sidebar */}
       <Sidebar
         currentRole={currentRole}
@@ -655,16 +683,17 @@ export const App: React.FC = () => {
         )}
 
         {/* Top Institutional Header (IIT Bhubaneswar Academic Theme) */}
-        <header className="bg-[#FFFFFF] dark:bg-[#161618] border-b border-[#E2E8F0] dark:border-[#2A2A2D] px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 font-sans sticky top-0 z-30 shadow-sm">
+        <header className="bg-[#FFFFFF] dark:bg-[#161618] border-b border-[#E2E8F0] dark:border-[#2A2A2D] px-6 py-3 flex flex-wrap items-center justify-between gap-4 font-sans sticky top-0 z-30 shadow-sm">
           <div className="flex items-center gap-3.5">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden p-1.5 border border-[#E2E8F0] dark:border-[#2A2A2D] text-xs font-semibold"
+              className="lg:hidden p-2 border border-[#CBD5E1] dark:border-[#2A2A2D] text-xs font-semibold min-h-[32px] min-w-[32px]"
+              aria-label="Open navigation menu"
             >
               Menu
             </button>
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-sm bg-[#0B2545] dark:bg-[#133E87] flex items-center justify-center text-white font-bold text-xs tracking-wider">
+              <div className="w-8 h-8 rounded-sm bg-[#0B2545] dark:bg-[#133E87] flex items-center justify-center text-white font-bold text-xs tracking-wider" aria-hidden="true">
                 IIT
               </div>
               <div>
@@ -684,9 +713,49 @@ export const App: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-sm">
+            {/* Persistent Data Provenance Badge */}
+            <div className="flex items-center gap-1.5 border border-[#CBD5E1] dark:border-[#2A2A2D] px-2.5 py-1 text-xs bg-[#FFFFFF] dark:bg-[#161618]">
+              <span className="text-[10px] uppercase font-bold text-[#475569] dark:text-[#94A3B8]">Data:</span>
+              <span
+                className={`px-2 py-0.5 text-[10px] font-mono font-bold uppercase ${
+                  provenance === "LIVE"
+                    ? "bg-[#F0FDF4] text-[#15803D] border border-[#15803D]/40 dark:bg-[#14532D]/40 dark:text-[#86EFAC]"
+                    : provenance === "ORGANIZER_SAMPLE"
+                    ? "bg-[#FAF5FF] text-[#7E22CE] border border-[#7E22CE]/40 dark:bg-[#581C87]/40 dark:text-[#E9D5FF]"
+                    : provenance === "SYNTHETIC_DEMO"
+                    ? "bg-[#EEF4FB] text-[#133E87] border border-[#133E87]/40 dark:bg-[#1E3A8A]/40 dark:text-[#93C5FD]"
+                    : provenance === "CACHED_STALE"
+                    ? "bg-[#FFFBEB] text-[#B45309] border border-[#B45309]/40 dark:bg-[#78350F]/40 dark:text-[#FDE68A]"
+                    : "bg-[#FEF2F2] text-[#B91C1C] border border-[#B91C1C]/40 dark:bg-[#7F1D1D]/40 dark:text-[#FCA5A5]"
+                }`}
+              >
+                [{provenance.replace("_", " ")}]
+              </span>
+            </div>
+
+            {/* Operator Timezone Selector */}
+            <div className="flex items-center gap-1.5 border border-[#CBD5E1] dark:border-[#2A2A2D] px-2.5 py-1 text-xs bg-[#FFFFFF] dark:bg-[#161618]">
+              <label htmlFor="tz-select" className="text-[10px] uppercase font-bold text-[#475569] dark:text-[#94A3B8]">
+                TZ:
+              </label>
+              <select
+                id="tz-select"
+                aria-label="Operator display timezone"
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value as SupportedTimezone)}
+                className="bg-transparent text-xs font-mono font-bold text-[#0F172A] dark:text-[#F1F5F9] outline-none cursor-pointer"
+              >
+                {TIMEZONE_OPTIONS.map((opt) => (
+                  <option key={opt.id} value={opt.id} className="bg-[#FFFFFF] dark:bg-[#161618] text-[#0F172A] dark:text-[#F1F5F9]">
+                    {opt.badge} ({opt.id === "Asia/Kolkata" ? "IST" : opt.id})
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Authenticated User Badge */}
-            <div className="flex items-center gap-2 border border-[#E2E8F0] dark:border-[#2A2A2D] px-3 py-1.5 text-xs bg-[#F8FAFC] dark:bg-[#0F0F10]">
-              <span className="text-[#475569] dark:text-[#94A3B8] font-medium">Logged in as:</span>
+            <div className="flex items-center gap-2 border border-[#CBD5E1] dark:border-[#2A2A2D] px-3 py-1 text-xs bg-[#F8FAFC] dark:bg-[#0F0F10]">
+              <span className="text-[#475569] dark:text-[#94A3B8] font-medium">User:</span>
               <span className="font-bold text-[#0F172A] dark:text-[#EDEDEA]">
                 {user ? `${user.username} (${user.role})` : "Unauthenticated"}
               </span>
@@ -694,17 +763,27 @@ export const App: React.FC = () => {
               {user?.role === "platform_admin" && (
                 <button
                   onClick={openLoginModal}
-                  className="ml-1 px-2 py-0.5 border border-[#0B2545] dark:border-[#3A86FF] hover:bg-[#0B2545]/10 text-[11px] font-bold uppercase transition-colors"
+                  className="ml-1 px-2.5 py-1 border border-[#0B2545] dark:border-[#3A86FF] hover:bg-[#0B2545]/10 text-xs font-bold uppercase transition-colors min-h-[28px]"
                   title="Administrative Account Management"
                 >
-                  Switch User
+                  Switch
+                </button>
+              )}
+
+              {!user && (
+                <button
+                  onClick={openLoginModal}
+                  className="px-2.5 py-1 border border-[#0B2545] dark:border-[#3A86FF] text-[#0B2545] dark:text-[#3A86FF] hover:bg-[#0B2545]/10 text-xs font-bold uppercase transition-colors min-h-[28px]"
+                  title="Log in"
+                >
+                  Login
                 </button>
               )}
 
               {user && (
                 <button
                   onClick={logout}
-                  className="px-2 py-0.5 border border-[#DC2626] text-[#DC2626] hover:bg-[#FEF2F2] text-[11px] font-bold uppercase transition-colors"
+                  className="px-2.5 py-1 border border-[#DC2626] text-[#DC2626] hover:bg-[#FEF2F2] text-xs font-bold uppercase transition-colors min-h-[28px]"
                   title="Log out"
                 >
                   Logout
@@ -722,7 +801,7 @@ export const App: React.FC = () => {
             {historyStack.length > 1 && (
               <button
                 onClick={handleNavigateBack}
-                className="flex items-center gap-1 px-2.5 py-1 border border-[#E5E5E3] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#1A1A1D] hover:border-[#111111] dark:hover:border-[#EDEDEA] text-[11px] font-semibold uppercase tracking-wider text-[#111111] dark:text-[#EDEDEA] transition-colors"
+                className="flex items-center gap-1 px-3 py-1 border border-[#CBD5E1] dark:border-[#2A2A2D] bg-[#FFFFFF] dark:bg-[#1A1A1D] hover:border-[#0B2545] dark:hover:border-[#EDEDEA] text-xs font-bold uppercase tracking-wider text-[#0B2545] dark:text-[#EDEDEA] transition-colors min-h-[28px]"
                 title="Return to previous screen"
               >
                 <span>&larr; Back</span>
@@ -730,20 +809,20 @@ export const App: React.FC = () => {
             )}
 
             {/* Breadcrumb Trail */}
-            <nav className="flex items-center gap-1.5 text-[11px]">
+            <nav className="flex items-center gap-1.5 text-xs">
               {historyStack.map((crumb, idx) => {
                 const isLast = idx === historyStack.length - 1;
                 return (
                   <React.Fragment key={`${crumb.nav}-${idx}`}>
                     {idx > 0 && <span className="text-[#888884]">&rsaquo;</span>}
                     {isLast ? (
-                      <span className="font-semibold text-[#111111] dark:text-[#EDEDEA]">
+                      <span className="font-bold text-[#0B2545] dark:text-[#EDEDEA]">
                         {crumb.label}
                       </span>
                     ) : (
                       <button
                         onClick={() => handleBreadcrumbClick(crumb)}
-                        className="text-[#6B6B66] dark:text-[#888884] hover:text-[#111111] dark:hover:text-[#EDEDEA] hover:underline"
+                        className="text-[#475569] dark:text-[#888884] hover:text-[#0B2545] dark:hover:text-[#EDEDEA] hover:underline"
                       >
                         {crumb.label}
                       </button>
@@ -756,23 +835,47 @@ export const App: React.FC = () => {
 
           <button
             onClick={handleNavigateHome}
-            className="text-[10px] uppercase font-semibold text-[#6B6B66] dark:text-[#888884] hover:text-[#111111] dark:hover:text-[#EDEDEA] hover:underline whitespace-nowrap"
+            className="text-xs uppercase font-bold text-[#475569] dark:text-[#888884] hover:text-[#0B2545] dark:hover:text-[#EDEDEA] hover:underline whitespace-nowrap min-h-[28px] px-2 py-1"
           >
             Home Dashboard
           </button>
         </div>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-4 sm:p-6 space-y-6 max-w-7xl w-full mx-auto">
-          {/* Visible amber banner when backend is unreachable and fallback sample data is displayed */}
-          {isSampleData && (
-            <div className="bg-amber-500/10 border border-amber-500/30 p-3 text-[11px] text-amber-600 dark:text-amber-400 flex flex-wrap items-center justify-between font-mono gap-2">
-              <div className="flex items-center gap-2">
-                <span className="bg-amber-500 text-black px-2 py-0.5 text-[9px] uppercase tracking-wider font-bold">
-                  [SAMPLE DATA]
+        <main id="main-content" className="flex-1 p-4 sm:p-6 space-y-6 max-w-7xl w-full mx-auto">
+          {/* Prominent Offline Banner when backend is unreachable */}
+          {provenance === "OFFLINE" && (
+            <div
+              role="alert"
+              className="bg-[#FEF2F2] dark:bg-[#7F1D1D]/30 border-2 border-[#DC2626] p-4 text-xs text-[#991B1B] dark:text-[#FCA5A5] flex flex-wrap items-center justify-between font-sans gap-3 shadow-sm"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="bg-[#DC2626] text-white px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold">
+                  [OFFLINE BACKEND]
                 </span>
-                <span className="font-semibold">Backend unreachable: showing sample data</span>
-                <span className="text-[#888884] text-[10px] ml-2">(Diagnostic backend API is unreachable; displaying simulated multi-agent telemetry and sample report)</span>
+                <span className="font-bold">Diagnostic Backend Service Unreachable:</span>
+                <span className="text-[#475569] dark:text-[#CBD5E1]">
+                  Cannot contact <code>/api/reports/latest</code>. Displaying isolated offline demo fixture. Live telemetry is disconnected.
+                </span>
+              </div>
+              <button
+                onClick={handleRetryConnect}
+                disabled={loading}
+                className="px-3.5 py-1.5 bg-[#DC2626] text-white hover:bg-[#B91C1C] text-xs font-bold uppercase tracking-wider transition-colors min-h-[32px] focus-visible:ring-2"
+              >
+                {loading ? "Reconnecting..." : "Retry Connection"}
+              </button>
+            </div>
+          )}
+
+          {/* Sample Data Banner when explicitly viewing synthetic/organizer fixture in online mode */}
+          {isSampleData && provenance !== "OFFLINE" && (
+            <div className="bg-[#FFFBEB] dark:bg-[#78350F]/20 border border-[#B45309]/30 p-3 text-xs text-[#92400E] dark:text-[#FDE68A] flex flex-wrap items-center justify-between font-sans gap-2">
+              <div className="flex items-center gap-2">
+                <span className="bg-[#B45309] text-white px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold">
+                  [{provenance.replace("_", " ")}]
+                </span>
+                <span className="font-semibold">Displaying simulated multi-agent telemetry and pre-computed benchmark scenario.</span>
               </div>
             </div>
           )}
@@ -821,10 +924,10 @@ export const App: React.FC = () => {
 
           {/* ROUTE GUARD: Check authorization for active view */}
           {!isNavAuthorized ? (
-            <div className="p-8 border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400 font-mono space-y-3">
+            <div className="p-8 border border-[#B91C1C]/40 bg-[#FEF2F2] dark:bg-[#7F1D1D]/30 text-[#B91C1C] dark:text-[#FCA5A5] font-mono space-y-3">
               <div className="font-bold uppercase text-sm">Access Denied (RBAC Protected Route)</div>
               <p className="text-xs">
-                Your authenticated role (<strong>{user?.role}</strong>) does not have authorization to view the requested dashboard (<strong>{getNavLabel(activeNav)}</strong>).
+                Your authenticated role (<strong>{user?.role || "unauthenticated"}</strong>) does not have authorization to view the requested dashboard (<strong>{getNavLabel(activeNav)}</strong>).
               </p>
               <button
                 onClick={handleNavigateHome}
@@ -858,6 +961,7 @@ export const App: React.FC = () => {
                   previousRunId={previousRunId}
                   onRunDiagnosis={handleRunDiagnosis}
                   onCompareRuns={handleCompareRuns}
+                  timezone={timezone}
                 />
               )}
 
@@ -915,6 +1019,7 @@ export const App: React.FC = () => {
                         onScrub={(idx) => setCurrentIndex(idx)}
                         isPlaying={isPlaying}
                         onTogglePlay={() => setIsPlaying((p) => !p)}
+                        timezone={timezone}
                       />
                     </div>
                   </div>
@@ -939,7 +1044,7 @@ export const App: React.FC = () => {
 
               {/* PLATFORM SUBSYSTEM: Unified Diagnostic Report */}
               {activeNav === "report" && (
-                <ReportCard report={report} loading={loading} />
+                <ReportCard report={report} loading={loading} timezone={timezone} />
               )}
 
               {/* PLATFORM SUBSYSTEM: Interoperability Inspector */}
@@ -959,6 +1064,7 @@ export const App: React.FC = () => {
                     <HitlApprovalQueue
                       incidentId={report?.incident_id || "inc-link-congestion-42"}
                       actions={report?.remediation_actions || []}
+                      timezone={timezone}
                       onActionExecuted={(actionId) => {
                         if (report && report.remediation_actions) {
                           setReport({

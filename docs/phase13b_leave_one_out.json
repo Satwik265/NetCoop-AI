@@ -1,0 +1,229 @@
+{
+  "link_congestion_with_logs": {
+    "full_pipeline": {
+      "status": "diagnosed",
+      "probable_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
+      "confidence": 0.969,
+      "evidence_sources": [
+        "config_agent",
+        "log_agent",
+        "telemetry_agent",
+        "topology_agent"
+      ],
+      "evidence_count": 15,
+      "limitations": [
+        "single snapshot, no temporal context"
+      ],
+      "conflicts_resolved": [
+        {
+          "conflict": "QoS policy or queue buffer configuration modification on interface vs Link utilization saturation causing buffer queue drops and latency spikes",
+          "winner": "QoS policy or queue buffer configuration modification on interface",
+          "precedence": "DIRECT",
+          "rationale": "Arbitration: Selected 'QoS policy or queue buffer configuration modification on interface' by evidence precedence (DIRECT > CORRELATED).",
+          "iteration": 1
+        }
+      ]
+    },
+    "without_log_agent": {
+      "status": "diagnosed",
+      "probable_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
+      "confidence": 0.969,
+      "evidence_sources": [
+        "config_agent",
+        "telemetry_agent",
+        "topology_agent"
+      ],
+      "evidence_count": 13,
+      "limitations": [
+        "single snapshot, no temporal context"
+      ],
+      "conflicts_resolved": [
+        {
+          "conflict": "QoS policy or queue buffer configuration modification on interface vs Link utilization saturation causing buffer queue drops and latency spikes",
+          "winner": "QoS policy or queue buffer configuration modification on interface",
+          "precedence": "DIRECT",
+          "rationale": "Arbitration: Selected 'QoS policy or queue buffer configuration modification on interface' by evidence precedence (DIRECT > CORRELATED).",
+          "iteration": 1
+        }
+      ]
+    },
+    "without_config_agent": {
+      "status": "diagnosed",
+      "probable_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
+      "confidence": 0.969,
+      "evidence_sources": [
+        "log_agent",
+        "telemetry_agent",
+        "topology_agent"
+      ],
+      "evidence_count": 13,
+      "limitations": [
+        "single snapshot, no temporal context"
+      ],
+      "conflicts_resolved": [
+        {
+          "conflict": "Link utilization saturation causing buffer queue drops and latency spikes vs Link Congestion and buffer exhaustion under heavy load",
+          "winner": "Link utilization saturation causing buffer queue drops and latency spikes",
+          "precedence": "CORRELATED",
+          "rationale": "Arbitration: Selected 'Link utilization saturation causing buffer queue drops and latency spikes' with superior confidence (1.00 vs 0.85).",
+          "iteration": 1
+        }
+      ]
+    }
+  },
+  "ethernet_fault_with_logs": {
+    "full_pipeline": {
+      "status": "diagnosed",
+      "probable_cause": "Physical layer Ethernet interface CRC errors and flapping transitions",
+      "confidence": 0.923,
+      "evidence_sources": [
+        "log_agent",
+        "telemetry_agent"
+      ],
+      "evidence_count": 5,
+      "limitations": [
+        "single snapshot, no temporal context"
+      ],
+      "conflicts_resolved": []
+    },
+    "without_log_agent": {
+      "status": "diagnosed",
+      "probable_cause": "Physical layer Ethernet interface CRC errors and flapping transitions",
+      "confidence": 0.923,
+      "evidence_sources": [
+        "telemetry_agent"
+      ],
+      "evidence_count": 2,
+      "limitations": [
+        "single snapshot, no temporal context"
+      ],
+      "conflicts_resolved": []
+    },
+    "without_config_agent": {
+      "status": "diagnosed",
+      "probable_cause": "Physical layer Ethernet interface CRC errors and flapping transitions",
+      "confidence": 0.923,
+      "evidence_sources": [
+        "log_agent",
+        "telemetry_agent"
+      ],
+      "evidence_count": 5,
+      "limitations": [
+        "single snapshot, no temporal context"
+      ],
+      "conflicts_resolved": []
+    }
+  },
+  "mtu_mismatch_with_config": {
+    "full_pipeline": {
+      "status": "diagnosed",
+      "probable_cause": "Path MTU Mismatch causing packet blackholing on jumbo frames",
+      "confidence": 0.95,
+      "evidence_sources": [
+        "config_agent",
+        "log_agent",
+        "telemetry_agent"
+      ],
+      "evidence_count": 14,
+      "limitations": [
+        "single snapshot, no temporal context"
+      ],
+      "conflicts_resolved": []
+    },
+    "without_log_agent": {
+      "status": "diagnosed",
+      "probable_cause": "Path MTU Mismatch causing packet blackholing on jumbo frames",
+      "confidence": 0.95,
+      "evidence_sources": [
+        "config_agent",
+        "telemetry_agent"
+      ],
+      "evidence_count": 13,
+      "limitations": [
+        "single snapshot, no temporal context"
+      ],
+      "conflicts_resolved": []
+    },
+    "without_config_agent": {
+      "status": "insufficient_evidence",
+      "probable_cause": null,
+      "confidence": 0.0,
+      "evidence_sources": [],
+      "evidence_count": 0,
+      "limitations": [
+        "single snapshot, no temporal context"
+      ],
+      "conflicts_resolved": []
+    }
+  },
+  "conflicting_evidence": {
+    "full_pipeline": {
+      "status": "diagnosed",
+      "probable_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
+      "confidence": 0.969,
+      "evidence_sources": [
+        "config_agent",
+        "telemetry_agent",
+        "topology_agent"
+      ],
+      "evidence_count": 12,
+      "limitations": [
+        "single snapshot, no temporal context"
+      ],
+      "conflicts_resolved": [
+        {
+          "conflict": "STP Loop vs CPU Overload",
+          "winner": "BPDU filter configuration enabled on trunk or cross-connect link",
+          "precedence": "DIRECT",
+          "rationale": "Arbitration: BPDU filter misconfiguration causing catastrophic broadcast loop takes direct precedence over general CPU overload.",
+          "iteration": 1
+        }
+      ]
+    },
+    "without_log_agent": {
+      "status": "diagnosed",
+      "probable_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
+      "confidence": 0.969,
+      "evidence_sources": [
+        "config_agent",
+        "telemetry_agent",
+        "topology_agent"
+      ],
+      "evidence_count": 12,
+      "limitations": [
+        "single snapshot, no temporal context"
+      ],
+      "conflicts_resolved": [
+        {
+          "conflict": "STP Loop vs CPU Overload",
+          "winner": "BPDU filter configuration enabled on trunk or cross-connect link",
+          "precedence": "DIRECT",
+          "rationale": "Arbitration: BPDU filter misconfiguration causing catastrophic broadcast loop takes direct precedence over general CPU overload.",
+          "iteration": 1
+        }
+      ]
+    },
+    "without_config_agent": {
+      "status": "diagnosed",
+      "probable_cause": "Link utilization saturation causing buffer queue drops and latency spikes",
+      "confidence": 0.969,
+      "evidence_sources": [
+        "telemetry_agent",
+        "topology_agent"
+      ],
+      "evidence_count": 11,
+      "limitations": [
+        "single snapshot, no temporal context"
+      ],
+      "conflicts_resolved": [
+        {
+          "conflict": "Physical transceiver optical signal degradation vs Link utilization saturation causing buffer queue drops and latency spikes",
+          "winner": "Physical transceiver optical signal degradation",
+          "precedence": "DIRECT",
+          "rationale": "Arbitration: Selected 'Physical transceiver optical signal degradation' by evidence precedence (DIRECT > CORRELATED).",
+          "iteration": 1
+        }
+      ]
+    }
+  }
+}

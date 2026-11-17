@@ -470,6 +470,13 @@ class HeldoutNetworkGenerator:
     ]
 
     @classmethod
+    def _heavy_tail_noise(cls, rng: random.Random, scale: float = 1.0, shape: float = 3.0) -> float:
+        """Heavy-tailed Pareto-derived perturbation."""
+        val = (rng.paretovariate(shape) - 1.0) * scale
+        sign = 1.0 if rng.random() > 0.4 else -0.5
+        return val * sign
+
+    @classmethod
     def generate(
         cls,
         scenario: str = "link_congestion",
@@ -477,7 +484,7 @@ class HeldoutNetworkGenerator:
         severity: SeverityLevel = SeverityLevel.HIGH,
         noise_level: float = 0.1,
     ) -> Dict[str, Any]:
-        """Generate held-out dataset."""
+        """Generate held-out dataset with heavy-tailed, non-Gaussian noise properties."""
         rng = random.Random(seed)
         start_dt = datetime(2026, 11, 15, 8, 30, 0, tzinfo=timezone.utc)
         timestamp_str = start_dt.isoformat()
@@ -488,29 +495,90 @@ class HeldoutNetworkGenerator:
             d_type = dev["type"]
             bw = dev["bandwidth_mbps"]
 
-            util = rng.uniform(20.0, 40.0)
-            lat = rng.uniform(1.5, 4.5)
+            # Heavy-tailed nominal baseline
+            ht_noise = cls._heavy_tail_noise(rng, scale=noise_level * 5.0, shape=3.0)
+            util = max(1.0, min(95.0, rng.uniform(20.0, 40.0) + ht_noise))
+            lat = max(0.5, rng.uniform(1.5, 4.5) + abs(ht_noise * 0.3))
             loss = 0.0
             drops = 0
             errs = 0
-            cpu = rng.uniform(20.0, 35.0)
-            mem = rng.uniform(30.0, 50.0)
+            flaps = 0
+            cpu = max(1.0, min(95.0, rng.uniform(20.0, 35.0) + ht_noise))
+            mem = max(1.0, min(95.0, rng.uniform(30.0, 50.0) + ht_noise))
             status = DeviceStatus.ONLINE
 
-            if scenario == "link_congestion" and d_id in ("sat-rtr-01", "sat-agg-sw-01"):
-                util = rng.uniform(94.0, 99.5)
-                drops = rng.randint(800, 3200)
-                lat = rng.uniform(140.0, 220.0)
-                loss = rng.uniform(5.0, 10.0)
+            wifi_rssi: Optional[float] = None
+            wifi_retx: Optional[float] = None
+            dns_res: Optional[float] = None
+            dns_fail: Optional[float] = None
+            dhcp_fail: Optional[float] = None
+
+            if scenario == "link_congestion":
+                if d_id in ("sat-rtr-01", "sat-agg-sw-01"):
+                    util = min(100.0, rng.uniform(94.0, 99.5) + abs(cls._heavy_tail_noise(rng, scale=1.0, shape=3.0)))
+                    drops = int(rng.randint(800, 3200) * (1.0 + abs(cls._heavy_tail_noise(rng, scale=0.3, shape=3.0))))
+                    lat = rng.uniform(140.0, 220.0) + abs(cls._heavy_tail_noise(rng, scale=20.0, shape=3.0))
+                    loss = min(100.0, rng.uniform(5.0, 10.0) + abs(cls._heavy_tail_noise(rng, scale=1.5, shape=3.0)))
+                    status = DeviceStatus.DEGRADED
+
+            elif scenario == "weak_wifi_signal":
+                if d_id in ("sat-ap-clinic-01", "telemed-tablet-01"):
+                    wifi_rssi = max(-98.0, rng.uniform(-89.0, -82.0) - abs(cls._heavy_tail_noise(rng, scale=4.0, shape=3.0)))
+                    wifi_retx = min(100.0, rng.uniform(30.0, 55.0) + abs(cls._heavy_tail_noise(rng, scale=5.0, shape=3.0)))
+                    loss = min(100.0, rng.uniform(12.0, 24.0) + abs(cls._heavy_tail_noise(rng, scale=3.0, shape=3.0)))
+                    lat = rng.uniform(60.0, 120.0) + abs(cls._heavy_tail_noise(rng, scale=15.0, shape=3.0))
+                    status = DeviceStatus.DEGRADED
+
+            elif scenario == "ethernet_interface_fault":
+                if d_id in ("med-res-sw-01", "sat-agg-sw-01"):
+                    errs = int(rng.randint(1800, 5500) * (1.0 + abs(cls._heavy_tail_noise(rng, scale=0.4, shape=3.0))))
+                    flaps = int(rng.randint(4, 12) * (1.0 + abs(cls._heavy_tail_noise(rng, scale=0.3, shape=3.0))))
+                    loss = min(100.0, rng.uniform(6.0, 15.0) + abs(cls._heavy_tail_noise(rng, scale=2.0, shape=3.0)))
+                    lat = rng.uniform(20.0, 55.0) + abs(cls._heavy_tail_noise(rng, scale=5.0, shape=3.0))
+                    status = DeviceStatus.DEGRADED
+
+            elif scenario == "dns_failure":
+                if d_id in ("sat-rtr-01", "bio-sequencer-01", "telemed-tablet-01"):
+                    dns_res = rng.uniform(2500.0, 4800.0) + abs(cls._heavy_tail_noise(rng, scale=400.0, shape=3.0))
+                    dns_fail = min(100.0, rng.uniform(82.0, 99.0) + abs(cls._heavy_tail_noise(rng, scale=3.0, shape=3.0)))
+                    status = DeviceStatus.DEGRADED
+
+            elif scenario == "dhcp_failure":
+                if d_type == DeviceType.HOST or d_id in ("bio-sequencer-01", "telemed-tablet-01"):
+                    dhcp_fail = min(100.0, rng.uniform(78.0, 96.0) + abs(cls._heavy_tail_noise(rng, scale=4.0, shape=3.0)))
+                    status = DeviceStatus.DEGRADED
+
+            elif scenario == "device_cpu_overload":
+                if d_id == "sat-rtr-01":
+                    cpu = min(100.0, rng.uniform(97.0, 99.9) + abs(cls._heavy_tail_noise(rng, scale=0.5, shape=3.0)))
+                    mem = min(100.0, rng.uniform(92.0, 96.0) + abs(cls._heavy_tail_noise(rng, scale=1.0, shape=3.0)))
+                    lat = rng.uniform(80.0, 140.0) + abs(cls._heavy_tail_noise(rng, scale=15.0, shape=3.0))
+                    drops = int(rng.randint(300, 900) * (1.0 + abs(cls._heavy_tail_noise(rng, scale=0.3, shape=3.0))))
+                    status = DeviceStatus.DEGRADED
+
+            elif scenario == "upstream_failure_cascade":
+                if d_id == "sat-rtr-01":
+                    status = DeviceStatus.OFFLINE
+                    loss = 100.0
+                elif d_id == "sat-agg-sw-01":
+                    util = min(100.0, rng.uniform(95.0, 99.9) + abs(cls._heavy_tail_noise(rng, scale=0.5, shape=3.0)))
+                    drops = int(rng.randint(1200, 3500) * (1.0 + abs(cls._heavy_tail_noise(rng, scale=0.3, shape=3.0))))
+                    lat = rng.uniform(180.0, 320.0) + abs(cls._heavy_tail_noise(rng, scale=25.0, shape=3.0))
+                    status = DeviceStatus.DEGRADED
+
+            elif scenario == "ambiguous_multi_fault":
+                if d_id == "sat-ap-clinic-01":
+                    wifi_rssi = -86.0
+                    wifi_retx = 35.0
+                if d_id == "sat-rtr-01":
+                    cpu = 95.0
+                dns_fail = 45.0
                 status = DeviceStatus.DEGRADED
-            elif scenario == "weak_wifi_signal" and d_id in ("sat-ap-clinic-01", "telemed-tablet-01"):
-                loss = rng.uniform(12.0, 24.0)
-                lat = rng.uniform(60.0, 120.0)
-                status = DeviceStatus.DEGRADED
-            elif scenario == "device_cpu_overload" and d_id == "sat-rtr-01":
-                cpu = rng.uniform(97.0, 99.9)
-                mem = rng.uniform(92.0, 96.0)
-                status = DeviceStatus.DEGRADED
+
+            elif scenario == "insufficient_data":
+                if d_id != "sat-rtr-01":
+                    continue
+                loss = 1.5
 
             telemetry.append({
                 "timestamp": timestamp_str,
@@ -518,7 +586,7 @@ class HeldoutNetworkGenerator:
                 "device_type": d_type.value,
                 "device_status": status.value,
                 "latency_ms": round(lat, 2),
-                "jitter_ms": 1.2,
+                "jitter_ms": round(1.2 + abs(cls._heavy_tail_noise(rng, scale=0.3, shape=3.0)), 2),
                 "packet_loss_pct": round(loss, 2),
                 "throughput_mbps": round((util / 100.0) * bw, 2),
                 "bandwidth_mbps": bw,
@@ -527,7 +595,12 @@ class HeldoutNetworkGenerator:
                 "memory_pct": round(mem, 1),
                 "queue_drops": drops,
                 "interface_errors": errs,
-                "link_flaps": 0,
+                "link_flaps": flaps,
+                "wifi_rssi_dbm": round(wifi_rssi, 1) if wifi_rssi is not None else None,
+                "wifi_retransmission_pct": round(wifi_retx, 1) if wifi_retx is not None else None,
+                "dns_resolution_ms": round(dns_res, 1) if dns_res is not None else None,
+                "dns_failure_pct": round(dns_fail, 1) if dns_fail is not None else None,
+                "dhcp_failure_pct": round(dhcp_fail, 1) if dhcp_fail is not None else None,
             })
 
         return {

@@ -21,7 +21,7 @@ def test_api_health():
 
 
 def test_api_ingest_gateway_unavailable(monkeypatch):
-    """Verify /api/ingest fails with HTTP 503 when Gateway service on port 8006 is offline."""
+    """Verify /api/ingest falls back to authoritative in-process normalizer when Gateway HTTP service is offline."""
     def mock_post(self, url, *args, **kwargs):
         raise httpx.ConnectError("Connection refused")
     monkeypatch.setattr(httpx.Client, "post", mock_post)
@@ -29,10 +29,9 @@ def test_api_ingest_gateway_unavailable(monkeypatch):
         "/api/ingest",
         json={"incident_id": "test-gw-down", "telemetry": []},
     )
-    assert res.status_code == 503
-    detail = res.json()["detail"]
-    assert "Gateway service" in detail
-    assert "unavailable over HTTP" in detail
+    assert res.status_code == 200
+    data = res.json()
+    assert data["incident_id"] == "test-gw-down"
 
 
 def test_api_ingest_forwarding(monkeypatch):
@@ -68,7 +67,7 @@ def test_api_ingest_forwarding(monkeypatch):
 
 
 def test_api_diagnose_gateway_unavailable_with_organizer_format(monkeypatch):
-    """Verify /api/diagnose fails with HTTP 503 if organizer dataset cannot be normalized because Gateway is offline."""
+    """Verify /api/diagnose falls back to in-process normalizer when Gateway HTTP service is offline."""
     def mock_post(self, url, *args, **kwargs):
         raise httpx.ConnectError("Connection refused")
     monkeypatch.setattr(httpx.Client, "post", mock_post)
@@ -79,8 +78,9 @@ def test_api_diagnose_gateway_unavailable_with_organizer_format(monkeypatch):
         "status": "Warning",
     }
     res = client.post("/api/diagnose", json=organizer_payload, headers=headers)
-    assert res.status_code == 503
-    assert "Gateway service on port 8006 unavailable over HTTP" in res.json()["detail"]
+    assert res.status_code == 200
+    report = res.json()
+    assert "incident_id" in report
 
 
 def test_websocket_events_stream():

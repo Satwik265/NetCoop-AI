@@ -34,10 +34,10 @@ NetCoop AI strictly distinguishes between two levels of confidence:
 ## 4. Calibration and Conformal Prediction
 
 - **Calibration Engine**: Per-class isotonic regression (`ProbabilityCalibrator` in `netcoop/models/calibration.py`).
-- **Conformal Abstention Engine**: Split conformal prediction with significance level $\alpha = 0.10$ guaranteeing $\ge 90\%$ finite-sample marginal coverage under exchangeability.
+- **Conformal Abstention Engine**: Split conformal prediction with significance level $\alpha = 0.10$ targeting nominal 90% finite-sample marginal coverage under exchangeability (measured at 81.5% on validation, 78.5% on primary benchmark).
 - **Finite-Sample Order Statistic**:
   $$k = \lceil (n + 1)(1 - \alpha) \rceil, \quad \hat{q} = s_{(k)}$$
-  Preserves the actual finite-sample order statistic without arbitrary heuristic quantile clipping. If $k > n$, empirical guarantees cannot be established without extrapolation; the engine flags `is_calibrated = False` and safely abstains.
+  Preserves the actual finite-sample order statistic without arbitrary heuristic quantile clipping. If $k > n$, empirical calibration bounds cannot be established without extrapolation; the engine flags `is_calibrated = False` and safely abstains.
 - **Nonconformity Formulation**:
   $$s_i = 1 - \min_{y \in Y_i} p_i(y)$$
   where $Y_i$ is the true set of active classes, guaranteeing multi-label set coverage $Y_i \subseteq C(X_i)$.
@@ -64,6 +64,6 @@ Monotonicity ($\tau_{\text{high}} > \tau_{\text{medium}} > \tau_{\text{low}}$) i
 ---
 
 ## 6. Limitations and Out-of-Distribution Behavior
-- **Exchangeability Requirement**: Conformal coverage guarantees hold strictly under exchangeability between calibration and production distributions.
+- **Exchangeability Requirement**: Conformal coverage bounds hold strictly under exchangeability between calibration and production distributions (empirical primary coverage measured at 78.5%).
 - **Distribution Shift**: When presented with unprecedented topologies, alternative edge configurations, or organizer telemetry, the exchangeability assumption does not hold. Under distribution shift, the prediction set collapses to empty or yields diffuse probabilities, causing disciplined fallback to status `insufficient_evidence`, preventing false alarm hallucinations.
 - **Remediation Boundary**: Predictions are informational findings feeding into the orchestrator; remediation plans are strictly simulated and real network infrastructure is never modified automatically.

@@ -1,0 +1,2948 @@
+{
+  "metadata": {
+    "version": "phase13o_v1",
+    "timestamp": "2026-11-17T10:48:11Z",
+    "agents_mode": "in_process",
+    "total_samples_evaluated": 2115,
+    "duration_seconds": 1777.69
+  },
+  "splits": {
+    "in_distribution": {
+      "split_name": "in_distribution_primary_400",
+      "total_samples": 400,
+      "outcomes": {
+        "diagnosed": 280,
+        "benign": 40,
+        "abstained": 80,
+        "accepted": 320,
+        "coverage_pct": 80.0
+      },
+      "selective_metrics": {
+        "accepted_count": 320,
+        "correct_count": 320,
+        "wrong_count": 0,
+        "selective_accuracy": 1.0,
+        "selective_risk": 0.0,
+        "selective_risk_wilson_95_ci": [
+          0.0,
+          0.0119
+        ]
+      },
+      "safety_metrics": {
+        "fault_samples_evaluated": 280,
+        "faults_called_normal": 0,
+        "rule_of_three_upper_bound_95": 0.0107,
+        "normal_operation_samples": 40,
+        "normal_operation_recall": 1.0
+      },
+      "calibration_metrics": {
+        "conformal_empirical_coverage": 0.8875,
+        "accepted_only_ece": 0.0516
+      },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 0,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
+      "latency_ms": {
+        "p50": 1373.37,
+        "p95": 5897.31
+      },
+      "per_class": {
+        "ambiguous_multi_fault": {
+          "total": 40,
+          "diagnosed": 0,
+          "benign": 0,
+          "abstained": 40,
+          "correct": 40,
+          "accuracy": 1.0
+        },
+        "device_cpu_overload": {
+          "total": 40,
+          "diagnosed": 40,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 40,
+          "accuracy": 1.0
+        },
+        "dhcp_failure": {
+          "total": 40,
+          "diagnosed": 40,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 40,
+          "accuracy": 1.0
+        },
+        "dns_failure": {
+          "total": 40,
+          "diagnosed": 40,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 40,
+          "accuracy": 1.0
+        },
+        "ethernet_interface_fault": {
+          "total": 40,
+          "diagnosed": 40,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 40,
+          "accuracy": 1.0
+        },
+        "insufficient_data": {
+          "total": 40,
+          "diagnosed": 0,
+          "benign": 0,
+          "abstained": 40,
+          "correct": 40,
+          "accuracy": 1.0
+        },
+        "link_congestion": {
+          "total": 40,
+          "diagnosed": 40,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 40,
+          "accuracy": 1.0
+        },
+        "normal_operation": {
+          "total": 40,
+          "diagnosed": 0,
+          "benign": 40,
+          "abstained": 0,
+          "correct": 40,
+          "accuracy": 1.0
+        },
+        "upstream_failure_cascade": {
+          "total": 40,
+          "diagnosed": 40,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 40,
+          "accuracy": 1.0
+        },
+        "weak_wifi_signal": {
+          "total": 40,
+          "diagnosed": 40,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 40,
+          "accuracy": 1.0
+        }
+      }
+    },
+    "unseen_topologies": {
+      "split_name": "unseen_blind_topologies_300",
+      "total_samples": 300,
+      "outcomes": {
+        "diagnosed": 209,
+        "benign": 30,
+        "abstained": 61,
+        "accepted": 239,
+        "coverage_pct": 79.67
+      },
+      "selective_metrics": {
+        "accepted_count": 239,
+        "correct_count": 239,
+        "wrong_count": 0,
+        "selective_accuracy": 1.0,
+        "selective_risk": 0.0,
+        "selective_risk_wilson_95_ci": [
+          0.0,
+          0.0158
+        ]
+      },
+      "safety_metrics": {
+        "fault_samples_evaluated": 210,
+        "faults_called_normal": 0,
+        "rule_of_three_upper_bound_95": 0.0143,
+        "normal_operation_samples": 30,
+        "normal_operation_recall": 1.0
+      },
+      "calibration_metrics": {
+        "conformal_empirical_coverage": 0.9,
+        "accepted_only_ece": 0.0592
+      },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 0,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
+      "latency_ms": {
+        "p50": 1375.1,
+        "p95": 5787.72
+      },
+      "per_class": {
+        "ambiguous_multi_fault": {
+          "total": 30,
+          "diagnosed": 0,
+          "benign": 0,
+          "abstained": 30,
+          "correct": 30,
+          "accuracy": 1.0
+        },
+        "device_cpu_overload": {
+          "total": 30,
+          "diagnosed": 30,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 30,
+          "accuracy": 1.0
+        },
+        "dhcp_failure": {
+          "total": 30,
+          "diagnosed": 30,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 30,
+          "accuracy": 1.0
+        },
+        "dns_failure": {
+          "total": 30,
+          "diagnosed": 30,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 30,
+          "accuracy": 1.0
+        },
+        "ethernet_interface_fault": {
+          "total": 30,
+          "diagnosed": 30,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 30,
+          "accuracy": 1.0
+        },
+        "insufficient_data": {
+          "total": 30,
+          "diagnosed": 0,
+          "benign": 0,
+          "abstained": 30,
+          "correct": 30,
+          "accuracy": 1.0
+        },
+        "link_congestion": {
+          "total": 30,
+          "diagnosed": 30,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 30,
+          "accuracy": 1.0
+        },
+        "normal_operation": {
+          "total": 30,
+          "diagnosed": 0,
+          "benign": 30,
+          "abstained": 0,
+          "correct": 30,
+          "accuracy": 1.0
+        },
+        "upstream_failure_cascade": {
+          "total": 30,
+          "diagnosed": 30,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 30,
+          "accuracy": 1.0
+        },
+        "weak_wifi_signal": {
+          "total": 30,
+          "diagnosed": 29,
+          "benign": 0,
+          "abstained": 1,
+          "correct": 29,
+          "accuracy": 0.9667
+        }
+      },
+      "by_topology": {
+        "blind_edge_iot_6": {
+          "split_name": "unseen_topology_blind_edge_iot_6",
+          "total_samples": 150,
+          "outcomes": {
+            "diagnosed": 105,
+            "benign": 15,
+            "abstained": 30,
+            "accepted": 120,
+            "coverage_pct": 80.0
+          },
+          "selective_metrics": {
+            "accepted_count": 120,
+            "correct_count": 120,
+            "wrong_count": 0,
+            "selective_accuracy": 1.0,
+            "selective_risk": 0.0,
+            "selective_risk_wilson_95_ci": [
+              0.0,
+              0.031
+            ]
+          },
+          "safety_metrics": {
+            "fault_samples_evaluated": 105,
+            "faults_called_normal": 0,
+            "rule_of_three_upper_bound_95": 0.0286,
+            "normal_operation_samples": 15,
+            "normal_operation_recall": 1.0
+          },
+          "calibration_metrics": {
+            "conformal_empirical_coverage": 0.9,
+            "accepted_only_ece": 0.0478
+          },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
+          "latency_ms": {
+            "p50": 1369.31,
+            "p95": 7682.75
+          },
+          "per_class": {
+            "ambiguous_multi_fault": {
+              "total": 15,
+              "diagnosed": 0,
+              "benign": 0,
+              "abstained": 15,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "device_cpu_overload": {
+              "total": 15,
+              "diagnosed": 15,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "dhcp_failure": {
+              "total": 15,
+              "diagnosed": 15,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "dns_failure": {
+              "total": 15,
+              "diagnosed": 15,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "ethernet_interface_fault": {
+              "total": 15,
+              "diagnosed": 15,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "insufficient_data": {
+              "total": 15,
+              "diagnosed": 0,
+              "benign": 0,
+              "abstained": 15,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "link_congestion": {
+              "total": 15,
+              "diagnosed": 15,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "normal_operation": {
+              "total": 15,
+              "diagnosed": 0,
+              "benign": 15,
+              "abstained": 0,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "upstream_failure_cascade": {
+              "total": 15,
+              "diagnosed": 15,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "weak_wifi_signal": {
+              "total": 15,
+              "diagnosed": 15,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 15,
+              "accuracy": 1.0
+            }
+          }
+        },
+        "blind_spine_leaf_10": {
+          "split_name": "unseen_topology_blind_spine_leaf_10",
+          "total_samples": 150,
+          "outcomes": {
+            "diagnosed": 104,
+            "benign": 15,
+            "abstained": 31,
+            "accepted": 119,
+            "coverage_pct": 79.33
+          },
+          "selective_metrics": {
+            "accepted_count": 119,
+            "correct_count": 119,
+            "wrong_count": 0,
+            "selective_accuracy": 1.0,
+            "selective_risk": 0.0,
+            "selective_risk_wilson_95_ci": [
+              0.0,
+              0.0313
+            ]
+          },
+          "safety_metrics": {
+            "fault_samples_evaluated": 105,
+            "faults_called_normal": 0,
+            "rule_of_three_upper_bound_95": 0.0286,
+            "normal_operation_samples": 15,
+            "normal_operation_recall": 1.0
+          },
+          "calibration_metrics": {
+            "conformal_empirical_coverage": 0.9,
+            "accepted_only_ece": 0.0708
+          },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
+          "latency_ms": {
+            "p50": 1379.69,
+            "p95": 5186.39
+          },
+          "per_class": {
+            "ambiguous_multi_fault": {
+              "total": 15,
+              "diagnosed": 0,
+              "benign": 0,
+              "abstained": 15,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "device_cpu_overload": {
+              "total": 15,
+              "diagnosed": 15,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "dhcp_failure": {
+              "total": 15,
+              "diagnosed": 15,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "dns_failure": {
+              "total": 15,
+              "diagnosed": 15,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "ethernet_interface_fault": {
+              "total": 15,
+              "diagnosed": 15,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "insufficient_data": {
+              "total": 15,
+              "diagnosed": 0,
+              "benign": 0,
+              "abstained": 15,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "link_congestion": {
+              "total": 15,
+              "diagnosed": 15,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "normal_operation": {
+              "total": 15,
+              "diagnosed": 0,
+              "benign": 15,
+              "abstained": 0,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "upstream_failure_cascade": {
+              "total": 15,
+              "diagnosed": 15,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 15,
+              "accuracy": 1.0
+            },
+            "weak_wifi_signal": {
+              "total": 15,
+              "diagnosed": 14,
+              "benign": 0,
+              "abstained": 1,
+              "correct": 14,
+              "accuracy": 0.9333
+            }
+          }
+        }
+      }
+    },
+    "organizer_per_class": {
+      "split_name": "organizer_suite_900",
+      "total_samples": 900,
+      "outcomes": {
+        "diagnosed": 600,
+        "benign": 300,
+        "abstained": 0,
+        "accepted": 900,
+        "coverage_pct": 100.0
+      },
+      "selective_metrics": {
+        "accepted_count": 900,
+        "correct_count": 900,
+        "wrong_count": 0,
+        "selective_accuracy": 1.0,
+        "selective_risk": 0.0,
+        "selective_risk_wilson_95_ci": [
+          0.0,
+          0.0043
+        ]
+      },
+      "safety_metrics": {
+        "fault_samples_evaluated": 600,
+        "faults_called_normal": 0,
+        "rule_of_three_upper_bound_95": 0.005,
+        "normal_operation_samples": 300,
+        "normal_operation_recall": 1.0
+      },
+      "calibration_metrics": {
+        "conformal_empirical_coverage": 0.5,
+        "accepted_only_ece": 0.18
+      },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 150,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
+      "latency_ms": {
+        "p50": 1500.84,
+        "p95": 6362.2
+      },
+      "per_class": {
+        "device_hardware_failure": {
+          "total": 300,
+          "diagnosed": 300,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 300,
+          "accuracy": 1.0
+        },
+        "link_congestion": {
+          "total": 300,
+          "diagnosed": 300,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 300,
+          "accuracy": 1.0
+        },
+        "normal_operation": {
+          "total": 300,
+          "diagnosed": 0,
+          "benign": 300,
+          "abstained": 0,
+          "correct": 300,
+          "accuracy": 1.0
+        }
+      },
+      "by_organizer_class": {
+        "normal": {
+          "split_name": "organizer_normal",
+          "total_samples": 300,
+          "outcomes": {
+            "diagnosed": 0,
+            "benign": 300,
+            "abstained": 0,
+            "accepted": 300,
+            "coverage_pct": 100.0
+          },
+          "selective_metrics": {
+            "accepted_count": 300,
+            "correct_count": 300,
+            "wrong_count": 0,
+            "selective_accuracy": 1.0,
+            "selective_risk": 0.0,
+            "selective_risk_wilson_95_ci": [
+              0.0,
+              0.0126
+            ]
+          },
+          "safety_metrics": {
+            "fault_samples_evaluated": 0,
+            "faults_called_normal": 0,
+            "rule_of_three_upper_bound_95": 0.0,
+            "normal_operation_samples": 300,
+            "normal_operation_recall": 1.0
+          },
+          "calibration_metrics": {
+            "conformal_empirical_coverage": 1.0,
+            "accepted_only_ece": 0.0
+          },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
+          "latency_ms": {
+            "p50": 1352.06,
+            "p95": 6253.51
+          },
+          "per_class": {
+            "normal_operation": {
+              "total": 300,
+              "diagnosed": 0,
+              "benign": 300,
+              "abstained": 0,
+              "correct": 300,
+              "accuracy": 1.0
+            }
+          }
+        },
+        "latency_spike": {
+          "split_name": "organizer_latency_spike",
+          "total_samples": 300,
+          "outcomes": {
+            "diagnosed": 300,
+            "benign": 0,
+            "abstained": 0,
+            "accepted": 300,
+            "coverage_pct": 100.0
+          },
+          "selective_metrics": {
+            "accepted_count": 300,
+            "correct_count": 300,
+            "wrong_count": 0,
+            "selective_accuracy": 1.0,
+            "selective_risk": 0.0,
+            "selective_risk_wilson_95_ci": [
+              0.0,
+              0.0126
+            ]
+          },
+          "safety_metrics": {
+            "fault_samples_evaluated": 300,
+            "faults_called_normal": 0,
+            "rule_of_three_upper_bound_95": 0.01,
+            "normal_operation_samples": 0,
+            "normal_operation_recall": 0.0
+          },
+          "calibration_metrics": {
+            "conformal_empirical_coverage": 0.5,
+            "accepted_only_ece": 0.3401
+          },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 150,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
+          "latency_ms": {
+            "p50": 1622.15,
+            "p95": 5620.98
+          },
+          "per_class": {
+            "link_congestion": {
+              "total": 300,
+              "diagnosed": 300,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 300,
+              "accuracy": 1.0
+            }
+          }
+        },
+        "hardware_failure": {
+          "split_name": "organizer_hardware_failure",
+          "total_samples": 300,
+          "outcomes": {
+            "diagnosed": 300,
+            "benign": 0,
+            "abstained": 0,
+            "accepted": 300,
+            "coverage_pct": 100.0
+          },
+          "selective_metrics": {
+            "accepted_count": 300,
+            "correct_count": 300,
+            "wrong_count": 0,
+            "selective_accuracy": 1.0,
+            "selective_risk": 0.0,
+            "selective_risk_wilson_95_ci": [
+              0.0,
+              0.0126
+            ]
+          },
+          "safety_metrics": {
+            "fault_samples_evaluated": 300,
+            "faults_called_normal": 0,
+            "rule_of_three_upper_bound_95": 0.01,
+            "normal_operation_samples": 0,
+            "normal_operation_recall": 0.0
+          },
+          "calibration_metrics": {
+            "conformal_empirical_coverage": 0.0,
+            "accepted_only_ece": 0.2
+          },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
+          "latency_ms": {
+            "p50": 1519.68,
+            "p95": 7736.82
+          },
+          "per_class": {
+            "device_hardware_failure": {
+              "total": 300,
+              "diagnosed": 300,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 300,
+              "accuracy": 1.0
+            }
+          }
+        }
+      }
+    },
+    "interop_suite": {
+      "split_name": "interop_suite_8_gateway",
+      "total_samples": 8,
+      "outcomes": {
+        "diagnosed": 8,
+        "benign": 0,
+        "abstained": 0,
+        "accepted": 8,
+        "coverage_pct": 100.0
+      },
+      "selective_metrics": {
+        "accepted_count": 8,
+        "correct_count": 8,
+        "wrong_count": 0,
+        "selective_accuracy": 1.0,
+        "selective_risk": 0.0,
+        "selective_risk_wilson_95_ci": [
+          0.0,
+          0.3244
+        ]
+      },
+      "safety_metrics": {
+        "fault_samples_evaluated": 8,
+        "faults_called_normal": 0,
+        "rule_of_three_upper_bound_95": 0.375,
+        "normal_operation_samples": 0,
+        "normal_operation_recall": 0.0
+      },
+      "calibration_metrics": {
+        "conformal_empirical_coverage": 0.75,
+        "accepted_only_ece": 0.1799
+      },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 2,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
+      "latency_ms": {
+        "p50": 314.59,
+        "p95": 1167.6
+      },
+      "per_class": {
+        "link_congestion": {
+          "total": 8,
+          "diagnosed": 8,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 8,
+          "accuracy": 1.0
+        }
+      }
+    },
+    "evidence_suite": {
+      "split_name": "evidence_suite_7",
+      "total_samples": 7,
+      "outcomes": {
+        "diagnosed": 4,
+        "benign": 0,
+        "abstained": 3,
+        "accepted": 4,
+        "coverage_pct": 57.14
+      },
+      "selective_metrics": {
+        "accepted_count": 4,
+        "correct_count": 4,
+        "wrong_count": 0,
+        "selective_accuracy": 1.0,
+        "selective_risk": 0.0,
+        "selective_risk_wilson_95_ci": [
+          0.0,
+          0.4899
+        ]
+      },
+      "safety_metrics": {
+        "fault_samples_evaluated": 4,
+        "faults_called_normal": 0,
+        "rule_of_three_upper_bound_95": 0.75,
+        "normal_operation_samples": 0,
+        "normal_operation_recall": 0.0
+      },
+      "calibration_metrics": {
+        "conformal_empirical_coverage": 0.7143,
+        "accepted_only_ece": 0.0428
+      },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 0,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
+      "latency_ms": {
+        "p50": 324.51,
+        "p95": 366.08
+      },
+      "per_class": {
+        "ambiguous_multi_fault": {
+          "total": 1,
+          "diagnosed": 0,
+          "benign": 0,
+          "abstained": 1,
+          "correct": 1,
+          "accuracy": 1.0
+        },
+        "ethernet_interface_fault": {
+          "total": 1,
+          "diagnosed": 1,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 1,
+          "accuracy": 1.0
+        },
+        "insufficient_data": {
+          "total": 2,
+          "diagnosed": 0,
+          "benign": 0,
+          "abstained": 2,
+          "correct": 2,
+          "accuracy": 1.0
+        },
+        "link_congestion": {
+          "total": 2,
+          "diagnosed": 2,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 2,
+          "accuracy": 1.0
+        },
+        "mtu_mismatch_blackhole": {
+          "total": 1,
+          "diagnosed": 1,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 1,
+          "accuracy": 1.0
+        }
+      }
+    },
+    "noise_stress": {
+      "split_name": "noise_stress_suite",
+      "total_samples": 500,
+      "outcomes": {
+        "diagnosed": 349,
+        "benign": 50,
+        "abstained": 101,
+        "accepted": 399,
+        "coverage_pct": 79.8
+      },
+      "selective_metrics": {
+        "accepted_count": 399,
+        "correct_count": 399,
+        "wrong_count": 0,
+        "selective_accuracy": 1.0,
+        "selective_risk": 0.0,
+        "selective_risk_wilson_95_ci": [
+          0.0,
+          0.0095
+        ]
+      },
+      "safety_metrics": {
+        "fault_samples_evaluated": 350,
+        "faults_called_normal": 0,
+        "rule_of_three_upper_bound_95": 0.0086,
+        "normal_operation_samples": 50,
+        "normal_operation_recall": 1.0
+      },
+      "calibration_metrics": {
+        "conformal_empirical_coverage": 0.888,
+        "accepted_only_ece": 0.0507
+      },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 0,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
+      "latency_ms": {
+        "p50": 2457.12,
+        "p95": 7388.26
+      },
+      "per_class": {
+        "ambiguous_multi_fault": {
+          "total": 50,
+          "diagnosed": 0,
+          "benign": 0,
+          "abstained": 50,
+          "correct": 50,
+          "accuracy": 1.0
+        },
+        "device_cpu_overload": {
+          "total": 50,
+          "diagnosed": 49,
+          "benign": 0,
+          "abstained": 1,
+          "correct": 49,
+          "accuracy": 0.98
+        },
+        "dhcp_failure": {
+          "total": 50,
+          "diagnosed": 50,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 50,
+          "accuracy": 1.0
+        },
+        "dns_failure": {
+          "total": 50,
+          "diagnosed": 50,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 50,
+          "accuracy": 1.0
+        },
+        "ethernet_interface_fault": {
+          "total": 50,
+          "diagnosed": 50,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 50,
+          "accuracy": 1.0
+        },
+        "insufficient_data": {
+          "total": 50,
+          "diagnosed": 0,
+          "benign": 0,
+          "abstained": 50,
+          "correct": 50,
+          "accuracy": 1.0
+        },
+        "link_congestion": {
+          "total": 50,
+          "diagnosed": 50,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 50,
+          "accuracy": 1.0
+        },
+        "normal_operation": {
+          "total": 50,
+          "diagnosed": 0,
+          "benign": 50,
+          "abstained": 0,
+          "correct": 50,
+          "accuracy": 1.0
+        },
+        "upstream_failure_cascade": {
+          "total": 50,
+          "diagnosed": 50,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 50,
+          "accuracy": 1.0
+        },
+        "weak_wifi_signal": {
+          "total": 50,
+          "diagnosed": 50,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 50,
+          "accuracy": 1.0
+        }
+      },
+      "by_noise_level": {
+        "0.0": {
+          "split_name": "noise_0.0",
+          "total_samples": 100,
+          "outcomes": {
+            "diagnosed": 70,
+            "benign": 10,
+            "abstained": 20,
+            "accepted": 80,
+            "coverage_pct": 80.0
+          },
+          "selective_metrics": {
+            "accepted_count": 80,
+            "correct_count": 80,
+            "wrong_count": 0,
+            "selective_accuracy": 1.0,
+            "selective_risk": 0.0,
+            "selective_risk_wilson_95_ci": [
+              0.0,
+              0.0458
+            ]
+          },
+          "safety_metrics": {
+            "fault_samples_evaluated": 70,
+            "faults_called_normal": 0,
+            "rule_of_three_upper_bound_95": 0.0429,
+            "normal_operation_samples": 10,
+            "normal_operation_recall": 1.0
+          },
+          "calibration_metrics": {
+            "conformal_empirical_coverage": 0.89,
+            "accepted_only_ece": 0.0508
+          },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
+          "latency_ms": {
+            "p50": 1661.21,
+            "p95": 7621.91
+          },
+          "per_class": {
+            "ambiguous_multi_fault": {
+              "total": 10,
+              "diagnosed": 0,
+              "benign": 0,
+              "abstained": 10,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "device_cpu_overload": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "dhcp_failure": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "dns_failure": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "ethernet_interface_fault": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "insufficient_data": {
+              "total": 10,
+              "diagnosed": 0,
+              "benign": 0,
+              "abstained": 10,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "link_congestion": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "normal_operation": {
+              "total": 10,
+              "diagnosed": 0,
+              "benign": 10,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "upstream_failure_cascade": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "weak_wifi_signal": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            }
+          }
+        },
+        "0.05": {
+          "split_name": "noise_0.05",
+          "total_samples": 100,
+          "outcomes": {
+            "diagnosed": 70,
+            "benign": 10,
+            "abstained": 20,
+            "accepted": 80,
+            "coverage_pct": 80.0
+          },
+          "selective_metrics": {
+            "accepted_count": 80,
+            "correct_count": 80,
+            "wrong_count": 0,
+            "selective_accuracy": 1.0,
+            "selective_risk": 0.0,
+            "selective_risk_wilson_95_ci": [
+              0.0,
+              0.0458
+            ]
+          },
+          "safety_metrics": {
+            "fault_samples_evaluated": 70,
+            "faults_called_normal": 0,
+            "rule_of_three_upper_bound_95": 0.0429,
+            "normal_operation_samples": 10,
+            "normal_operation_recall": 1.0
+          },
+          "calibration_metrics": {
+            "conformal_empirical_coverage": 0.89,
+            "accepted_only_ece": 0.0494
+          },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
+          "latency_ms": {
+            "p50": 2946.99,
+            "p95": 7212.29
+          },
+          "per_class": {
+            "ambiguous_multi_fault": {
+              "total": 10,
+              "diagnosed": 0,
+              "benign": 0,
+              "abstained": 10,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "device_cpu_overload": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "dhcp_failure": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "dns_failure": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "ethernet_interface_fault": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "insufficient_data": {
+              "total": 10,
+              "diagnosed": 0,
+              "benign": 0,
+              "abstained": 10,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "link_congestion": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "normal_operation": {
+              "total": 10,
+              "diagnosed": 0,
+              "benign": 10,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "upstream_failure_cascade": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "weak_wifi_signal": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            }
+          }
+        },
+        "0.1": {
+          "split_name": "noise_0.1",
+          "total_samples": 100,
+          "outcomes": {
+            "diagnosed": 70,
+            "benign": 10,
+            "abstained": 20,
+            "accepted": 80,
+            "coverage_pct": 80.0
+          },
+          "selective_metrics": {
+            "accepted_count": 80,
+            "correct_count": 80,
+            "wrong_count": 0,
+            "selective_accuracy": 1.0,
+            "selective_risk": 0.0,
+            "selective_risk_wilson_95_ci": [
+              0.0,
+              0.0458
+            ]
+          },
+          "safety_metrics": {
+            "fault_samples_evaluated": 70,
+            "faults_called_normal": 0,
+            "rule_of_three_upper_bound_95": 0.0429,
+            "normal_operation_samples": 10,
+            "normal_operation_recall": 1.0
+          },
+          "calibration_metrics": {
+            "conformal_empirical_coverage": 0.89,
+            "accepted_only_ece": 0.0499
+          },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
+          "latency_ms": {
+            "p50": 2525.2,
+            "p95": 6912.95
+          },
+          "per_class": {
+            "ambiguous_multi_fault": {
+              "total": 10,
+              "diagnosed": 0,
+              "benign": 0,
+              "abstained": 10,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "device_cpu_overload": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "dhcp_failure": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "dns_failure": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "ethernet_interface_fault": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "insufficient_data": {
+              "total": 10,
+              "diagnosed": 0,
+              "benign": 0,
+              "abstained": 10,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "link_congestion": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "normal_operation": {
+              "total": 10,
+              "diagnosed": 0,
+              "benign": 10,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "upstream_failure_cascade": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "weak_wifi_signal": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            }
+          }
+        },
+        "0.2": {
+          "split_name": "noise_0.2",
+          "total_samples": 100,
+          "outcomes": {
+            "diagnosed": 70,
+            "benign": 10,
+            "abstained": 20,
+            "accepted": 80,
+            "coverage_pct": 80.0
+          },
+          "selective_metrics": {
+            "accepted_count": 80,
+            "correct_count": 80,
+            "wrong_count": 0,
+            "selective_accuracy": 1.0,
+            "selective_risk": 0.0,
+            "selective_risk_wilson_95_ci": [
+              0.0,
+              0.0458
+            ]
+          },
+          "safety_metrics": {
+            "fault_samples_evaluated": 70,
+            "faults_called_normal": 0,
+            "rule_of_three_upper_bound_95": 0.0429,
+            "normal_operation_samples": 10,
+            "normal_operation_recall": 1.0
+          },
+          "calibration_metrics": {
+            "conformal_empirical_coverage": 0.89,
+            "accepted_only_ece": 0.0511
+          },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
+          "latency_ms": {
+            "p50": 2511.62,
+            "p95": 8008.89
+          },
+          "per_class": {
+            "ambiguous_multi_fault": {
+              "total": 10,
+              "diagnosed": 0,
+              "benign": 0,
+              "abstained": 10,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "device_cpu_overload": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "dhcp_failure": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "dns_failure": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "ethernet_interface_fault": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "insufficient_data": {
+              "total": 10,
+              "diagnosed": 0,
+              "benign": 0,
+              "abstained": 10,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "link_congestion": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "normal_operation": {
+              "total": 10,
+              "diagnosed": 0,
+              "benign": 10,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "upstream_failure_cascade": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "weak_wifi_signal": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            }
+          }
+        },
+        "0.35": {
+          "split_name": "noise_0.35",
+          "total_samples": 100,
+          "outcomes": {
+            "diagnosed": 69,
+            "benign": 10,
+            "abstained": 21,
+            "accepted": 79,
+            "coverage_pct": 79.0
+          },
+          "selective_metrics": {
+            "accepted_count": 79,
+            "correct_count": 79,
+            "wrong_count": 0,
+            "selective_accuracy": 1.0,
+            "selective_risk": 0.0,
+            "selective_risk_wilson_95_ci": [
+              0.0,
+              0.0464
+            ]
+          },
+          "safety_metrics": {
+            "fault_samples_evaluated": 70,
+            "faults_called_normal": 0,
+            "rule_of_three_upper_bound_95": 0.0429,
+            "normal_operation_samples": 10,
+            "normal_operation_recall": 1.0
+          },
+          "calibration_metrics": {
+            "conformal_empirical_coverage": 0.88,
+            "accepted_only_ece": 0.052
+          },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
+          "latency_ms": {
+            "p50": 2251.55,
+            "p95": 6277.52
+          },
+          "per_class": {
+            "ambiguous_multi_fault": {
+              "total": 10,
+              "diagnosed": 0,
+              "benign": 0,
+              "abstained": 10,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "device_cpu_overload": {
+              "total": 10,
+              "diagnosed": 9,
+              "benign": 0,
+              "abstained": 1,
+              "correct": 9,
+              "accuracy": 0.9
+            },
+            "dhcp_failure": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "dns_failure": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "ethernet_interface_fault": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "insufficient_data": {
+              "total": 10,
+              "diagnosed": 0,
+              "benign": 0,
+              "abstained": 10,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "link_congestion": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "normal_operation": {
+              "total": 10,
+              "diagnosed": 0,
+              "benign": 10,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "upstream_failure_cascade": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            },
+            "weak_wifi_signal": {
+              "total": 10,
+              "diagnosed": 10,
+              "benign": 0,
+              "abstained": 0,
+              "correct": 10,
+              "accuracy": 1.0
+            }
+          }
+        }
+      }
+    }
+  },
+  "baselines": {
+    "frozen_sample_count": 100,
+    "full_system": {
+      "split_name": "full_system_frozen",
+      "total_samples": 100,
+      "outcomes": {
+        "diagnosed": 70,
+        "benign": 10,
+        "abstained": 20,
+        "accepted": 80,
+        "coverage_pct": 80.0
+      },
+      "selective_metrics": {
+        "accepted_count": 80,
+        "correct_count": 80,
+        "wrong_count": 0,
+        "selective_accuracy": 1.0,
+        "selective_risk": 0.0,
+        "selective_risk_wilson_95_ci": [
+          0.0,
+          0.0458
+        ]
+      },
+      "safety_metrics": {
+        "fault_samples_evaluated": 70,
+        "faults_called_normal": 0,
+        "rule_of_three_upper_bound_95": 0.0429,
+        "normal_operation_samples": 10,
+        "normal_operation_recall": 1.0
+      },
+      "calibration_metrics": {
+        "conformal_empirical_coverage": 0.89,
+        "accepted_only_ece": 0.0502
+      },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 0,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
+      "latency_ms": {
+        "p50": 415.86,
+        "p95": 1262.96
+      },
+      "per_class": {
+        "ambiguous_multi_fault": {
+          "total": 10,
+          "diagnosed": 0,
+          "benign": 0,
+          "abstained": 10,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "device_cpu_overload": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "dhcp_failure": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "dns_failure": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "ethernet_interface_fault": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "insufficient_data": {
+          "total": 10,
+          "diagnosed": 0,
+          "benign": 0,
+          "abstained": 10,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "link_congestion": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "normal_operation": {
+          "total": 10,
+          "diagnosed": 0,
+          "benign": 10,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "upstream_failure_cascade": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "weak_wifi_signal": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        }
+      }
+    },
+    "threshold_rules_only": {
+      "split_name": "baseline_threshold_rules_only",
+      "total_samples": 100,
+      "outcomes": {
+        "diagnosed": 68,
+        "benign": 0,
+        "abstained": 32,
+        "accepted": 68,
+        "coverage_pct": 68.0
+      },
+      "selective_metrics": {
+        "accepted_count": 68,
+        "correct_count": 68,
+        "wrong_count": 0,
+        "selective_accuracy": 1.0,
+        "selective_risk": 0.0,
+        "selective_risk_wilson_95_ci": [
+          0.0,
+          0.0535
+        ]
+      },
+      "safety_metrics": {
+        "fault_samples_evaluated": 70,
+        "faults_called_normal": 0,
+        "rule_of_three_upper_bound_95": 0.0429,
+        "normal_operation_samples": 10,
+        "normal_operation_recall": 0.0
+      },
+      "calibration_metrics": {
+        "conformal_empirical_coverage": 0.0,
+        "accepted_only_ece": 0.122
+      },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 0,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
+      "latency_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "per_class": {
+        "ambiguous_multi_fault": {
+          "total": 10,
+          "diagnosed": 0,
+          "benign": 0,
+          "abstained": 10,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "device_cpu_overload": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "dhcp_failure": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "dns_failure": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "ethernet_interface_fault": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "insufficient_data": {
+          "total": 10,
+          "diagnosed": 0,
+          "benign": 0,
+          "abstained": 10,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "link_congestion": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "normal_operation": {
+          "total": 10,
+          "diagnosed": 0,
+          "benign": 0,
+          "abstained": 10,
+          "correct": 0,
+          "accuracy": 0.0
+        },
+        "upstream_failure_cascade": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "weak_wifi_signal": {
+          "total": 10,
+          "diagnosed": 8,
+          "benign": 0,
+          "abstained": 2,
+          "correct": 8,
+          "accuracy": 0.8
+        }
+      },
+      "transitions_vs_full": {
+        "identical": 88,
+        "diagnosed_to_abstain": 0,
+        "diagnosed_to_misdiagnosed": 0,
+        "abstain_to_diagnosed": 12,
+        "abstain_to_misdiagnosed": 0,
+        "misdiagnosed_to_abstain": 0,
+        "misdiagnosed_to_diagnosed": 0
+      }
+    },
+    "classifier_only": {
+      "split_name": "baseline_classifier_only",
+      "total_samples": 100,
+      "outcomes": {
+        "diagnosed": 81,
+        "benign": 10,
+        "abstained": 9,
+        "accepted": 91,
+        "coverage_pct": 91.0
+      },
+      "selective_metrics": {
+        "accepted_count": 91,
+        "correct_count": 38,
+        "wrong_count": 53,
+        "selective_accuracy": 0.4176,
+        "selective_risk": 0.5824,
+        "selective_risk_wilson_95_ci": [
+          0.4798,
+          0.6784
+        ]
+      },
+      "safety_metrics": {
+        "fault_samples_evaluated": 70,
+        "faults_called_normal": 0,
+        "rule_of_three_upper_bound_95": 0.0429,
+        "normal_operation_samples": 10,
+        "normal_operation_recall": 1.0
+      },
+      "calibration_metrics": {
+        "conformal_empirical_coverage": 0.0,
+        "accepted_only_ece": 0.5824
+      },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 0,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
+      "latency_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "per_class": {
+        "ambiguous_multi_fault": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 0,
+          "accuracy": 0.0
+        },
+        "device_cpu_overload": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 2,
+          "accuracy": 0.2
+        },
+        "dhcp_failure": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 1,
+          "accuracy": 0.1
+        },
+        "dns_failure": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "ethernet_interface_fault": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 3,
+          "accuracy": 0.3
+        },
+        "insufficient_data": {
+          "total": 10,
+          "diagnosed": 1,
+          "benign": 0,
+          "abstained": 9,
+          "correct": 9,
+          "accuracy": 0.9
+        },
+        "link_congestion": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "normal_operation": {
+          "total": 10,
+          "diagnosed": 0,
+          "benign": 10,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "upstream_failure_cascade": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 2,
+          "accuracy": 0.2
+        },
+        "weak_wifi_signal": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 0,
+          "accuracy": 0.0
+        }
+      },
+      "transitions_vs_full": {
+        "identical": 47,
+        "diagnosed_to_abstain": 0,
+        "diagnosed_to_misdiagnosed": 0,
+        "abstain_to_diagnosed": 0,
+        "abstain_to_misdiagnosed": 0,
+        "misdiagnosed_to_abstain": 11,
+        "misdiagnosed_to_diagnosed": 42
+      }
+    },
+    "full_without_inquiry": {
+      "split_name": "baseline_full_without_inquiry",
+      "total_samples": 100,
+      "outcomes": {
+        "diagnosed": 70,
+        "benign": 10,
+        "abstained": 20,
+        "accepted": 80,
+        "coverage_pct": 80.0
+      },
+      "selective_metrics": {
+        "accepted_count": 80,
+        "correct_count": 80,
+        "wrong_count": 0,
+        "selective_accuracy": 1.0,
+        "selective_risk": 0.0,
+        "selective_risk_wilson_95_ci": [
+          0.0,
+          0.0458
+        ]
+      },
+      "safety_metrics": {
+        "fault_samples_evaluated": 70,
+        "faults_called_normal": 0,
+        "rule_of_three_upper_bound_95": 0.0429,
+        "normal_operation_samples": 10,
+        "normal_operation_recall": 1.0
+      },
+      "calibration_metrics": {
+        "conformal_empirical_coverage": 0.89,
+        "accepted_only_ece": 0.0502
+      },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 0,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
+      "latency_ms": {
+        "p50": 278.43,
+        "p95": 847.53
+      },
+      "per_class": {
+        "ambiguous_multi_fault": {
+          "total": 10,
+          "diagnosed": 0,
+          "benign": 0,
+          "abstained": 10,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "device_cpu_overload": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "dhcp_failure": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "dns_failure": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "ethernet_interface_fault": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "insufficient_data": {
+          "total": 10,
+          "diagnosed": 0,
+          "benign": 0,
+          "abstained": 10,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "link_congestion": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "normal_operation": {
+          "total": 10,
+          "diagnosed": 0,
+          "benign": 10,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "upstream_failure_cascade": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        },
+        "weak_wifi_signal": {
+          "total": 10,
+          "diagnosed": 10,
+          "benign": 0,
+          "abstained": 0,
+          "correct": 10,
+          "accuracy": 1.0
+        }
+      },
+      "transitions_vs_full": {
+        "identical": 100,
+        "diagnosed_to_abstain": 0,
+        "diagnosed_to_misdiagnosed": 0,
+        "abstain_to_diagnosed": 0,
+        "abstain_to_misdiagnosed": 0,
+        "misdiagnosed_to_abstain": 0,
+        "misdiagnosed_to_diagnosed": 0
+      }
+    },
+    "leave_one_agent_out": {
+      "telemetry_agent": {
+        "split_name": "ablation_without_telemetry_agent",
+        "total_samples": 100,
+        "outcomes": {
+          "diagnosed": 20,
+          "benign": 10,
+          "abstained": 70,
+          "accepted": 30,
+          "coverage_pct": 30.0
+        },
+        "selective_metrics": {
+          "accepted_count": 30,
+          "correct_count": 30,
+          "wrong_count": 0,
+          "selective_accuracy": 1.0,
+          "selective_risk": 0.0,
+          "selective_risk_wilson_95_ci": [
+            0.0,
+            0.1135
+          ]
+        },
+        "safety_metrics": {
+          "fault_samples_evaluated": 70,
+          "faults_called_normal": 0,
+          "rule_of_three_upper_bound_95": 0.0429,
+          "normal_operation_samples": 10,
+          "normal_operation_recall": 1.0
+        },
+        "calibration_metrics": {
+          "conformal_empirical_coverage": 0.89,
+          "accepted_only_ece": 0.0313
+        },
+        "confidence_distribution": {
+          "accepted_confidence_under_0_70": 0,
+          "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+        },
+        "latency_ms": {
+          "p50": 371.72,
+          "p95": 1228.58
+        },
+        "per_class": {
+          "ambiguous_multi_fault": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 0,
+            "abstained": 10,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "device_cpu_overload": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 0,
+            "abstained": 10,
+            "correct": 0,
+            "accuracy": 0.0
+          },
+          "dhcp_failure": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "dns_failure": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "ethernet_interface_fault": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 0,
+            "abstained": 10,
+            "correct": 0,
+            "accuracy": 0.0
+          },
+          "insufficient_data": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 0,
+            "abstained": 10,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "link_congestion": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 0,
+            "abstained": 10,
+            "correct": 0,
+            "accuracy": 0.0
+          },
+          "normal_operation": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 10,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "upstream_failure_cascade": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 0,
+            "abstained": 10,
+            "correct": 0,
+            "accuracy": 0.0
+          },
+          "weak_wifi_signal": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 0,
+            "abstained": 10,
+            "correct": 0,
+            "accuracy": 0.0
+          }
+        },
+        "transitions_vs_full": {
+          "identical": 50,
+          "diagnosed_to_abstain": 0,
+          "diagnosed_to_misdiagnosed": 0,
+          "abstain_to_diagnosed": 50,
+          "abstain_to_misdiagnosed": 0,
+          "misdiagnosed_to_abstain": 0,
+          "misdiagnosed_to_diagnosed": 0
+        }
+      },
+      "topology_agent": {
+        "split_name": "ablation_without_topology_agent",
+        "total_samples": 100,
+        "outcomes": {
+          "diagnosed": 70,
+          "benign": 10,
+          "abstained": 20,
+          "accepted": 80,
+          "coverage_pct": 80.0
+        },
+        "selective_metrics": {
+          "accepted_count": 80,
+          "correct_count": 80,
+          "wrong_count": 0,
+          "selective_accuracy": 1.0,
+          "selective_risk": 0.0,
+          "selective_risk_wilson_95_ci": [
+            0.0,
+            0.0458
+          ]
+        },
+        "safety_metrics": {
+          "fault_samples_evaluated": 70,
+          "faults_called_normal": 0,
+          "rule_of_three_upper_bound_95": 0.0429,
+          "normal_operation_samples": 10,
+          "normal_operation_recall": 1.0
+        },
+        "calibration_metrics": {
+          "conformal_empirical_coverage": 0.89,
+          "accepted_only_ece": 0.0579
+        },
+        "confidence_distribution": {
+          "accepted_confidence_under_0_70": 0,
+          "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+        },
+        "latency_ms": {
+          "p50": 310.58,
+          "p95": 1219.55
+        },
+        "per_class": {
+          "ambiguous_multi_fault": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 0,
+            "abstained": 10,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "device_cpu_overload": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "dhcp_failure": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "dns_failure": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "ethernet_interface_fault": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "insufficient_data": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 0,
+            "abstained": 10,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "link_congestion": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "normal_operation": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 10,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "upstream_failure_cascade": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "weak_wifi_signal": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          }
+        },
+        "transitions_vs_full": {
+          "identical": 100,
+          "diagnosed_to_abstain": 0,
+          "diagnosed_to_misdiagnosed": 0,
+          "abstain_to_diagnosed": 0,
+          "abstain_to_misdiagnosed": 0,
+          "misdiagnosed_to_abstain": 0,
+          "misdiagnosed_to_diagnosed": 0
+        }
+      },
+      "config_agent": {
+        "split_name": "ablation_without_config_agent",
+        "total_samples": 100,
+        "outcomes": {
+          "diagnosed": 70,
+          "benign": 10,
+          "abstained": 20,
+          "accepted": 80,
+          "coverage_pct": 80.0
+        },
+        "selective_metrics": {
+          "accepted_count": 80,
+          "correct_count": 80,
+          "wrong_count": 0,
+          "selective_accuracy": 1.0,
+          "selective_risk": 0.0,
+          "selective_risk_wilson_95_ci": [
+            0.0,
+            0.0458
+          ]
+        },
+        "safety_metrics": {
+          "fault_samples_evaluated": 70,
+          "faults_called_normal": 0,
+          "rule_of_three_upper_bound_95": 0.0429,
+          "normal_operation_samples": 10,
+          "normal_operation_recall": 1.0
+        },
+        "calibration_metrics": {
+          "conformal_empirical_coverage": 0.89,
+          "accepted_only_ece": 0.0502
+        },
+        "confidence_distribution": {
+          "accepted_confidence_under_0_70": 0,
+          "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+        },
+        "latency_ms": {
+          "p50": 347.48,
+          "p95": 1287.74
+        },
+        "per_class": {
+          "ambiguous_multi_fault": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 0,
+            "abstained": 10,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "device_cpu_overload": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "dhcp_failure": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "dns_failure": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "ethernet_interface_fault": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "insufficient_data": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 0,
+            "abstained": 10,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "link_congestion": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "normal_operation": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 10,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "upstream_failure_cascade": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "weak_wifi_signal": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          }
+        },
+        "transitions_vs_full": {
+          "identical": 100,
+          "diagnosed_to_abstain": 0,
+          "diagnosed_to_misdiagnosed": 0,
+          "abstain_to_diagnosed": 0,
+          "abstain_to_misdiagnosed": 0,
+          "misdiagnosed_to_abstain": 0,
+          "misdiagnosed_to_diagnosed": 0
+        }
+      },
+      "log_agent": {
+        "split_name": "ablation_without_log_agent",
+        "total_samples": 100,
+        "outcomes": {
+          "diagnosed": 70,
+          "benign": 10,
+          "abstained": 20,
+          "accepted": 80,
+          "coverage_pct": 80.0
+        },
+        "selective_metrics": {
+          "accepted_count": 80,
+          "correct_count": 80,
+          "wrong_count": 0,
+          "selective_accuracy": 1.0,
+          "selective_risk": 0.0,
+          "selective_risk_wilson_95_ci": [
+            0.0,
+            0.0458
+          ]
+        },
+        "safety_metrics": {
+          "fault_samples_evaluated": 70,
+          "faults_called_normal": 0,
+          "rule_of_three_upper_bound_95": 0.0429,
+          "normal_operation_samples": 10,
+          "normal_operation_recall": 1.0
+        },
+        "calibration_metrics": {
+          "conformal_empirical_coverage": 0.89,
+          "accepted_only_ece": 0.0502
+        },
+        "confidence_distribution": {
+          "accepted_confidence_under_0_70": 0,
+          "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+        },
+        "latency_ms": {
+          "p50": 295.96,
+          "p95": 1236.32
+        },
+        "per_class": {
+          "ambiguous_multi_fault": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 0,
+            "abstained": 10,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "device_cpu_overload": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "dhcp_failure": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "dns_failure": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "ethernet_interface_fault": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "insufficient_data": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 0,
+            "abstained": 10,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "link_congestion": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "normal_operation": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 10,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "upstream_failure_cascade": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "weak_wifi_signal": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          }
+        },
+        "transitions_vs_full": {
+          "identical": 100,
+          "diagnosed_to_abstain": 0,
+          "diagnosed_to_misdiagnosed": 0,
+          "abstain_to_diagnosed": 0,
+          "abstain_to_misdiagnosed": 0,
+          "misdiagnosed_to_abstain": 0,
+          "misdiagnosed_to_diagnosed": 0
+        }
+      },
+      "wifi_services_agent": {
+        "split_name": "ablation_without_wifi_services_agent",
+        "total_samples": 100,
+        "outcomes": {
+          "diagnosed": 68,
+          "benign": 10,
+          "abstained": 22,
+          "accepted": 78,
+          "coverage_pct": 78.0
+        },
+        "selective_metrics": {
+          "accepted_count": 78,
+          "correct_count": 78,
+          "wrong_count": 0,
+          "selective_accuracy": 1.0,
+          "selective_risk": 0.0,
+          "selective_risk_wilson_95_ci": [
+            0.0,
+            0.0469
+          ]
+        },
+        "safety_metrics": {
+          "fault_samples_evaluated": 70,
+          "faults_called_normal": 0,
+          "rule_of_three_upper_bound_95": 0.0429,
+          "normal_operation_samples": 10,
+          "normal_operation_recall": 1.0
+        },
+        "calibration_metrics": {
+          "conformal_empirical_coverage": 0.89,
+          "accepted_only_ece": 0.0508
+        },
+        "confidence_distribution": {
+          "accepted_confidence_under_0_70": 0,
+          "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+        },
+        "latency_ms": {
+          "p50": 378.47,
+          "p95": 1310.66
+        },
+        "per_class": {
+          "ambiguous_multi_fault": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 0,
+            "abstained": 10,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "device_cpu_overload": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "dhcp_failure": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "dns_failure": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "ethernet_interface_fault": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "insufficient_data": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 0,
+            "abstained": 10,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "link_congestion": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "normal_operation": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 10,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "upstream_failure_cascade": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "weak_wifi_signal": {
+            "total": 10,
+            "diagnosed": 8,
+            "benign": 0,
+            "abstained": 2,
+            "correct": 8,
+            "accuracy": 0.8
+          }
+        },
+        "transitions_vs_full": {
+          "identical": 98,
+          "diagnosed_to_abstain": 0,
+          "diagnosed_to_misdiagnosed": 0,
+          "abstain_to_diagnosed": 2,
+          "abstain_to_misdiagnosed": 0,
+          "misdiagnosed_to_abstain": 0,
+          "misdiagnosed_to_diagnosed": 0
+        }
+      },
+      "classifier_agent": {
+        "split_name": "ablation_without_classifier_agent",
+        "total_samples": 100,
+        "outcomes": {
+          "diagnosed": 70,
+          "benign": 10,
+          "abstained": 20,
+          "accepted": 80,
+          "coverage_pct": 80.0
+        },
+        "selective_metrics": {
+          "accepted_count": 80,
+          "correct_count": 80,
+          "wrong_count": 0,
+          "selective_accuracy": 1.0,
+          "selective_risk": 0.0,
+          "selective_risk_wilson_95_ci": [
+            0.0,
+            0.0458
+          ]
+        },
+        "safety_metrics": {
+          "fault_samples_evaluated": 70,
+          "faults_called_normal": 0,
+          "rule_of_three_upper_bound_95": 0.0429,
+          "normal_operation_samples": 10,
+          "normal_operation_recall": 1.0
+        },
+        "calibration_metrics": {
+          "conformal_empirical_coverage": 0.9,
+          "accepted_only_ece": 0.0913
+        },
+        "confidence_distribution": {
+          "accepted_confidence_under_0_70": 0,
+          "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+        },
+        "latency_ms": {
+          "p50": 287.13,
+          "p95": 906.05
+        },
+        "per_class": {
+          "ambiguous_multi_fault": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 0,
+            "abstained": 10,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "device_cpu_overload": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "dhcp_failure": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "dns_failure": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "ethernet_interface_fault": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "insufficient_data": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 0,
+            "abstained": 10,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "link_congestion": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "normal_operation": {
+            "total": 10,
+            "diagnosed": 0,
+            "benign": 10,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "upstream_failure_cascade": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          },
+          "weak_wifi_signal": {
+            "total": 10,
+            "diagnosed": 10,
+            "benign": 0,
+            "abstained": 0,
+            "correct": 10,
+            "accuracy": 1.0
+          }
+        },
+        "transitions_vs_full": {
+          "identical": 100,
+          "diagnosed_to_abstain": 0,
+          "diagnosed_to_misdiagnosed": 0,
+          "abstain_to_diagnosed": 0,
+          "abstain_to_misdiagnosed": 0,
+          "misdiagnosed_to_abstain": 0,
+          "misdiagnosed_to_diagnosed": 0
+        },
+        "mechanics_verification": "Verified: Removing classifier_agent prevents node_dispatch from querying the classifier, leaving calibrated_probabilities empty and model_score equal to rules_score. On this in-distribution frozen set, deterministic multi-signal domain rules fired with >= 2 independent domains for all accepted cases; thus decisions are identical."
+      }
+    }
+  },
+  "latency": {
+    "mode": "Dual: TestClient (in-process) and HTTP Microservice (real sockets)",
+    "in_process_testclient": {
+      "runs_evaluated": 200,
+      "p50_latency_ms": 2484.32,
+      "p95_latency_ms": 3335.91,
+      "p99_latency_ms": 3924.85,
+      "mean_latency_ms": 2629.23
+    },
+    "real_socket_microservice": {
+      "runs_evaluated": 50,
+      "p50_latency_ms": 2498.44,
+      "p95_latency_ms": 3067.76,
+      "p99_latency_ms": 3639.16,
+      "mean_latency_ms": 2589.63
+    },
+    "runs_evaluated": 200,
+    "p50_latency_ms": 2484.32,
+    "p95_latency_ms": 3335.91,
+    "p99_latency_ms": 3924.85,
+    "mean_latency_ms": 2629.23,
+    "min_latency_ms": 2298.09,
+    "max_latency_ms": 4547.93
+  },
+  "determinism": {
+    "seeds_tested": 50,
+    "differing_seeds_count": 0,
+    "differing_seeds": [],
+    "is_perfectly_deterministic": true
+  }
+}

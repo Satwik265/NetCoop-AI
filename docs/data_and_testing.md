@@ -94,6 +94,8 @@ The repository provides a library of scenarios in `data/scenarios/` accompanied 
 - `upstream_failure_cascade.json`: Upstream core router link down, secondary trunks saturated; expected status: `diagnosed`.
 - `ambiguous_multi_fault.json`: Simultaneous conflicting faults; expected status: `insufficient_evidence`.
 - `insufficient_data.json`: Sparse single record with missing fields; expected status: `insufficient_evidence`.
+- `compound_cpu_and_link.json`: Simultaneous CPU overload and transit link congestion; expected status: `insufficient_evidence` (disciplined multi-domain abstention).
+- `compound_wifi_and_dns.json`: Simultaneous Wi-Fi signal degradation and DNS failure; expected status: `insufficient_evidence` (disciplined multi-domain abstention).
 
 ### 5.2 Interoperability Failure Variants
 - `interop_renamed_fields.json`: Evaluates field alias adaptation.
@@ -104,7 +106,7 @@ The repository provides a library of scenarios in `data/scenarios/` accompanied 
 - `interop_null_nan.json`: Evaluates string null and NaN sanitization.
 - `interop_duplicate_out_of_order.json`: Evaluates timestamp deduplication and reordering.
 - `interop_clock_skew.json`: Evaluates clock drift resilience.
-- `interop_malformed_json.json`: Evaluates tolerant JSON parsing.
+- `interop_malformed_json.json`: Evaluates tolerant JSON parsing via Gateway raw text fallback (rejected as HTTP 422 at standard API boundary).
 
 ---
 
@@ -120,14 +122,14 @@ The repository provides a library of scenarios in `data/scenarios/` accompanied 
 - `tests/test_scenarios.py`: End-to-end integration across benchmark scenarios.
 
 ### 6.2 Ground-Truth Benchmark
-Run the automated benchmark across all 19 scenarios:
+Run the automated benchmark across all 21 manifest scenarios:
 ```bash
 python scripts/eval_benchmark.py
 # or
 make eval
 ```
 Benchmark asserts:
-- Diagnosed status and confidence >= target threshold for all fault scenarios.
-- Insufficient evidence status and confidence == 0 for ambiguous and sparse scenarios.
-- 100% pass rate across all interoperability failure variants.
+- Diagnosed status and confidence >= target threshold for all single-domain fault scenarios.
+- Insufficient evidence status and confidence == 0 for ambiguous, sparse, and compound multi-fault scenarios.
+- 100% pass rate across valid interoperability failure variants when routed through Gateway normalization; invalid raw JSON is rejected at API/CLI boundaries as HTTP 422 / error exit code by design.
 

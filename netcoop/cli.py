@@ -146,8 +146,20 @@ def diagnose_cmd(
         )
     )
 
+    # Route through authoritative normalization boundary
+    from gateway.adapters.organizer_adapter import OrganizerAdapter
+    canonical_data = OrganizerAdapter.adapt_dataset(incident_data)
+
+    dq = canonical_data.get("data_quality", {})
+    val_errors = dq.get("validation_errors", [])
+    if val_errors:
+        console.print(
+            f"[dim yellow]Data Quality Notice: Score {dq.get('overall_score', 1.0)} — "
+            f"{len(val_errors)} validation alerts processed.[/dim yellow]"
+        )
+
     with console.status("[dim]Orchestrating agents and cross-correlating evidence...[/dim]"):
-        report = run_diagnosis(incident_data)
+        report = run_diagnosis(canonical_data)
 
     status_style = "green" if report.status == "diagnosed" else "yellow"
     summary_panel = (

@@ -188,28 +188,81 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # JWT Signing Secret & Production Fail-Safe
 # -----------------------------------------------------------------------------
 
+INSECURE_JWT_DEFAULTS: Set[str] = {
+    "netcoop-production-signing-secret-key-change-in-production-env",
+    "change-this-in-production-netcoop-secret-key-32chars",
+    "development-jwt-secret-key-do-not-use-in-production",
+    "secret",
+    "jwt-secret",
+    "changeme",
+    "change-me",
+    "password",
+    "admin",
+    "12345678",
+    "netcoop",
+}
+
+
+def validate_jwt_secret_strength(secret: Optional[str], is_prod: bool) -> Tuple[bool, str]:
+    """Validate JWT secret strength.
+    In production mode, the secret must be explicitly provided, at least 32 characters,
+    and not match any known placeholder or default.
+    """
+    if is_prod:
+        if not secret or not secret.strip():
+            return False, "Insecure production configuration: NETCOOP_JWT_SECRET is missing or empty in production mode."
+        cleaned = secret.strip()
+        if (
+            cleaned in INSECURE_JWT_DEFAULTS
+            or cleaned.lower() in INSECURE_JWT_DEFAULTS
+            or any(kw in cleaned.lower() for kw in ("change-me", "change-in-production", "change-this", "placeholder"))
+        ):
+            return False, "Insecure production configuration: NETCOOP_JWT_SECRET matches a known insecure default placeholder."
+        if len(cleaned) < 32:
+            return False, f"Insecure production configuration: NETCOOP_JWT_SECRET must be at least 32 characters in production (got {len(cleaned)})."
+    return True, "OK"
+
+
 def get_jwt_secret() -> str:
     """Retrieve active signing key and enforce production strength."""
-    env = os.getenv("NETCOOP_ENV", settings.environment).lower()
+    is_prod = settings.is_production
     secret = os.getenv("NETCOOP_JWT_SECRET", settings.jwt_secret_key)
-    is_render = os.getenv("RENDER") == "true"
-    if is_render and (not secret or secret in {
-        "netcoop-production-signing-secret-key-change-in-production-env",
-        "change-this-in-production-netcoop-secret-key-32chars",
-        "development-jwt-secret-key-do-not-use-in-production",
-    }):
-        return "render-cloud-demo-signing-secret-key-2026-netcoop-ai-hackathon"
-    if env == "production":
-        insecure_defaults = {
-            "netcoop-production-signing-secret-key-change-in-production-env",
-            "change-this-in-production-netcoop-secret-key-32chars",
-            "development-jwt-secret-key-do-not-use-in-production",
-        }
-        if not secret or secret in insecure_defaults or len(secret) < 32:
-            raise ValueError(
-                "Insecure production configuration: NETCOOP_JWT_SECRET must be explicitly set and at least 32 characters in production."
-            )
+    valid, reason = validate_jwt_secret_strength(secret, is_prod)
+    if not valid:
+        raise ValueError(reason)
     return secret
+
+
+def get_jwt_verification_secrets() -> List[str]:
+    """Retrieve all valid secrets for verifying incoming tokens, supporting key rotation."""
+    active_secret = get_jwt_secret()
+    secrets_list = [active_secret]
+    rotation_env = os.getenv("NETCOOP_JWT_ROTATION_SECRETS", "").strip()
+    if rotation_env:
+        for rot_key in rotation_env.split(","):
+            cleaned = rot_key.strip()
+            if cleaned and cleaned not in secrets_list:
+                secrets_list.append(cleaned)
+    return secrets_list
+
+
+def validate_security_configuration_at_startup() -> None:
+    """Validate critical security configurations at application startup.
+    Fails closed in production if secrets are absent, weak, or known placeholders.
+    """
+    is_prod = settings.is_production
+    # 1. Validate JWT Signing Secret
+    jwt_secret = os.getenv("NETCOOP_JWT_SECRET", settings.jwt_secret_key)
+    valid_jwt, jwt_reason = validate_jwt_secret_strength(jwt_secret, is_prod)
+    if not valid_jwt:
+        raise ValueError(f"Startup Security Check Failed: {jwt_reason}")
+
+    # 2. Validate Internal Service Token in production mode or if enforcement is enabled
+    if is_prod:
+        service_token = os.getenv("INTERNAL_SERVICE_TOKEN", settings.internal_service_token)
+        valid_st, st_reason = settings.validate_service_token_strength(service_token)
+        if not valid_st:
+            raise ValueError(f"Startup Security Check Failed: {st_reason}")
 
 
 def create_access_token(
@@ -236,14 +289,32 @@ def create_access_token(
 
 
 def decode_access_token(token: str) -> Dict[str, Any]:
-    """Validate token signature, expiration, issuer, and audience using fixed HS256 algorithm."""
-    return jwt.decode(
-        token,
-        get_jwt_secret(),
-        algorithms=["HS256"],
-        issuer=settings.jwt_issuer,
-        audience=settings.jwt_audience,
-    )
+    """Validate token signature, expiration, issuer, audience, and jti using fixed HS256 algorithm with rotation fallback."""
+    verification_secrets = get_jwt_verification_secrets()
+    last_error: Optional[Exception] = None
+
+    for candidate_secret in verification_secrets:
+        try:
+            return jwt.decode(
+                token,
+                candidate_secret,
+                algorithms=["HS256"],
+                issuer=settings.jwt_issuer,
+                audience=settings.jwt_audience,
+                options={
+                    "require": ["exp", "iss", "aud", "jti"],
+                    "verify_signature": True,
+                },
+            )
+        except (jwt.InvalidSignatureError, jwt.DecodeError) as exc:
+            last_error = exc
+            continue
+        except (jwt.ExpiredSignatureError, jwt.InvalidIssuerError, jwt.InvalidAudienceError, jwt.MissingRequiredClaimError):
+            raise
+
+    if last_error:
+        raise last_error
+    raise jwt.PyJWTError("Could not validate credentials signature.")
 
 
 # -----------------------------------------------------------------------------

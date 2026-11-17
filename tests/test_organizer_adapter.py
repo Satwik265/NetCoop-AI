@@ -79,7 +79,7 @@ def test_adapter_sanitizes_nan_and_null_strings() -> None:
     adapted = OrganizerAdapter.adapt_dataset(raw)
     rec = adapted["telemetry"][0]
     assert rec["wifi_rssi_dbm"] is None
-    assert rec["jitter_ms"] == 1.0  # fallback applied
+    assert rec["jitter_ms"] is None  # sanitized to None without invented fallback
     assert rec["dns_failure_pct"] is None
 
 

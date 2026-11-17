@@ -19,9 +19,9 @@ Confidence cutoffs were selected by evaluating precision-coverage tradeoff curve
 
 | Confidence Category | Target Precision | Empirical Validation Precision | Calibrated Score Cutoff ($\tau$) | Accepted Samples | Correct Predictions | Estimation Status | Operational Meaning |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| **HIGH** | $\ge 95\%$ | **98%** | **0.800** | 530 | 520 | `estimated` | Actionable automated remediation candidates; zero human confirmation required. |
-| **MEDIUM** | $\ge 85\%$ | **97%** | **0.600** | 536 | 525 | `estimated` | Probable diagnosis corroborated by telemetry; recommended for operator review. |
-| **LOW** | $\ge 70\%$ | **97%** | **0.400** | 541 | 526 | `estimated` | Tentative finding requiring further cross-inquiry or additional telemetry samples. |
+| **HIGH** | $\ge 95\%$ | **100%** | **0.800** | 376 | 376 | `estimated` | Actionable automated remediation candidates; zero human confirmation required. |
+| **MEDIUM** | $\ge 85\%$ | **100%** | **0.600** | 376 | 376 | `estimated` | Probable diagnosis corroborated by telemetry; recommended for operator review. |
+| **LOW** | $\ge 70\%$ | **97%** | **0.400** | 387 | 379 | `estimated` | Tentative finding requiring further cross-inquiry or additional telemetry samples. |
 
 > [!NOTE]
 > Cutoffs are derived by scanning validation probability distributions for the minimum threshold $\tau$ satisfying empirical precision targets. If monotonicity enforcement adjusts a threshold, empirical precision and sample counts are recomputed on the validation set for the final threshold.
@@ -34,7 +34,7 @@ Confidence cutoffs were selected by evaluating precision-coverage tradeoff curve
 Using a dedicated conformal calibration split partition ($n = 300$ samples, seeds 226-250) disjoint from the calibrator fitting split (seeds 201-225):
 - **Nonconformity Score**: $s_i = 1 - \min_{y \in Y_i} p_i(y)$ where $Y_i$ is the true set of fault classes. This guarantees exact multi-label set coverage $Y_i \subseteq C(X_i)$.
 - **Conformal Quantile**: $q_\alpha = s_{(k)}$ where $k = \lceil (n + 1)(1 - \alpha) \rceil$ with significance $\alpha = 0.10$.
-- **Calibrated $q_\alpha$ Quantile**: `0.0000` ($p_{min} = 1.0000$).
+- **Calibrated $q_\alpha$ Quantile**: `0.6786` ($p_{min} = 0.3214$).
 
 ### 4.2 Conformal Prediction Set ($S$)
 For an incoming incident:
@@ -48,10 +48,10 @@ $$S = \{ c \in \mathcal{C} \mid p(c) \ge 1 - q_\alpha \}$$
 
 ### 4.4 Theoretical Guarantee and Coverage Bound
 - **Guaranteed In-Distribution Coverage**: Under the exchangeability assumption, the true fault set is contained within prediction set $S$ with probability $\ge 1 - \alpha = 90\%$.
-- **Validation Test Split Coverage**: Observed empirical set coverage on held-out test data is **84.4%**.
+- **Validation Test Split Coverage**: Observed empirical set coverage on held-out test data is **84.6%**.
 - **Distribution Shift Limitation**: Theoretical coverage guarantees strictly require exchangeability between calibration and production data. On distribution-shifted datasets (such as novel topologies, uncalibrated equipment, or hackathon organizer telemetry), exchangeability does not hold; the model degrades gracefully into status **`insufficient_evidence`**, preventing false alarm hallucinations.
 
 ---
 
 ## 5. Expected Calibration Error (ECE)
-- **Held-Out Test Set ECE**: **0.0372** across 10 probability bins.
+- **Held-Out Test Set ECE**: **0.0232** across 10 probability bins.

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth, SEEDED_DEMO_ACCOUNTS } from "../auth/AuthContext";
 
 export const LoginModal: React.FC = () => {
@@ -7,6 +7,16 @@ export const LoginModal: React.FC = () => {
   const [password, setPassword] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isLoginModalOpen && user) {
+        closeLoginModal();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isLoginModalOpen, user, closeLoginModal]);
 
   if (!isLoginModalOpen) return null;
 
@@ -39,12 +49,17 @@ export const LoginModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="login-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+    >
       <div className="w-full max-w-lg bg-[#FFFFFF] dark:bg-[#161618] border border-[#E5E5E3] dark:border-[#2A2A2D] shadow-2xl p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#E5E5E3] dark:border-[#2A2A2D] pb-4">
           <div>
-            <h2 className="text-sm font-semibold tracking-wider uppercase text-[#111111] dark:text-[#EDEDEA]">
+            <h2 id="login-modal-title" className="text-sm font-semibold tracking-wider uppercase text-[#111111] dark:text-[#EDEDEA]">
               Authentication & Role Access Gate
             </h2>
             <p className="text-xs text-[#6B6B66] mt-0.5">
@@ -55,6 +70,7 @@ export const LoginModal: React.FC = () => {
             <button
               onClick={closeLoginModal}
               className="text-xs text-[#6B6B66] hover:text-[#111111] dark:hover:text-[#EDEDEA] uppercase tracking-wider"
+              aria-label="Close authentication dialog"
             >
               Close
             </button>
@@ -63,7 +79,7 @@ export const LoginModal: React.FC = () => {
 
         {/* Error Alert */}
         {errorMessage && (
-          <div className="border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-600 dark:text-red-400">
+          <div className="border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-600 dark:text-red-400" role="alert">
             <span className="font-semibold uppercase tracking-wider block mb-0.5">Authentication Error</span>
             {errorMessage}
           </div>
@@ -72,10 +88,11 @@ export const LoginModal: React.FC = () => {
         {/* Credentials Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs uppercase tracking-wider font-medium text-[#6B6B66] mb-1">
+            <label htmlFor="login-username" className="block text-xs uppercase tracking-wider font-medium text-[#6B6B66] mb-1">
               Username
             </label>
             <input
+              id="login-username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -85,10 +102,11 @@ export const LoginModal: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs uppercase tracking-wider font-medium text-[#6B6B66] mb-1">
+            <label htmlFor="login-password" className="block text-xs uppercase tracking-wider font-medium text-[#6B6B66] mb-1">
               Password
             </label>
             <input
+              id="login-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

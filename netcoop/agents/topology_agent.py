@@ -59,7 +59,7 @@ class TopologyAgent(BaseAgent):
         return response
 
     def _handle_dispatch(self, envelope: AgentEnvelope) -> AgentEnvelope:
-        """Process topology, BGP neighbor states, and emit cross-inquiries when indicated."""
+        """Process topology, BGP neighbor states, transit graph adjacencies, and emit cross-inquiries when indicated."""
         response = self.create_response_envelope(envelope, MessageType.FINDING_SUBMISSION)
         raw_data = envelope.payload.raw_data or {}
         topology = raw_data.get("topology")
@@ -68,13 +68,16 @@ class TopologyAgent(BaseAgent):
             raw_routing = {}
         raw_telemetry = raw_data.get("telemetry", [])
 
+        corr_id = envelope.header.correlation_id
+        msg_id = envelope.header.message_id
+
         bgp_sessions = raw_routing.get("bgp_sessions", [])
         stp_states = raw_routing.get("stp_state", [])
 
         observations: List[Observation] = []
         limitations: List[str] = []
 
-        # 1. Topology availability verification
+        # 1. Topology availability and transit graph verification
         if not topology or not topology.get("nodes"):
             limitations.append("topology unavailable: no nodes or link adjacencies provided")
             response.context["topology_status"] = "topology unavailable"
@@ -82,6 +85,62 @@ class TopologyAgent(BaseAgent):
             response.context["topology_status"] = "available"
             if topology.get("is_assumed", False):
                 response.payload.provenance = {"topology": "assumed"}
+
+            links = topology.get("links") or topology.get("edges") or []
+
+            # Map telemetry metrics per device to find congested or degraded endpoints
+            high_util_devices = set()
+            degraded_devices = set()
+            for rec in raw_telemetry:
+                d_id = rec.get("device_id") or rec.get("device") or ""
+                st = str(rec.get("device_status") or "").lower()
+                metrics = rec.get("metrics", rec)
+                u = float(metrics.get("link_utilization_pct") or 0.0)
+                qd = int(metrics.get("queue_drops") or 0)
+                lat = float(metrics.get("latency_ms") or 0.0)
+                if st in ("degraded", "down", "critical") or qd > 5 or u > 60.0 or lat > 50.0:
+                    degraded_devices.add(d_id)
+                if u > 65.0 or qd > 20:
+                    high_util_devices.add(d_id)
+
+            # Analyze topological links between incident devices
+            for link in links:
+                src = link.get("source", "")
+                tgt = link.get("target", "")
+                s_if = link.get("source_interface", "eth0")
+                t_if = link.get("target_interface", "eth0")
+                speed = link.get("speed_bps", 10000000000)
+                speed_gbps = round(speed / 1e9, 1)
+                zone = link.get("zone", "core_distribution_access")
+
+                # Both endpoints experiencing saturation/drops confirms shared transit bottleneck
+                if src in high_util_devices and tgt in high_util_devices:
+                    observations.append(
+                        Observation(
+                            category=ObservationCategory.METRIC_ANOMALY,
+                            entity=f"{src}:{s_if}<->{tgt}:{t_if}",
+                            metric_name="transit_link_adjacency",
+                            observed_value=f"congested_transit_trunk_{speed_gbps}gbps",
+                            unit="text",
+                            severity=Severity.CRITICAL,
+                            context={
+                                "agent_domain": "topology_agent",
+                                "source_device": src,
+                                "target_device": tgt,
+                                "source_interface": s_if,
+                                "target_interface": t_if,
+                                "speed_gbps": speed_gbps,
+                                "zone": zone,
+                                "correlation_id": corr_id,
+                                "message_id": msg_id,
+                            },
+                            provenance={
+                                "source_agent": "topology_agent",
+                                "correlation_id": corr_id,
+                                "message_id": msg_id,
+                            },
+                        )
+                    )
 
         # 2. Analyze BGP Sessions
         for session in bgp_sessions:
@@ -99,7 +158,18 @@ class TopologyAgent(BaseAgent):
                         observed_value=flaps,
                         unit="count",
                         severity=Severity.CRITICAL if flaps >= 3 else Severity.WARNING,
-                        context={"peer_ip": peer, "state": state, "agent_domain": "topology_agent"},
+                        context={
+                            "peer_ip": peer,
+                            "state": state,
+                            "agent_domain": "topology_agent",
+                            "correlation_id": corr_id,
+                            "message_id": msg_id,
+                        },
+                        provenance={
+                            "source_agent": "topology_agent",
+                            "correlation_id": corr_id,
+                            "message_id": msg_id,
+                        },
                     )
                 )
 
@@ -118,7 +188,17 @@ class TopologyAgent(BaseAgent):
                         observed_value=True,
                         unit="boolean",
                         severity=Severity.CRITICAL,
-                        context={"blocked_ports": blocked_ports, "agent_domain": "topology_agent"},
+                        context={
+                            "blocked_ports": blocked_ports,
+                            "agent_domain": "topology_agent",
+                            "correlation_id": corr_id,
+                            "message_id": msg_id,
+                        },
+                        provenance={
+                            "source_agent": "topology_agent",
+                            "correlation_id": corr_id,
+                            "message_id": msg_id,
+                        },
                     )
                 )
 

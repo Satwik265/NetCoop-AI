@@ -254,5 +254,78 @@
       "target_confidence_min": 0.0,
       "description": "Dual simultaneous wireless and DNS service degradations."
     }
+  ],
+  "extended": [
+    {
+      "name": "link_congestion_with_logs",
+      "file": "link_congestion_with_logs.json",
+      "category": "multi_domain",
+      "ground_truth": "Link utilization saturation causing buffer queue drops and latency spikes corroborated by queue-drop syslogs and QoS candidate diff",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "core-rtr-01",
+        "dist-sw-core"
+      ],
+      "expected_evidence_sources": [
+        "config_agent",
+        "log_agent",
+        "telemetry_agent",
+        "topology_agent"
+      ],
+      "target_confidence_min": 0.85,
+      "description": "Core transit trunk saturation with multi-domain corroboration from syslog tail-drops and QoS shaper config diff."
+    },
+    {
+      "name": "ethernet_fault_with_logs",
+      "file": "ethernet_fault_with_logs.json",
+      "category": "multi_domain",
+      "ground_truth": "Physical layer Ethernet interface CRC errors and flapping transitions corroborated by link-flap and CRC error syslog events",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "dept-sw-cs-01"
+      ],
+      "expected_evidence_sources": [
+        "log_agent",
+        "telemetry_agent"
+      ],
+      "target_confidence_min": 0.85,
+      "description": "Physical Ethernet corruption with CRC error increments and link-flap syslog state transitions."
+    },
+    {
+      "name": "mtu_mismatch_with_config",
+      "file": "mtu_mismatch_with_config.json",
+      "category": "multi_domain",
+      "ground_truth": "Path MTU size disparity between interconnected network endpoints corroborated by config diff and packet drop telemetry",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "core-rtr-01",
+        "dist-sw-core"
+      ],
+      "expected_evidence_sources": [
+        "config_agent",
+        "log_agent",
+        "telemetry_agent"
+      ],
+      "target_confidence_min": 0.85,
+      "description": "Path MTU disparity (9000 vs 1500) producing packet loss on large frames with config diff and packet-too-big syslog."
+    },
+    {
+      "name": "conflicting_evidence",
+      "file": "conflicting_evidence.json",
+      "category": "conflict",
+      "ground_truth": "Contradictory fault indicators across telemetry, configuration, and syslog domains producing recorded conflict or abstention",
+      "expected_status": "diagnosed",
+      "expected_devices": [
+        "core-rtr-01",
+        "dist-sw-core"
+      ],
+      "expected_evidence_sources": [
+        "config_agent",
+        "telemetry_agent",
+        "topology_agent"
+      ],
+      "target_confidence_min": 0.0,
+      "description": "Telemetry indicates link congestion while configuration diff introduces BPDU filter loop, triggering recorded conflict resolution."
+    }
   ]
 }

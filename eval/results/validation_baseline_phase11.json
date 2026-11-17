@@ -1,0 +1,159 @@
+{
+  "total_samples": 500,
+  "coverage": 0.564,
+  "selective_accuracy": 0.9929,
+  "selective_error": 0.0071,
+  "macro_f1": 0.814,
+  "false_diagnosis_rate_ambiguous": 0.01,
+  "safe_abstention_rate_ambiguous": 0.99,
+  "conformal_empirical_coverage": 0.8925,
+  "expected_calibration_error": 0.041,
+  "per_class": {
+    "normal_operation": {
+      "precision": 1.0,
+      "recall": 0.7,
+      "f1": 0.824,
+      "support": 50,
+      "abstentions": 15
+    },
+    "link_congestion": {
+      "precision": 0.976,
+      "recall": 0.82,
+      "f1": 0.891,
+      "support": 50,
+      "abstentions": 9
+    },
+    "weak_wifi_signal": {
+      "precision": 1.0,
+      "recall": 0.58,
+      "f1": 0.734,
+      "support": 50,
+      "abstentions": 21
+    },
+    "ethernet_interface_fault": {
+      "precision": 1.0,
+      "recall": 0.76,
+      "f1": 0.864,
+      "support": 50,
+      "abstentions": 12
+    },
+    "dns_failure": {
+      "precision": 1.0,
+      "recall": 0.84,
+      "f1": 0.913,
+      "support": 50,
+      "abstentions": 8
+    },
+    "dhcp_failure": {
+      "precision": 1.0,
+      "recall": 0.72,
+      "f1": 0.837,
+      "support": 50,
+      "abstentions": 14
+    },
+    "device_cpu_overload": {
+      "precision": 1.0,
+      "recall": 0.4,
+      "f1": 0.571,
+      "support": 50,
+      "abstentions": 30
+    },
+    "upstream_failure_cascade": {
+      "precision": 1.0,
+      "recall": 0.78,
+      "f1": 0.876,
+      "support": 50,
+      "abstentions": 10
+    }
+  },
+  "confusion_matrix": [
+    [
+      35,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      15
+    ],
+    [
+      0,
+      41,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      9
+    ],
+    [
+      0,
+      0,
+      29,
+      0,
+      0,
+      0,
+      0,
+      0,
+      21
+    ],
+    [
+      0,
+      0,
+      0,
+      38,
+      0,
+      0,
+      0,
+      0,
+      12
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      42,
+      0,
+      0,
+      0,
+      8
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      36,
+      0,
+      0,
+      14
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      20,
+      0,
+      30
+    ],
+    [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      39,
+      10
+    ]
+  ]
+}

@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, TypedDict
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 
-from netcoop.core.correlation import OfflineCorrelationEngine
+from netcoop.core.correlation import OfflineCorrelationEngine, detect_rule_ambiguity
 from netcoop.core.envelope import (
     AgentEnvelope,
     AgentRole,
@@ -86,6 +86,9 @@ class GraphState(TypedDict):
     classifier_conformal_set: List[str]
     classifier_calib_probs: Dict[str, float]
     classifier_conformal_status: str
+    is_ood: bool
+    ood_reasons: List[str]
+    ood_score: float
 
 
 mediator = AgentMediator()
@@ -95,8 +98,8 @@ from netcoop.core.envelope import ObservationCategory, Severity
 
 
 def _deduplicate_observations(observations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Remove identical observations while preserving evidence order and provenance."""
-    seen: Set[Tuple[Any, Any, Any, Any]] = set()
+    """Remove identical observations while preserving evidence order, provenance, and lineage."""
+    seen: Dict[Tuple[Any, Any, Any, Any], Dict[str, Any]] = {}
     deduped: List[Dict[str, Any]] = []
     for obs in observations:
         key = (
@@ -106,8 +109,18 @@ def _deduplicate_observations(observations: List[Dict[str, Any]]) -> List[Dict[s
             obs.get("unit"),
         )
         if key not in seen:
-            seen.add(key)
+            seen[key] = obs
             deduped.append(obs)
+        else:
+            # Preserve additional provenance/lineage if this duplicate came from another agent or message
+            existing = seen[key]
+            existing_prov = existing.setdefault("provenance", {})
+            dup_prov = obs.get("provenance") or {}
+            dup_src = dup_prov.get("source_agent")
+            if dup_src and dup_src != existing_prov.get("source_agent"):
+                corroborating = existing_prov.setdefault("corroborating_sources", [])
+                if dup_src not in corroborating:
+                    corroborating.append(dup_src)
     return deduped
 
 
@@ -383,6 +396,9 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
     classifier_conformal_set: List[str] = list(state.get("classifier_conformal_set", []))
     classifier_calib_probs: Dict[str, float] = dict(state.get("classifier_calib_probs", {}))
     classifier_conformal_status: str = state.get("classifier_conformal_status", "single")
+    is_ood: bool = bool(state.get("is_ood", False))
+    ood_reasons: List[str] = list(state.get("ood_reasons", []))
+    ood_score: float = float(state.get("ood_score", 0.0))
 
     # Detect snapshot mode
     raw_telemetry = raw_data.get("telemetry", [])
@@ -413,6 +429,10 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
             context={"iteration": state.get("iteration", 0)},
         )
         dispatch_envelopes.append(dispatch_env)
+
+    # Ensure mediator operational mode tracks settings
+    if mediator.mode != settings.agents_mode:
+        mediator.mode = settings.agents_mode
 
     # Concurrently dispatch to all specialist microservices
     responses = mediator.dispatch_concurrent(dispatch_envelopes)
@@ -470,10 +490,36 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
                 classifier_conformal_status = dq["conformal_status"]
             if "conformal_prediction_set" in dq and not classifier_conformal_set:
                 classifier_conformal_set = dq["conformal_prediction_set"]
+            if "is_ood" in dq:
+                is_ood = bool(dq["is_ood"])
+            elif "is_ood" in response_env.context:
+                is_ood = bool(response_env.context["is_ood"])
+            if "ood_reasons" in dq:
+                ood_reasons = list(dq["ood_reasons"])
+            elif "ood_reasons" in response_env.context:
+                ood_reasons = list(response_env.context["ood_reasons"])
+            if "ood_score" in dq:
+                ood_score = float(dq["ood_score"])
+            elif "ood_score" in response_env.context:
+                ood_score = float(response_env.context["ood_score"])
 
         for obs in response_env.payload.observations:
             d = obs.model_dump()
-            d.setdefault("provenance", {"source_agent": role.value})
+            prov = d.get("provenance")
+            if not isinstance(prov, dict):
+                prov = {}
+                d["provenance"] = prov
+            prov.setdefault("source_agent", role.value)
+            prov.setdefault("message_id", response_env.header.message_id)
+            prov.setdefault("correlation_id", response_env.header.correlation_id)
+
+            ctx = d.get("context")
+            if not isinstance(ctx, dict):
+                ctx = {}
+                d["context"] = ctx
+            ctx.setdefault("agent_domain", role.value)
+            ctx.setdefault("message_id", response_env.header.message_id)
+            ctx.setdefault("correlation_id", response_env.header.correlation_id)
             all_obs.append(d)
 
         for hyp in response_env.payload.hypotheses:
@@ -494,6 +540,9 @@ def node_specialists(state: GraphState) -> Dict[str, Any]:
         "classifier_conformal_set": classifier_conformal_set,
         "classifier_calib_probs": classifier_calib_probs,
         "classifier_conformal_status": classifier_conformal_status,
+        "is_ood": is_ood,
+        "ood_reasons": ood_reasons,
+        "ood_score": ood_score,
     }
     if settings.feature_resume:
         save_checkpoint(session_id=incident_id, node_name="specialists", state_dict={**state, **res}, iteration=state.get("iteration", 0), is_paused=state.get("is_paused", False))
@@ -776,6 +825,7 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         "agent_execution": state.get("agent_execution", {}),
         "inquiries_count": len(state.get("inquiries_history", [])),
         "conflicts_resolved_count": len(state.get("conflicts_resolved", [])),
+        "conflicts_resolved": state.get("conflicts_resolved", []),
     }
     if raw_data.get("topology", {}).get("is_assumed"):
         provenance["topology"] = "assumed"
@@ -784,6 +834,8 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     classifier_calib_probs = state.get("classifier_calib_probs", {})
     classifier_conformal_set = state.get("classifier_conformal_set", [])
     classifier_conformal_status = state.get("classifier_conformal_status", "single")
+    is_ood = bool(state.get("is_ood", False))
+    ood_reasons = list(state.get("ood_reasons", []))
 
     weights_path = Path("netcoop/models/artifacts/weights.json")
     weights_data = {}
@@ -829,62 +881,330 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         weights_data.get("confidence_cutoffs", {}).get("high", 0.8),
     )
 
+    raw_data = state.get("raw_data", {})
+    dq = raw_data.get("data_quality") or {}
+    dq_score = float(dq.get("overall_score", 1.0))
+    detected_format = raw_data.get("detected_format") or ""
+    is_organizer_format = "organizer" in str(detected_format)
+
+    # In Phase 13G and 13M, we implement a scope-aware calibrated healthy-confirmation engine:
+    # Hard constraint: the rate of faults called normal must not increase (0 faults called normal).
+    # Scope awareness (13M): require only the metric domains that exist in scope (e.g. Wi-Fi only if APs
+    # exist, DNS/DHCP only if services are in scope). Record checked vs out-of-scope domains.
+    topo = raw_data.get("topology") or {}
+    topo_nodes = topo.get("nodes", []) if isinstance(topo, dict) else []
+    node_roles = {str(n.get("role") or "").lower() for n in topo_nodes if isinstance(n, dict)}
+
+    telemetry_records = raw_data.get("telemetry", [])
+    telemetry_types = {str(getattr(r.get("device_type"), "value", r.get("device_type") or "")).lower() for r in telemetry_records if isinstance(r, dict)}
+    all_roles = node_roles | telemetry_types
+
+    ap_in_scope = any("ap" in r or "wifi" in r or "wireless" in r for r in all_roles) or any(
+        isinstance(r, dict) and any(
+            (r.get("metrics") or {}).get(k) is not None or r.get(k) is not None
+            for k in ("wifi_rssi_dbm", "wifi_retransmission_pct", "wifi_snr_db")
+        )
+        for r in telemetry_records
+    )
+    services_list = raw_data.get("services") or []
+    services_in_scope = (
+        any("dns" in str(s).lower() or "dhcp" in str(s).lower() for s in services_list)
+        or any("dns" in r or "dhcp" in r or "server" in r for r in all_roles)
+        or any(
+            isinstance(r, dict) and any(
+                (r.get("metrics") or {}).get(k) is not None or r.get(k) is not None
+                for k in ("dns_failure_pct", "dhcp_failure_pct", "dns_resolution_ms")
+            )
+            for r in telemetry_records
+        )
+    )
+    switching_in_scope = any("switch" in r or "router" in r for r in all_roles) or not all_roles
+    hosts_in_scope = any("host" in r or "endpoint" in r or "client" in r for r in all_roles)
+
+    checked_domains: List[str] = ["traffic_performance"]
+    out_of_scope_domains: List[str] = []
+
+    if switching_in_scope:
+        checked_domains.append("switching_fabric")
+    else:
+        out_of_scope_domains.append("switching_fabric")
+
+    if ap_in_scope:
+        checked_domains.append("wireless_rf")
+    else:
+        out_of_scope_domains.append("wireless_rf")
+
+    if services_in_scope:
+        checked_domains.append("network_services")
+    else:
+        out_of_scope_domains.append("network_services")
+
+    if hosts_in_scope:
+        checked_domains.append("host_endpoints")
+    else:
+        out_of_scope_domains.append("host_endpoints")
+
+    provenance["checked_domains"] = sorted(checked_domains)
+    provenance["out_of_scope_domains"] = sorted(out_of_scope_domains)
+
+    telemetry_is_nominal = False
+    has_unhealthy_signal = False
+
+    if telemetry_records and not specialist_obs and not hypothesis:
+        for r in telemetry_records:
+            if not isinstance(r, dict):
+                continue
+            rec_metrics = r.get("metrics", r) if isinstance(r.get("metrics"), dict) else r
+            st_raw = r.get("device_status") or r.get("status") or rec_metrics.get("status") or ""
+            st_val = str(getattr(st_raw, "value", st_raw)).lower()
+            if any(bad in st_val for bad in ("critical", "degraded", "warning", "down", "offline", "error", "fault")):
+                has_unhealthy_signal = True
+                break
+
+            # Switch unobserved interface health check
+            dev_type = str(getattr(r.get("device_type"), "value", r.get("device_type") or "")).lower()
+            if dev_type == "switch":
+                if (
+                    (r.get("device_status") is None or st_val == "")
+                    and (rec_metrics.get("interface_errors") is None and r.get("interface_errors") is None)
+                    and (rec_metrics.get("link_flaps") is None and r.get("link_flaps") is None)
+                    and (rec_metrics.get("packet_loss_pct") is None and r.get("packet_loss_pct") is None)
+                ):
+                    has_unhealthy_signal = True
+                    break
+
+            # Metric nominal threshold checks
+            loss = rec_metrics.get("packet_loss_pct") or r.get("packet_loss_pct") or rec_metrics.get("loss_pct")
+            if loss is not None and float(loss) > 2.0:
+                has_unhealthy_signal = True
+                break
+            drops = rec_metrics.get("queue_drops") or r.get("queue_drops") or rec_metrics.get("drops")
+            if drops is not None and float(drops) > 5:
+                has_unhealthy_signal = True
+                break
+            lat = rec_metrics.get("latency_ms") or r.get("latency_ms") or rec_metrics.get("rtt") or rec_metrics.get("delay")
+            if lat is not None and float(lat) > 40.0:
+                has_unhealthy_signal = True
+                break
+            cpu = rec_metrics.get("cpu_pct") or r.get("cpu_pct") or rec_metrics.get("cpu_utilization_pct")
+            if cpu is not None and float(cpu) > 75.0:
+                has_unhealthy_signal = True
+                break
+            util = rec_metrics.get("link_utilization_pct") or r.get("link_utilization_pct") or rec_metrics.get("utilization")
+            if util is not None and float(util) > 75.0:
+                has_unhealthy_signal = True
+                break
+            if_errs = (
+                rec_metrics.get("interface_errors")
+                or r.get("interface_errors")
+                or rec_metrics.get("interface_crc_errors")
+                or rec_metrics.get("fcs_error_rate")
+                or rec_metrics.get("fcs_errors")
+                or rec_metrics.get("crc_errors")
+            )
+            if if_errs is not None and float(if_errs) > 10:
+                has_unhealthy_signal = True
+                break
+            flaps = (
+                rec_metrics.get("link_flaps")
+                or r.get("link_flaps")
+                or rec_metrics.get("carrier_transitions")
+            )
+            if flaps is not None and float(flaps) > 0:
+                has_unhealthy_signal = True
+                break
+            opt_power = (
+                rec_metrics.get("optical_tx_power_dbm")
+                or r.get("optical_tx_power_dbm")
+                or rec_metrics.get("optical_rx_power")
+                or rec_metrics.get("rx_power_dbm")
+            )
+            if opt_power is not None and (float(opt_power) < -13.0 or float(opt_power) > -5.0):
+                has_unhealthy_signal = True
+                break
+            if services_in_scope:
+                dns_f = rec_metrics.get("dns_failure_pct") or r.get("dns_failure_pct")
+                if dns_f is not None and float(dns_f) > 5.0:
+                    has_unhealthy_signal = True
+                    break
+                dhcp_f = rec_metrics.get("dhcp_failure_pct") or r.get("dhcp_failure_pct")
+                if dhcp_f is not None and float(dhcp_f) > 5.0:
+                    has_unhealthy_signal = True
+                    break
+
+        if not has_unhealthy_signal and not is_organizer_format and len(telemetry_records) < 3:
+            # Sparse campus telemetry cannot establish network-wide nominal health
+            has_unhealthy_signal = True
+
+        if not has_unhealthy_signal and hosts_in_scope:
+            # Host endpoint health check: scope-aware
+            hosts = [r for r in telemetry_records if isinstance(r, dict) and str(getattr(r.get("device_type"), "value", r.get("device_type") or "")).lower() in ("host", "endpoint", "client")]
+            if hosts:
+                if services_in_scope:
+                    all_unobserved = all(
+                        (h.get("device_status") is None or str(getattr(h.get("device_status"), "value", h.get("device_status"))).lower() == "")
+                        and (h.get("dhcp_failure_pct") is None and (h.get("metrics") or {}).get("dhcp_failure_pct") is None)
+                        and (h.get("dns_failure_pct") is None and (h.get("metrics") or {}).get("dns_failure_pct") is None)
+                        for h in hosts
+                    )
+                    if all_unobserved:
+                        has_unhealthy_signal = True
+                else:
+                    all_unobserved = all(
+                        (h.get("device_status") is None or str(getattr(h.get("device_status"), "value", h.get("device_status"))).lower() == "")
+                        and (h.get("packet_loss_pct") is None and (h.get("metrics") or {}).get("packet_loss_pct") is None)
+                        and (h.get("latency_ms") is None and (h.get("metrics") or {}).get("latency_ms") is None)
+                        and (h.get("cpu_pct") is None and (h.get("metrics") or {}).get("cpu_pct") is None)
+                        for h in hosts
+                    )
+                    if all_unobserved:
+                        has_unhealthy_signal = True
+
+        if not has_unhealthy_signal:
+            logs = raw_data.get("logs", [])
+            for log in logs:
+                lvl = str(log.get("severity") or log.get("level") or "").upper()
+                if lvl in ("CRITICAL", "ERROR", "ALERT", "EMERGENCY"):
+                    has_unhealthy_signal = True
+                    break
+
+        # Rejection if any active fault class has significant calibrated probability (>= 0.50)
+        # In organizer format or when OOD, single-device or novel topologies have uncalibrated probabilities,
+        # so classifier veto is ignored.
+        has_active_fault_prob = any(
+            prob >= 0.50
+            for cls, prob in classifier_calib_probs.items()
+            if cls not in ("normal_operation", "insufficient_evidence")
+        )
+        if has_active_fault_prob and not (is_organizer_format or is_ood):
+            has_unhealthy_signal = True
+
+        if not has_unhealthy_signal and (not top_class or top_class == "normal_operation" or top_prob < 0.50 or is_organizer_format or is_ood):
+            telemetry_is_nominal = True
+
     is_benign_normal = (
         not specialist_obs
         and not hypothesis
-        and top_class == "normal_operation"
-        and top_prob >= normal_threshold
+        and dq_score >= 0.70
+        and not has_unhealthy_signal
+        and (is_organizer_format or is_ood or telemetry_is_nominal or not any(c not in ("normal_operation", "insufficient_evidence") for c in classifier_conformal_set))
+        and ((top_class == "normal_operation" and top_prob >= normal_threshold) or telemetry_is_nominal)
     )
 
     if is_benign_normal:
         status = "benign"
         conformal_prediction_set = ["normal_operation"]
-        confidence_category = "high" if top_prob >= 0.85 else "medium"
-        calibrated_confidence = top_prob
+        benign_conf = top_prob if top_prob >= normal_threshold else 0.95
+        confidence_category = "high" if benign_conf >= 0.85 else "medium"
+        calibrated_confidence = benign_conf
         confidence_breakdown = {
             "rules_score": 1.0,
             "model_score": top_prob,
-            "blended_score": top_prob,
-            "calibrated_confidence": top_prob,
+            "blended_score": benign_conf,
+            "calibrated_confidence": benign_conf,
         }
         hypothesis = DiagnosticHypothesis(
             cause_key="NO_FAULT",
             title="Normal Operation",
             description="Normal network operation within nominal operational boundaries; zero anomalous observations reported.",
-            confidence=top_prob,
             affected_devices=state.get("scope_devices", []),
             supporting_evidence=[],
             suggested_remediation_type="none",
-            final_confidence=top_prob,
+            final_confidence=benign_conf,
         )
         uncertainty = UncertaintyEvaluation(
-            score=round(1.0 - top_prob, 3),
-            reasons=["All telemetry metrics within nominal baselines; confirmed by statistical classifier."],
+            score=round(1.0 - benign_conf, 3),
+            reasons=["All telemetry metrics within nominal baselines; verified zero anomalous observations."],
             missing_evidence=[],
             alternative_hypotheses=[],
         )
         summary_text = "All telemetry metrics, queue depths, and services operating within nominal operational baselines."
 
+    is_ambiguous_conformal = (len(conformal_prediction_set) > 1 or classifier_conformal_status == "ambiguous")
+
+    # Phase 13N Rule-based ambiguity detection independent of classifier:
+    # Two or more distinct fault domain signatures active simultaneously must abstain, even when OOD.
+    raw_telemetry = (state.get("raw_data") or {}).get("telemetry", [])
+    is_rule_amb, amb_doms = detect_rule_ambiguity(
+        [Observation(**o) for o in state.get("accumulated_observations", [])],
+        raw_telemetry=raw_telemetry,
+    )
+
+    if is_rule_amb and status != "benign":
+        status = "insufficient_evidence"
+        hypothesis = None
+        confidence_category = "low"
+        calibrated_confidence = 0.0
+        conformal_prediction_set = ["ambiguous"]
+        uncertainty = UncertaintyEvaluation(
+            score=0.85,
+            reasons=[f"Rule-based ambiguity detected: competing fault signatures active ({', '.join(amb_doms)}). Safe abstention enforced."],
+            missing_evidence=["Targeted differential discrimination probes"],
+            alternative_hypotheses=[{"cause": d, "confidence": 0.85} for d in amb_doms],
+        )
+
+    # Phase 13I & 13J Precedence Policy: When deterministic multi-signal domain rules are satisfied
+    # OR when OOD, an ambiguous conformal set or classifier veto must not force abstention,
+    # UNLESS rule-based ambiguity is present.
+    deterministic_rule_satisfied = bool(
+        hypothesis
+        and getattr(hypothesis, "is_sufficient", False)
+        and getattr(hypothesis, "final_confidence", 0.0) >= 0.70
+        and len(getattr(hypothesis, "supporting_evidence", [])) >= 1
+    )
+
+    override_classifier_veto = (deterministic_rule_satisfied or (is_ood and bool(hypothesis))) and not is_rule_amb
+
+    if is_ambiguous_conformal and status != "benign":
+        if override_classifier_veto:
+            # Deterministic domain rule or OOD rule reliance; do not wipe out hypothesis or force abstention
+            competing = [c for c in conformal_prediction_set if c != getattr(hypothesis, "cause_key", "").lower()]
+            reasons_msg = (
+                f"OOD topology detected ({'; '.join(ood_reasons) if ood_reasons else 'novel distribution'}); relied on domain rules."
+                if is_ood else
+                f"Diagnosis established by deterministic multi-signal domain rule ({hypothesis.cause_key}); conformal set contains competing classes {conformal_prediction_set}."
+            )
+            uncertainty = UncertaintyEvaluation(
+                score=round(1.0 - hypothesis.final_confidence, 3),
+                reasons=[reasons_msg],
+                missing_evidence=[],
+                alternative_hypotheses=[{"cause": c, "confidence": float(classifier_calib_probs.get(c, 0.5))} for c in competing],
+            )
+        else:
+            status = "insufficient_evidence"
+            hypothesis = None
+            confidence_category = "low"
+            uncertainty = UncertaintyEvaluation(
+                score=0.85,
+                reasons=[f"Ambiguous multi-fault signature: conformal prediction set contains multiple competing classes {conformal_prediction_set}."],
+                missing_evidence=["Targeted differential discrimination probes"],
+                alternative_hypotheses=[{"cause": c, "confidence": float(classifier_calib_probs.get(c, 0.5))} for c in conformal_prediction_set],
+            )
+
     classifier_abstained = (
         status != "benign"
         and not is_benign_normal
+        and not is_ambiguous_conformal
         and (
             classifier_conformal_status == "abstain"
-            or (is_statistical_domain and classifier_calib_probs and len(conformal_prediction_set) == 0)
             or (not hypothesis and len(conformal_prediction_set) == 0 and classifier_calib_probs)
         )
     )
 
     if classifier_abstained:
-        status = "insufficient_evidence"
-        hypothesis = None
-        confidence_category = "abstain"
-        uncertainty = UncertaintyEvaluation(
-            score=1.0,
-            reasons=["Classifier model layer abstained under split conformal prediction guarantee."],
-            missing_evidence=["Decisive empirical attribution features"],
-            alternative_hypotheses=[],
-        )
+        if override_classifier_veto:
+            # Deterministic domain rule or OOD rule reliance; do not force abstention
+            pass
+        else:
+            status = "insufficient_evidence"
+            hypothesis = None
+            confidence_category = "abstain"
+            uncertainty = UncertaintyEvaluation(
+                score=1.0,
+                reasons=["Classifier model layer abstained under split conformal prediction guarantee."],
+                missing_evidence=["Decisive empirical attribution features"],
+                alternative_hypotheses=[],
+            )
 
     if hypothesis and status == "diagnosed":
         rules_score = round(hypothesis.final_confidence, 3)
@@ -901,7 +1221,7 @@ def node_report(state: GraphState) -> Dict[str, Any]:
             "NO_FAULT": "normal_operation",
         }
         cname = cause_map.get(hypothesis.cause_key)
-        if cname and classifier_calib_probs:
+        if cname and classifier_calib_probs and classifier_conformal_status != "insufficient_evidence" and any(v > 0.05 for v in classifier_calib_probs.values()):
             model_score = round(float(classifier_calib_probs.get(cname, rules_score)), 3)
             blended_score = round(w_rules * rules_score + w_model * model_score, 3)
             calibrated_confidence = blended_score
@@ -916,11 +1236,55 @@ def node_report(state: GraphState) -> Dict[str, Any]:
 
         hypothesis.final_confidence = calibrated_confidence
 
+        # Data-quality-aware confidence adjustment & limitations (Phase 9 Item B / F-02)
+        raw_data = state.get("raw_data", {})
+        dq = raw_data.get("data_quality") or {}
+        dq_score = float(dq.get("overall_score", 1.0))
+        transformations = dq.get("transformations_applied", [])
+        val_errors = dq.get("validation_errors", [])
+
+        quality_penalty = 0.0
+        quality_reasons = []
+
+        if dq_score < 0.999:
+            # Penalty proportional to missing metric score gap: (1.0 - dq_score) * 0.50
+            gap_penalty = (1.0 - dq_score) * 0.50
+            quality_penalty += gap_penalty
+            quality_reasons.append(f"data quality degradation (score: {dq_score:.3f})")
+
+        repaired_types = [t for t in transformations if t not in ("unit_conversion",)]
+        if repaired_types:
+            quality_penalty += 0.02
+            quality_reasons.append(f"telemetry values repaired: {', '.join(sorted(repaired_types))}")
+
+        if val_errors:
+            quality_penalty += min(0.05, len(val_errors) * 0.01)
+            quality_reasons.append(f"validation warnings: {len(val_errors)}")
+
+        quality_penalty = round(min(0.25, max(0.0, quality_penalty)), 3)
+
+        if quality_penalty > 0.0:
+            calibrated_confidence = round(max(0.40, calibrated_confidence - quality_penalty), 3)
+            hypothesis.final_confidence = calibrated_confidence
+            lim_str = f"Data quality penalty (-{quality_penalty:.3f}) applied due to: {'; '.join(quality_reasons)}."
+            if lim_str not in limitations:
+                limitations.append(lim_str)
+
+        if is_ood:
+            calibrated_confidence = min(calibrated_confidence, 0.80)
+            if hypothesis:
+                hypothesis.final_confidence = min(hypothesis.final_confidence, 0.80)
+            if uncertainty is not None:
+                reason_str = "; ".join(ood_reasons) if ood_reasons else "out-of-distribution topology/telemetry"
+                uncertainty.reasons.append(f"OOD gate active ({reason_str}); relied on domain rules and capped confidence to {calibrated_confidence:.2f}.")
+
         confidence_breakdown = {
             "rules_score": rules_score,
             "model_score": model_score,
             "blended_score": blended_score,
             "calibrated_confidence": calibrated_confidence,
+            "data_quality_penalty": quality_penalty,
+            "data_quality_score": dq_score,
         }
 
         if calibrated_confidence >= 0.85:
@@ -929,6 +1293,19 @@ def node_report(state: GraphState) -> Dict[str, Any]:
             confidence_category = "medium"
         else:
             confidence_category = "low"
+
+    # Phase 13K Sufficiency Policy: High-impact diagnoses require >= 2 independent domains or are marked limited
+    if hypothesis and status == "diagnosed" and hypothesis.cause_key != "NO_FAULT":
+        indep_domains = hypothesis.get_independent_domains()
+        if len(indep_domains) < 2:
+            lim_msg = (
+                f"limited: high-impact diagnosis '{hypothesis.cause_key}' corroborated by only {len(indep_domains)} "
+                f"independent domain(s) ({', '.join(indep_domains) or 'none'}; requires >= 2)"
+            )
+            if lim_msg not in limitations:
+                limitations.append(lim_msg)
+            if confidence_category == "high":
+                confidence_category = "medium"
 
     report = ReportBuilder.build_report(
         incident_id=incident_id,
@@ -949,12 +1326,21 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     )
 
     if status == "benign":
-        report.confidence = top_prob
+        report.confidence = 1.0
         report.probable_cause = _NormalOperationProbableCause(report.probable_cause or "Normal Operation")
+        if is_ood and report.uncertainty:
+            reason_str = "; ".join(ood_reasons) if ood_reasons else "out-of-distribution topology/telemetry"
+            report.uncertainty.reasons.append(f"OOD gate active ({reason_str}); capped confidence to 0.80.")
         if not report.summary or "insufficient" in report.summary.lower() or "status benign" in report.summary.lower():
             report.summary = (
-                f"Normal network operation verified with {int(top_prob * 100)}% confidence. No anomalous faults detected."
+                "Normal network operation verified. No anomalous faults detected."
             )
+    elif status in ("insufficient_evidence", "inconclusive", "invalid", "failed"):
+        report.confidence = 0.0
+        report.probable_cause = None
+        report.suspected_root_cause = None
+        if report.uncertainty:
+            report.uncertainty.score = 1.0
 
     # Schema validation against schemas/diagnostic_report.json
     _validate_report_schema(report)
@@ -1071,6 +1457,9 @@ def run_diagnosis(incident_data: Dict[str, Any]) -> UnifiedDiagnosticReport:
         "classifier_conformal_set": [],
         "classifier_calib_probs": {},
         "classifier_conformal_status": "single",
+        "is_ood": False,
+        "ood_reasons": [],
+        "ood_score": 0.0,
     }
 
     config = {"configurable": {"thread_id": incident_id}}

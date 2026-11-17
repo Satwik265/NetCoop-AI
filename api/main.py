@@ -3,6 +3,7 @@
 
 import asyncio
 import httpx
+import secrets
 import uuid
 
 from datetime import datetime, timezone
@@ -16,6 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Union
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
+from fastapi.security import HTTPAuthorizationCredentials
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -97,6 +99,10 @@ from core.auth import (
     PERM_MANAGE_USERS,
 
     PERM_EXPORT_AUDIT_LOGS,
+
+    bearer_scheme,
+
+    validate_security_configuration_at_startup,
 
 )
 
@@ -224,20 +230,29 @@ _DEFAULT_CORS_ORIGINS = [
     "http://127.0.0.1:8000",
 ]
 _cors_env = os.environ.get("CORS_ORIGINS") or os.environ.get("ALLOWED_ORIGINS") or ""
-_cors_origins = [o.strip() for o in _cors_env.split(",") if o.strip()] if _cors_env else _DEFAULT_CORS_ORIGINS
+_raw_origins = [o.strip() for o in _cors_env.split(",") if o.strip()] if _cors_env else _DEFAULT_CORS_ORIGINS
+
+# Security Invariant: Never combine wildcard origins with credentials
+_has_wildcard = "*" in _raw_origins
+_allow_credentials = not _has_wildcard
+_cors_origins = [o for o in _raw_origins if o != "*"] if _allow_credentials else ["*"]
+
+_ALLOWED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+_ALLOWED_HEADERS = [
+    "Content-Type",
+    "Authorization",
+    "X-NetCoop-Service-Token",
+    "X-Correlation-ID",
+    "Accept",
+    "Origin",
+]
 
 app.add_middleware(
-
     CORSMiddleware,
-
-    allow_origins=_cors_origins,
-
-    allow_credentials=True,
-
-    allow_methods=["*"],
-
-    allow_headers=["*"],
-
+    allow_origins=_cors_origins if _allow_credentials else ["*"],
+    allow_credentials=_allow_credentials,
+    allow_methods=_ALLOWED_METHODS,
+    allow_headers=_ALLOWED_HEADERS,
 )
 
 
@@ -317,9 +332,9 @@ def _envelope_stream_hook(envelope: AgentEnvelope) -> None:
 
 
 @app.on_event("startup")
-
 def on_startup() -> None:
     """Initialize database and register envelope listeners."""
+    validate_security_configuration_at_startup()
     init_db()
     init_default_users()
     init_default_tickets()
@@ -1459,9 +1474,54 @@ def assign_incident_endpoint(
 # -----------------------------------------------------------------------------
 
 
+def verify_ingestion_access(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+) -> Optional[UserRecord]:
+    """Verify authorization for telemetry ingestion.
+    Accepts:
+    1. Valid Bearer JWT of an operator with PERM_EXECUTE_DIAGNOSIS (or PERM_VIEW_FABRIC_HEALTH)
+    2. Valid X-NetCoop-Service-Token matching configured service token
+    In production mode or when service auth enforcement is active, fails closed with HTTP 401 if unauthorized.
+    """
+    # 1. Check internal service token header
+    service_token = request.headers.get(settings.service_auth_header)
+    configured_token = settings.internal_service_token
+    if service_token and configured_token:
+        if secrets.compare_digest(service_token, configured_token):
+            return None  # Authorized via service token
+
+    # 2. Check Bearer JWT credentials
+    if credentials and credentials.credentials:
+        try:
+            user = get_current_user(request=request, credentials=credentials)
+            user_perms = ROLE_PERMISSIONS_MAP.get(user.role, set())
+            if PERM_EXECUTE_DIAGNOSIS in user_perms:
+                return user
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Role '{user.role}' lacks permission for telemetry ingestion. Required: PERM_EXECUTE_DIAGNOSIS",
+            )
+        except HTTPException:
+            raise
+
+    # 3. If in production mode, fail closed
+    if settings.is_production:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication credentials or valid internal service token required for telemetry ingestion.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return None
+
+
 @app.post("/api/ingest")
-def ingest_data_endpoint(raw_payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Gateway Ingestion: translate, unit-convert, and canonicalize arbitrary telemetry via Gateway HTTP microservice."""
+def ingest_data_endpoint(
+    raw_payload: Dict[str, Any],
+    caller: Optional[UserRecord] = Depends(verify_ingestion_access),
+) -> Dict[str, Any]:
+    """Gateway Ingestion: translate, unit-convert, and canonicalize arbitrary telemetry via Gateway HTTP microservice or in-process normalizer."""
     gateway_url = settings.get_gateway_url()
     try:
         with httpx.Client(timeout=10.0) as client:
@@ -1479,11 +1539,10 @@ def ingest_data_endpoint(raw_payload: Dict[str, Any]) -> Dict[str, Any]:
                     status_code=resp.status_code,
                     detail=f"Gateway service returned HTTP {resp.status_code}: {resp.text}",
                 )
-    except (httpx.ConnectError, httpx.TimeoutException) as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Gateway service on port {settings.gateway_port} unavailable over HTTP: {str(exc)}",
-        )
+    except (httpx.ConnectError, httpx.TimeoutException):
+        # Fall back to authoritative in-process normalizer
+        from gateway.adapters.organizer_adapter import OrganizerAdapter
+        return OrganizerAdapter.adapt_dataset(raw_payload)
     except HTTPException:
         raise
     except Exception as e:
@@ -1697,6 +1756,14 @@ def run_scenario_diagnosis_endpoint(
         previous_run_id=prev_run_id,
         triggered_by=current_user.username,
     )
+    save_incident(
+        incident_id=execution_id,
+        network_id=getattr(report, "network_id", "iit-bbs-campus-fabric"),
+        status=report.status,
+        probable_cause=report.probable_cause,
+        confidence=report.confidence,
+        report_json=report.to_json(),
+    )
 
     # Retrieve newly recorded envelope messages
     envelopes = [
@@ -1811,6 +1878,7 @@ def run_diagnosis_endpoint(
 ) -> UnifiedDiagnosticReport:
     """Execute end-to-end multi-agent network fault diagnosis."""
     try:
+        canonical_data = None
         gateway_url = settings.get_gateway_url()
         try:
             with httpx.Client(timeout=10.0) as client:
@@ -1820,16 +1888,19 @@ def run_diagnosis_endpoint(
                 elif resp.status_code == 422:
                     detail = resp.json().get("detail", "Gateway normalization failure")
                     raise HTTPException(status_code=422, detail=detail)
-                else:
-                    raise HTTPException(
-                        status_code=resp.status_code,
-                        detail=f"Gateway normalization failed: {resp.text}",
-                    )
-        except (httpx.ConnectError, httpx.TimeoutException) as exc:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Gateway service on port {settings.gateway_port} unavailable over HTTP: {str(exc)}",
-            )
+                elif resp.status_code == 400:
+                    detail = resp.json().get("detail", "Malformed payload")
+                    raise HTTPException(status_code=400, detail=detail)
+        except (httpx.ConnectError, httpx.TimeoutException):
+            pass
+
+        if canonical_data is None:
+            if isinstance(incident_data, dict) and "topology" in incident_data and "telemetry" in incident_data:
+                canonical_data = incident_data
+            else:
+                from gateway.adapters.organizer_adapter import OrganizerAdapter
+                canonical_data = OrganizerAdapter.adapt_dataset(incident_data)
+
         report = run_diagnosis(canonical_data)
         return report
     except HTTPException:
@@ -1849,6 +1920,7 @@ def run_diagnosis_export_endpoint(
     Keep both in sync.
     """
     try:
+        canonical_data = None
         gateway_url = settings.get_gateway_url()
         try:
             with httpx.Client(timeout=10.0) as client:
@@ -1858,16 +1930,19 @@ def run_diagnosis_export_endpoint(
                 elif resp.status_code == 422:
                     detail = resp.json().get("detail", "Gateway normalization failure")
                     raise HTTPException(status_code=422, detail=detail)
-                else:
-                    raise HTTPException(
-                        status_code=resp.status_code,
-                        detail=f"Gateway normalization failed: {resp.text}",
-                    )
-        except (httpx.ConnectError, httpx.TimeoutException) as exc:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Gateway service on port {settings.gateway_port} unavailable over HTTP: {str(exc)}",
-            )
+                elif resp.status_code == 400:
+                    detail = resp.json().get("detail", "Malformed payload")
+                    raise HTTPException(status_code=400, detail=detail)
+        except (httpx.ConnectError, httpx.TimeoutException):
+            pass
+
+        if canonical_data is None:
+            if isinstance(incident_data, dict) and "topology" in incident_data and "telemetry" in incident_data:
+                canonical_data = incident_data
+            else:
+                from gateway.adapters.organizer_adapter import OrganizerAdapter
+                canonical_data = OrganizerAdapter.adapt_dataset(incident_data)
+
         report = run_diagnosis(canonical_data)
         return export_hackathon_report_json(report)
     except HTTPException:
@@ -2116,9 +2191,9 @@ def get_session_checkpoints_endpoint(
 
 
 @app.get("/api/remediation/pending")
-
-def get_pending_remediation_actions_endpoint() -> List[Dict[str, Any]]:
-
+def get_pending_remediation_actions_endpoint(
+    current_user: UserRecord = Depends(require_permissions([PERM_VIEW_FABRIC_HEALTH])),
+) -> List[Dict[str, Any]]:
     """List all remediation actions awaiting Human-in-the-Loop operator decision."""
 
     logs = list_remediation_action_logs(status="pending")
@@ -2169,13 +2244,10 @@ def get_pending_remediation_actions_endpoint() -> List[Dict[str, Any]]:
 
 
 @app.get("/api/remediation/actions")
-
 def list_remediation_actions_endpoint(
-
     incident_id: Optional[str] = None,
-
     status: Optional[str] = None,
-
+    current_user: UserRecord = Depends(require_permissions([PERM_VIEW_FABRIC_HEALTH])),
 ) -> List[Dict[str, Any]]:
 
     """List recorded remediation action items filtered by incident or status."""

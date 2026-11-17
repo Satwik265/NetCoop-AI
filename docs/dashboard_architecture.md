@@ -26,7 +26,7 @@ The platform defines nine granular permissions mapped across eight specialized e
 | `create_remediation_proposals`| Ability to author or configure simulated remediation actions |
 | `approve_remediation` | Privilege to issue human-in-the-loop (HITL) approvals with written rationale |
 | `execute_remediation` | Privilege to trigger simulated sandbox execution and rollback commands |
-| `view_audit_records` | Read access to immutable SQLite remediation decision records and hashes |
+| `view_audit_records` | Read access to append-only SQLite remediation decision audit records |
 | `manage_platform_settings` | Configuration of microservices, checkpointing, and engine parameters |
 | `manage_network_devices` | Device inventory manipulation, interface provisioning, and maintenance scheduling |
 
@@ -91,12 +91,15 @@ The platform defines nine granular permissions mapped across eight specialized e
   - Model Context Protocol (MCP) transport status and active WebSocket client count.
 
 ### 7. Auditor / Compliance Officer (`dashboard/src/components/views/AuditorView.tsx`)
-- **Focus**: Immutable audit trail verification and regulatory compliance.
+- **Focus**: Append-only audit trail verification and regulatory compliance.
 - **Key Capabilities**:
   - Strictly read-only compliance vault ensuring zero mutation capability.
   - Complete history of operator remediation decisions fetched from `/api/remediation/logs`.
   - Side-by-side inspection of proposed target commands vs validated rollback commands with mandatory written rationales.
-  - One-click cryptographic audit export (JSON).
+  - One-click structured audit log export (JSON).
+
+> [!NOTE]
+> **Audit Storage Boundaries**: Audit logs are recorded in SQLite via append-only API access controls. SQLite is a file-based relational store and does not claim cryptographic immutability (such as blockchain consensus or hardware WORM storage). Operating system access controls and database file integrity monitoring are required in production environments.
 
 ### 8. Helpdesk Operator (`dashboard/src/components/views/HelpdeskView.tsx`)
 - **Focus**: End-user ticket triage, communication, and handoff.

@@ -1,6 +1,7 @@
 """FastAPI microservice server wrapper for isolated specialist domain agents."""
 
 import argparse
+import secrets
 import sys
 from typing import Any, Dict
 from fastapi import FastAPI, HTTPException, Request
@@ -51,12 +52,16 @@ def create_agent_app(role: AgentRole) -> FastAPI:
         description=f"Isolated microservice process for {agent.name}.",
     )
 
+    _agent_cors_origins = [
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origins=_agent_cors_origins,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "X-NetCoop-Service-Token", "X-Correlation-ID", "Accept"],
     )
 
     @app.middleware("http")
@@ -82,7 +87,7 @@ def create_agent_app(role: AgentRole) -> FastAPI:
                 )
 
             client_token = request.headers.get(settings.service_auth_header)
-            if not client_token or client_token != configured_token:
+            if not client_token or not secrets.compare_digest(client_token, configured_token or ""):
                 from fastapi.responses import JSONResponse
                 err_envelope = AgentEnvelope(
                     header=ProtocolHeader(
@@ -107,7 +112,7 @@ def create_agent_app(role: AgentRole) -> FastAPI:
             # Development mode: if token is explicitly configured, verify it; otherwise allow unauthenticated dev use
             if configured_token:
                 client_token = request.headers.get(settings.service_auth_header)
-                if not client_token or client_token != configured_token:
+                if not client_token or not secrets.compare_digest(client_token, configured_token or ""):
                     from fastapi.responses import JSONResponse
                     err_envelope = AgentEnvelope(
                         header=ProtocolHeader(
