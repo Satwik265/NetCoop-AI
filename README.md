@@ -643,14 +643,14 @@ python scripts/run_agents.py --stop
 NetCoop AI includes comprehensive regression, property-based, security, contract, and documentation consistency test suites:
 
 ```powershell
-# 1. Run full backend pytest suite (513 unique tests across 50 test files, including docs and parameter parity)
+# 1. Run full backend pytest suite (519 unique tests across 50 test files, including docs, security regression, and parameter parity)
 pytest tests/ -q
 
 # 2. Run frontend UI/UX contract suite (9 unique tests)
 node dashboard/tests/test_ui_ux_contract.mjs
 ```
 
-**Grand Total**: **522 unique tests passing with zero failures and zero skipped** (513 backend + 9 frontend).
+**Grand Total**: **528 unique tests passing with zero failures and zero skipped** (519 backend + 9 frontend).
 
 ---
 

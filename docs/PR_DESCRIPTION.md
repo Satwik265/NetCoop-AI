@@ -102,9 +102,9 @@ Evaluated across all five fresh holdout populations (1,350 total samples):
 - **Render Secret Bypass**: Explicitly rejected and excluded. `netcoop/core/auth.py` contains zero backdoors.
 - **Tracked Files Audit**: Zero tracked `.env`, `*.db`, `*.sqlite`, `*.log`, or temporary files.
 - **Unique Test Suite Pass Rates (Zero Double-Counting)**:
-  - Backend pytest suite: 513 unique tests passed in 206.89s (exit code 0; uniquely includes 9 documentation consistency tests and 3 parameter parity tests).
-  - Frontend UI/UX contract suite: 9 unique tests passed in 26.9ms (exit code 0).
-  - Total Unique Tests Across Platform: **522 unique tests passing with zero failures, zero errors, and zero skipped**.
+  - Backend pytest suite: 519 unique tests passed (exit code 0; uniquely includes 19 security regression tests, 9 documentation consistency tests, and 3 parameter parity tests).
+  - Frontend UI/UX contract suite: 9 unique tests passed (exit code 0).
+  - Total Unique Tests Across Platform: **528 unique tests passing with zero failures, zero errors, and zero skipped**.
 
 ---
 

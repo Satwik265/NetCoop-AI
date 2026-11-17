@@ -507,3 +507,124 @@ def test_autonomous_remediation_execution_strictly_forbidden_invariant():
     # Unauthenticated must receive 401 or 403
     res_unauth = client.post("/api/remediation/act-001/execute")
     assert res_unauth.status_code in (401, 403)
+
+
+# ==============================================================================
+# 9. RENDER CLOUD ENVIRONMENT SECURITY REGRESSION TESTS
+# ==============================================================================
+
+
+def test_render_flag_does_not_bypass_missing_jwt_secret_in_production(monkeypatch):
+    """RENDER=true must not introduce hardcoded fallback; missing JWT secret fails closed."""
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.setenv("NETCOOP_ENV", "production")
+    monkeypatch.setattr(settings, "environment", "production")
+    monkeypatch.setattr(settings, "jwt_secret_key", "")
+    monkeypatch.delenv("NETCOOP_JWT_SECRET", raising=False)
+    monkeypatch.setattr(settings, "internal_service_token", "production-service-token-32-chars-long!")
+
+    with pytest.raises(ValueError) as excinfo:
+        validate_security_configuration_at_startup()
+    assert "jwt" in str(excinfo.value).lower()
+
+
+def test_render_flag_does_not_bypass_weak_jwt_secret_in_production(monkeypatch):
+    """RENDER=true must not accept weak or default JWT secret in production."""
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.setenv("NETCOOP_ENV", "production")
+    monkeypatch.setattr(settings, "environment", "production")
+    monkeypatch.setattr(settings, "jwt_secret_key", "short-key")
+    monkeypatch.setenv("NETCOOP_JWT_SECRET", "short-key")
+    monkeypatch.setattr(settings, "internal_service_token", "production-service-token-32-chars-long!")
+
+    with pytest.raises(ValueError) as excinfo:
+        validate_security_configuration_at_startup()
+    assert "jwt" in str(excinfo.value).lower()
+
+
+def test_render_flag_with_valid_jwt_secret_starts_securely(monkeypatch):
+    """RENDER=true starts securely when strong production secrets are supplied."""
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.setenv("NETCOOP_ENV", "production")
+    monkeypatch.setattr(settings, "environment", "production")
+    strong_jwt = "secure-production-jwt-signing-key-32chars-long!"
+    strong_svc = "secure-production-service-token-32chars-long!"
+    monkeypatch.setattr(settings, "jwt_secret_key", strong_jwt)
+    monkeypatch.setenv("NETCOOP_JWT_SECRET", strong_jwt)
+    monkeypatch.setattr(settings, "internal_service_token", strong_svc)
+    monkeypatch.setenv("INTERNAL_SERVICE_TOKEN", strong_svc)
+
+    validate_security_configuration_at_startup()
+    assert get_jwt_secret() == strong_jwt
+
+
+def test_render_flag_does_not_enable_demo_mode_in_production(monkeypatch):
+    """RENDER=true must never override production mode to enable demo authentication."""
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.setenv("NETCOOP_ENV", "production")
+    monkeypatch.setattr(settings, "environment", "production")
+    monkeypatch.setenv("NETCOOP_DEMO_MODE", "true")
+    monkeypatch.setattr(settings, "demo_mode", True)
+
+    from netcoop.config import is_demo_mode_allowed
+    assert is_demo_mode_allowed() is False
+
+
+def test_production_startup_does_not_seed_demo_accounts_even_if_render(monkeypatch):
+    """In production, init_default_users() must never seed default accounts even if RENDER=true."""
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.setenv("NETCOOP_ENV", "production")
+    monkeypatch.setattr(settings, "environment", "production")
+
+    from sqlmodel import Session, select, delete
+    from netcoop.storage.db import engine, UserRecord, init_default_users
+
+    # Clear users for clean test
+    with Session(engine) as session:
+        for u in session.exec(select(UserRecord)).all():
+            session.delete(u)
+        session.commit()
+
+    init_default_users()
+
+    with Session(engine) as session:
+        users = session.exec(select(UserRecord)).all()
+        assert len(users) == 0, "No demo users should be seeded in production mode"
+
+    # Restore default users for subsequent tests
+    monkeypatch.delenv("RENDER", raising=False)
+    monkeypatch.setenv("NETCOOP_ENV", "development")
+    init_default_users()
+
+
+def test_exposed_demo_password_rejected_after_account_reset():
+    """Verify that an exposed demo password cannot authenticate after user resets password."""
+    client = TestClient(app)
+    from sqlmodel import Session, select
+    from netcoop.storage.db import engine, UserRecord
+    from netcoop.core.auth import hash_password
+
+    # Update engineer password to a new rotated password
+    new_pwd = "NewRotatedSecurePass!2026"
+    with Session(engine) as session:
+        user = session.exec(select(UserRecord).where(UserRecord.username == "engineer")).first()
+        if user:
+            user.hashed_password = hash_password(new_pwd)
+            session.add(user)
+            session.commit()
+
+    # Old exposed demo password must fail
+    res_old = client.post("/api/auth/login", json={"username": "engineer", "password": "NetCoopEng!2026"})
+    assert res_old.status_code == 401
+
+    # New password must succeed
+    res_new = client.post("/api/auth/login", json={"username": "engineer", "password": new_pwd})
+    assert res_new.status_code == 200
+
+    # Restore standard test password for test fixture isolation
+    with Session(engine) as session:
+        user = session.exec(select(UserRecord).where(UserRecord.username == "engineer")).first()
+        if user:
+            user.hashed_password = hash_password(os.getenv("NETCOOP_DEV_PASSWORD", "NetCoopDev!2026"))
+            session.add(user)
+            session.commit()
