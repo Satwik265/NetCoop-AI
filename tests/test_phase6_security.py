@@ -628,3 +628,256 @@ def test_exposed_demo_password_rejected_after_account_reset():
             user.hashed_password = hash_password(os.getenv("NETCOOP_DEV_PASSWORD", "NetCoopDev!2026"))
             session.add(user)
             session.commit()
+
+
+# ==============================================================================
+# 10. PHASE 14.3 CANONICAL PRODUCTION RESOLUTION & DEMO SEEDING HOTFIX
+# ==============================================================================
+
+
+def _clear_all_users_for_seeding_test():
+    """Helper to purge all user records prior to testing seed invariants."""
+    from sqlmodel import Session, select
+    from netcoop.storage.db import engine, UserRecord
+    with Session(engine) as session:
+        for u in session.exec(select(UserRecord)).all():
+            session.delete(u)
+        session.commit()
+
+
+def test_demo_seeding_blocked_netcoop_env_production(monkeypatch):
+    """Invariant 1: NETCOOP_ENV=production strictly blocks demo account seeding."""
+    _clear_all_users_for_seeding_test()
+    monkeypatch.setenv("NETCOOP_ENV", "production")
+    monkeypatch.setenv("NETCOOP_DEV_PASSWORD", "ExplicitDevPass!2026")
+
+    from sqlmodel import Session, select
+    from netcoop.storage.db import engine, UserRecord, init_default_users
+
+    init_default_users()
+    with Session(engine) as session:
+        assert len(session.exec(select(UserRecord)).all()) == 0
+
+
+def test_demo_seeding_blocked_netcoop_env_prod(monkeypatch):
+    """Invariant 1: NETCOOP_ENV=prod canonical abbreviation strictly blocks demo account seeding."""
+    _clear_all_users_for_seeding_test()
+    monkeypatch.setenv("NETCOOP_ENV", "prod")
+    monkeypatch.setenv("NETCOOP_DEV_PASSWORD", "ExplicitDevPass!2026")
+
+    from sqlmodel import Session, select
+    from netcoop.storage.db import engine, UserRecord, init_default_users
+
+    init_default_users()
+    with Session(engine) as session:
+        assert len(session.exec(select(UserRecord)).all()) == 0
+
+
+def test_demo_seeding_blocked_environment_production(monkeypatch):
+    """Invariant 1: ENVIRONMENT=production strictly blocks demo account seeding."""
+    _clear_all_users_for_seeding_test()
+    monkeypatch.delenv("NETCOOP_ENV", raising=False)
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("NETCOOP_DEV_PASSWORD", "ExplicitDevPass!2026")
+
+    from sqlmodel import Session, select
+    from netcoop.storage.db import engine, UserRecord, init_default_users
+
+    init_default_users()
+    with Session(engine) as session:
+        assert len(session.exec(select(UserRecord)).all()) == 0
+
+
+def test_demo_seeding_blocked_environment_prod(monkeypatch):
+    """Invariant 1: ENVIRONMENT=prod canonical abbreviation strictly blocks demo account seeding."""
+    _clear_all_users_for_seeding_test()
+    monkeypatch.delenv("NETCOOP_ENV", raising=False)
+    monkeypatch.setenv("ENVIRONMENT", "prod")
+    monkeypatch.setenv("NETCOOP_DEV_PASSWORD", "ExplicitDevPass!2026")
+
+    from sqlmodel import Session, select
+    from netcoop.storage.db import engine, UserRecord, init_default_users
+
+    init_default_users()
+    with Session(engine) as session:
+        assert len(session.exec(select(UserRecord)).all()) == 0
+
+
+def test_demo_seeding_blocked_when_enforce_service_auth(monkeypatch):
+    """Invariant 2: Production mode enforcement via service auth enforcement blocks demo seeding."""
+    _clear_all_users_for_seeding_test()
+    monkeypatch.setenv("NETCOOP_ENV", "development")
+    monkeypatch.setattr(settings, "enforce_service_auth", True)
+    monkeypatch.setenv("NETCOOP_DEV_PASSWORD", "ExplicitDevPass!2026")
+
+    from sqlmodel import Session, select
+    from netcoop.storage.db import engine, UserRecord, init_default_users
+
+    init_default_users()
+    with Session(engine) as session:
+        assert len(session.exec(select(UserRecord)).all()) == 0
+
+    # Also verify via environment variable ENFORCE_SERVICE_AUTH=true
+    monkeypatch.setattr(settings, "enforce_service_auth", False)
+    monkeypatch.setenv("ENFORCE_SERVICE_AUTH", "true")
+    init_default_users()
+    with Session(engine) as session:
+        assert len(session.exec(select(UserRecord)).all()) == 0
+
+
+def test_demo_seeding_blocked_when_render_and_production(monkeypatch):
+    """Invariant 3: RENDER=true in production environment has zero seeding bypass exception."""
+    _clear_all_users_for_seeding_test()
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.setenv("NETCOOP_ENV", "production")
+    monkeypatch.setenv("NETCOOP_DEV_PASSWORD", "ExplicitDevPass!2026")
+
+    from sqlmodel import Session, select
+    from netcoop.storage.db import engine, UserRecord, init_default_users
+
+    init_default_users()
+    with Session(engine) as session:
+        assert len(session.exec(select(UserRecord)).all()) == 0
+
+
+def test_demo_seeding_blocked_in_production_even_if_demo_mode_true(monkeypatch):
+    """Invariant 4: Explicit production mode must override NETCOOP_DEMO_MODE=true."""
+    _clear_all_users_for_seeding_test()
+    monkeypatch.setenv("NETCOOP_ENV", "production")
+    monkeypatch.setenv("NETCOOP_DEMO_MODE", "true")
+    monkeypatch.setattr(settings, "demo_mode", True)
+    monkeypatch.setenv("NETCOOP_DEV_PASSWORD", "ExplicitDevPass!2026")
+
+    from sqlmodel import Session, select
+    from netcoop.storage.db import engine, UserRecord, init_default_users
+
+    init_default_users()
+    with Session(engine) as session:
+        assert len(session.exec(select(UserRecord)).all()) == 0
+
+
+def test_development_seeding_with_explicit_dev_password(monkeypatch):
+    """Invariant 7: Development account seeding succeeds when an explicit development credential is provided."""
+    _clear_all_users_for_seeding_test()
+    monkeypatch.setenv("NETCOOP_ENV", "development")
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    monkeypatch.setattr(settings, "enforce_service_auth", False)
+    monkeypatch.setenv("NETCOOP_DEV_PASSWORD", "ExplicitValidDevSecret!2026")
+
+    from sqlmodel import Session, select
+    from netcoop.core.auth import DEMO_SEED_ACCOUNTS, verify_password
+    from netcoop.storage.db import engine, UserRecord, init_default_users
+
+    init_default_users()
+    with Session(engine) as session:
+        users = session.exec(select(UserRecord)).all()
+        assert len(users) == len(DEMO_SEED_ACCOUNTS)
+        engineer = session.exec(select(UserRecord).where(UserRecord.username == "engineer")).first()
+        assert engineer is not None
+        assert verify_password("ExplicitValidDevSecret!2026", engineer.hashed_password) is True
+
+
+def test_development_seeding_without_explicit_dev_password_skips(monkeypatch):
+    """Invariant 6 & 8: Development without explicit demo password safely skips seeding (no shared default password)."""
+    _clear_all_users_for_seeding_test()
+    monkeypatch.setenv("NETCOOP_ENV", "development")
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    monkeypatch.delenv("NETCOOP_DEV_PASSWORD", raising=False)
+
+    from sqlmodel import Session, select
+    from netcoop.storage.db import engine, UserRecord, init_default_users
+
+    init_default_users()
+    with Session(engine) as session:
+        users = session.exec(select(UserRecord)).all()
+        assert len(users) == 0, "Without explicit NETCOOP_DEV_PASSWORD, seeding must safely skip."
+
+
+def test_existing_account_not_overwritten_by_seeding(monkeypatch):
+    """Invariant 5: Existing account password, role, and active status are not overwritten by seeding."""
+    _clear_all_users_for_seeding_test()
+    from sqlmodel import Session, select
+    from netcoop.core.auth import ROLE_PLATFORM_ADMIN, hash_password, verify_password
+    from netcoop.storage.db import engine, UserRecord, init_default_users
+
+    custom_existing_password = "OriginalEngineerSpecificPass!2026"
+    with Session(engine) as session:
+        existing_user = UserRecord(
+            username="engineer",
+            hashed_password=hash_password(custom_existing_password),
+            role=ROLE_PLATFORM_ADMIN,
+            full_name="Custom Existing Engineer",
+            is_active=True,
+        )
+        session.add(existing_user)
+        session.commit()
+
+    monkeypatch.setenv("NETCOOP_ENV", "development")
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    monkeypatch.setattr(settings, "enforce_service_auth", False)
+    monkeypatch.setenv("NETCOOP_DEV_PASSWORD", "NewSeededDevPassword!2026")
+
+    init_default_users()
+
+    with Session(engine) as session:
+        user = session.exec(select(UserRecord).where(UserRecord.username == "engineer")).first()
+        assert user is not None
+        assert user.role == ROLE_PLATFORM_ADMIN, "Existing account role must not be overwritten"
+        assert user.full_name == "Custom Existing Engineer"
+        assert verify_password(custom_existing_password, user.hashed_password) is True
+        assert verify_password("NewSeededDevPassword!2026", user.hashed_password) is False
+
+
+def test_api_main_startup_path_respects_production_invariants(monkeypatch):
+    """Verify that api/main.py startup path executes validate_security and does not seed demo users in production."""
+    _clear_all_users_for_seeding_test()
+    monkeypatch.setenv("NETCOOP_ENV", "production")
+    monkeypatch.setenv("NETCOOP_JWT_SECRET", "strong-production-signing-secret-key-32chars-ok")
+    monkeypatch.setenv("INTERNAL_SERVICE_TOKEN", "valid-prod-internal-service-token-1234567890")
+    monkeypatch.setenv("NETCOOP_DEV_PASSWORD", "DevPassShouldBeIgnoredInProd!2026")
+
+    from sqlmodel import Session, select
+    from api.main import on_startup as api_on_startup
+    from netcoop.storage.db import engine, UserRecord
+
+    api_on_startup()
+
+    with Session(engine) as session:
+        users = session.exec(select(UserRecord)).all()
+        assert len(users) == 0, "api/main on_startup must not seed demo users in production"
+
+
+def test_netcoop_main_startup_path_respects_production_invariants(monkeypatch):
+    """Verify that netcoop/main.py startup path executes validate_security and does not seed demo users in production."""
+    _clear_all_users_for_seeding_test()
+    monkeypatch.setenv("NETCOOP_ENV", "production")
+    monkeypatch.setenv("NETCOOP_JWT_SECRET", "strong-production-signing-secret-key-32chars-ok")
+    monkeypatch.setenv("INTERNAL_SERVICE_TOKEN", "valid-prod-internal-service-token-1234567890")
+    monkeypatch.setenv("NETCOOP_DEV_PASSWORD", "DevPassShouldBeIgnoredInProd!2026")
+
+    from sqlmodel import Session, select
+    from netcoop.main import on_startup as netcoop_on_startup
+    from netcoop.storage.db import engine, UserRecord
+
+    netcoop_on_startup()
+
+    with Session(engine) as session:
+        users = session.exec(select(UserRecord)).all()
+        assert len(users) == 0, "netcoop/main on_startup must not seed demo users in production"
+
+
+def test_compromised_signing_keys_rejected_as_rotation_keys(monkeypatch):
+    """Verify that compromised Render signing keys or weak keys are rejected as rotation keys."""
+    monkeypatch.setenv("NETCOOP_ENV", "production")
+    monkeypatch.setenv("NETCOOP_JWT_SECRET", "valid-primary-secret-key-at-least-32-characters-ok")
+    monkeypatch.setenv(
+        "NETCOOP_JWT_ROTATION_SECRETS",
+        "render-cloud-demo-signing-secret-key-2026-netcoop-ai-hackathon,short-key,valid-secondary-secret-key-32-chars-ok",
+    )
+
+    from netcoop.core.auth import get_jwt_verification_secrets
+
+    secrets = get_jwt_verification_secrets()
+    assert not any("render-cloud-demo" in s for s in secrets), "Compromised Render secret must not be accepted"
+    assert not any(len(s) < 32 for s in secrets), "Weak rotation secret must not be accepted"
+    assert "valid-secondary-secret-key-32-chars-ok" in secrets

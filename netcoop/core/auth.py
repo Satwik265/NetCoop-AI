@@ -192,6 +192,7 @@ INSECURE_JWT_DEFAULTS: Set[str] = {
     "netcoop-production-signing-secret-key-change-in-production-env",
     "change-this-in-production-netcoop-secret-key-32chars",
     "development-jwt-secret-key-do-not-use-in-production",
+    "render-cloud-demo-signing-secret-key-2026-netcoop-ai-hackathon",
     "secret",
     "jwt-secret",
     "changeme",
@@ -215,9 +216,9 @@ def validate_jwt_secret_strength(secret: Optional[str], is_prod: bool) -> Tuple[
         if (
             cleaned in INSECURE_JWT_DEFAULTS
             or cleaned.lower() in INSECURE_JWT_DEFAULTS
-            or any(kw in cleaned.lower() for kw in ("change-me", "change-in-production", "change-this", "placeholder"))
+            or any(kw in cleaned.lower() for kw in ("change-me", "change-in-production", "change-this", "placeholder", "render-cloud-demo"))
         ):
-            return False, "Insecure production configuration: NETCOOP_JWT_SECRET matches a known insecure default placeholder."
+            return False, "Insecure production configuration: NETCOOP_JWT_SECRET matches a known insecure default placeholder or compromised key."
         if len(cleaned) < 32:
             return False, f"Insecure production configuration: NETCOOP_JWT_SECRET must be at least 32 characters in production (got {len(cleaned)})."
     return True, "OK"
@@ -241,7 +242,11 @@ def get_jwt_verification_secrets() -> List[str]:
     if rotation_env:
         for rot_key in rotation_env.split(","):
             cleaned = rot_key.strip()
-            if cleaned and cleaned not in secrets_list:
+            if not cleaned:
+                continue
+            # Old compromised signing keys and insecure defaults are strictly rejected as rotation keys
+            valid_rot, _ = validate_jwt_secret_strength(cleaned, is_prod=settings.is_production)
+            if valid_rot and cleaned not in secrets_list and "render-cloud-demo" not in cleaned.lower():
                 secrets_list.append(cleaned)
     return secrets_list
 

@@ -13,10 +13,14 @@ def get_runtime_environment(configured_env: Optional[str] = None) -> str:
     3. Configured settings environment
     Defaults to 'development'.
     """
+    settings_env = None
+    if "settings" in globals():
+        settings_env = getattr(globals()["settings"], "environment", None)
     env = (
         os.getenv("NETCOOP_ENV")
         or os.getenv("ENVIRONMENT")
         or configured_env
+        or settings_env
         or "development"
     )
     return env.strip().lower()
@@ -25,7 +29,14 @@ def get_runtime_environment(configured_env: Optional[str] = None) -> str:
 def is_production_mode(configured_env: Optional[str] = None, enforce_service_auth: bool = False) -> bool:
     """Return True if running in production mode or if service auth enforcement is active."""
     env = get_runtime_environment(configured_env)
-    return env in ("production", "prod") or enforce_service_auth
+    enforce_auth_env = (
+        os.getenv("ENFORCE_SERVICE_AUTH", "").strip().lower() in ("true", "1", "yes")
+        or os.getenv("NETCOOP_ENFORCE_SERVICE_AUTH", "").strip().lower() in ("true", "1", "yes")
+    )
+    settings_enforce = False
+    if "settings" in globals():
+        settings_enforce = bool(getattr(globals()["settings"], "enforce_service_auth", False))
+    return env in ("production", "prod") or enforce_service_auth or enforce_auth_env or settings_enforce
 
 
 class Settings(BaseSettings):

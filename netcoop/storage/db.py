@@ -581,31 +581,40 @@ def get_auth_audit_logs(limit: int = 100) -> List[AuthAuditLog]:
 
 
 def init_default_users() -> None:
-    """Seed demonstration accounts strictly when demo mode is enabled or in development/testing."""
-    from netcoop.config import is_demo_mode_allowed
+    """Seed demonstration accounts strictly in non-production environments when an explicit development credential is provided."""
+    from netcoop.config import is_production_mode, settings
     from netcoop.core.auth import DEMO_SEED_ACCOUNTS, hash_password
 
-    # In production, never seed default demonstration accounts automatically
-    env = os.getenv("NETCOOP_ENV", settings.environment).lower()
-    if env == "production" and not is_demo_mode_allowed():
+    # Invariant 1, 2, 3, 4: Never seed demo accounts in production mode or if service auth enforcement is active.
+    # Canonical production resolver recognizes 'production' and 'prod'.
+    # Explicit production mode must override NETCOOP_DEMO_MODE=true. No Render-specific exception.
+    if is_production_mode(settings.environment, settings.enforce_service_auth):
         return
 
-    # Use development password for seeded testing accounts
-    dev_pass = os.getenv("NETCOOP_DEV_PASSWORD", "NetCoopDev!2026")
+    # Invariant 6, 7, 8: Development account seeding must require an explicitly configured development credential.
+    # Do not seed accounts with a shared hard-coded default password.
+    # Missing development credentials must fail closed or safely skip seeding.
+    dev_pass = os.getenv("NETCOOP_DEV_PASSWORD")
+    if not dev_pass or not dev_pass.strip():
+        return
+
     with Session(engine) as session:
         for acc in DEMO_SEED_ACCOUNTS:
             existing = session.exec(
                 select(UserRecord).where(UserRecord.username == acc["username"])
             ).first()
-            if not existing:
-                user = UserRecord(
-                    username=acc["username"],
-                    hashed_password=hash_password(dev_pass),
-                    role=acc["role"],
-                    full_name=acc.get("full_name"),
-                    is_active=True,
-                )
-                session.add(user)
+            # Invariant 5: Do not overwrite an existing account (password, role, etc. remain unchanged).
+            if existing is not None:
+                continue
+
+            user = UserRecord(
+                username=acc["username"],
+                hashed_password=hash_password(dev_pass.strip()),
+                role=acc["role"],
+                full_name=acc.get("full_name"),
+                is_active=True,
+            )
+            session.add(user)
         session.commit()
 
 
