@@ -1,10 +1,10 @@
 {
   "metadata": {
-    "version": "phase13n_v1",
-    "timestamp": "2026-11-17T08:22:11Z",
+    "version": "phase13o_v1",
+    "timestamp": "2026-11-17T10:48:11Z",
     "agents_mode": "in_process",
     "total_samples_evaluated": 2115,
-    "duration_seconds": 1463.02
+    "duration_seconds": 1777.69
   },
   "splits": {
     "in_distribution": {
@@ -39,9 +39,13 @@
         "conformal_empirical_coverage": 0.8875,
         "accepted_only_ece": 0.0516
       },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 0,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
       "latency_ms": {
-        "p50": 1346.1,
-        "p95": 6677.36
+        "p50": 1373.37,
+        "p95": 5897.31
       },
       "per_class": {
         "ambiguous_multi_fault": {
@@ -158,9 +162,13 @@
         "conformal_empirical_coverage": 0.9,
         "accepted_only_ece": 0.0592
       },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 0,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
       "latency_ms": {
-        "p50": 1217.33,
-        "p95": 7020.43
+        "p50": 1375.1,
+        "p95": 5787.72
       },
       "per_class": {
         "ambiguous_multi_fault": {
@@ -277,9 +285,13 @@
             "conformal_empirical_coverage": 0.9,
             "accepted_only_ece": 0.0478
           },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
           "latency_ms": {
-            "p50": 1090.76,
-            "p95": 6943.23
+            "p50": 1369.31,
+            "p95": 7682.75
           },
           "per_class": {
             "ambiguous_multi_fault": {
@@ -396,9 +408,13 @@
             "conformal_empirical_coverage": 0.9,
             "accepted_only_ece": 0.0708
           },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
           "latency_ms": {
-            "p50": 1436.95,
-            "p95": 7083.61
+            "p50": 1379.69,
+            "p95": 5186.39
           },
           "per_class": {
             "ambiguous_multi_fault": {
@@ -517,9 +533,13 @@
         "conformal_empirical_coverage": 0.5,
         "accepted_only_ece": 0.18
       },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 150,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
       "latency_ms": {
-        "p50": 1154.27,
-        "p95": 6750.85
+        "p50": 1500.84,
+        "p95": 6362.2
       },
       "per_class": {
         "device_hardware_failure": {
@@ -580,9 +600,13 @@
             "conformal_empirical_coverage": 1.0,
             "accepted_only_ece": 0.0
           },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
           "latency_ms": {
-            "p50": 1133.76,
-            "p95": 6473.99
+            "p50": 1352.06,
+            "p95": 6253.51
           },
           "per_class": {
             "normal_operation": {
@@ -627,9 +651,13 @@
             "conformal_empirical_coverage": 0.5,
             "accepted_only_ece": 0.3401
           },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 150,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
           "latency_ms": {
-            "p50": 1316.63,
-            "p95": 5816.23
+            "p50": 1622.15,
+            "p95": 5620.98
           },
           "per_class": {
             "link_congestion": {
@@ -674,9 +702,13 @@
             "conformal_empirical_coverage": 0.0,
             "accepted_only_ece": 0.2
           },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
           "latency_ms": {
-            "p50": 964.44,
-            "p95": 7400.48
+            "p50": 1519.68,
+            "p95": 7736.82
           },
           "per_class": {
             "device_hardware_failure": {
@@ -692,24 +724,24 @@
       }
     },
     "interop_suite": {
-      "split_name": "interop_suite_9",
+      "split_name": "interop_suite_8_gateway",
       "total_samples": 8,
       "outcomes": {
-        "diagnosed": 6,
+        "diagnosed": 8,
         "benign": 0,
-        "abstained": 2,
-        "accepted": 6,
-        "coverage_pct": 75.0
+        "abstained": 0,
+        "accepted": 8,
+        "coverage_pct": 100.0
       },
       "selective_metrics": {
-        "accepted_count": 6,
-        "correct_count": 6,
+        "accepted_count": 8,
+        "correct_count": 8,
         "wrong_count": 0,
         "selective_accuracy": 1.0,
         "selective_risk": 0.0,
         "selective_risk_wilson_95_ci": [
           0.0,
-          0.3903
+          0.3244
         ]
       },
       "safety_metrics": {
@@ -720,21 +752,25 @@
         "normal_operation_recall": 0.0
       },
       "calibration_metrics": {
-        "conformal_empirical_coverage": 0.625,
-        "accepted_only_ece": 0.097
+        "conformal_empirical_coverage": 0.75,
+        "accepted_only_ece": 0.1799
+      },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 2,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
       },
       "latency_ms": {
-        "p50": 258.89,
-        "p95": 414.97
+        "p50": 314.59,
+        "p95": 1167.6
       },
       "per_class": {
         "link_congestion": {
           "total": 8,
-          "diagnosed": 6,
+          "diagnosed": 8,
           "benign": 0,
-          "abstained": 2,
-          "correct": 6,
-          "accuracy": 0.75
+          "abstained": 0,
+          "correct": 8,
+          "accuracy": 1.0
         }
       }
     },
@@ -770,9 +806,13 @@
         "conformal_empirical_coverage": 0.7143,
         "accepted_only_ece": 0.0428
       },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 0,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
       "latency_ms": {
-        "p50": 262.74,
-        "p95": 1072.99
+        "p50": 324.51,
+        "p95": 366.08
       },
       "per_class": {
         "ambiguous_multi_fault": {
@@ -849,9 +889,13 @@
         "conformal_empirical_coverage": 0.888,
         "accepted_only_ece": 0.0507
       },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 0,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
       "latency_ms": {
-        "p50": 1558.92,
-        "p95": 7509.67
+        "p50": 2457.12,
+        "p95": 7388.26
       },
       "per_class": {
         "ambiguous_multi_fault": {
@@ -968,9 +1012,13 @@
             "conformal_empirical_coverage": 0.89,
             "accepted_only_ece": 0.0508
           },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
           "latency_ms": {
-            "p50": 1814.08,
-            "p95": 8032.87
+            "p50": 1661.21,
+            "p95": 7621.91
           },
           "per_class": {
             "ambiguous_multi_fault": {
@@ -1087,9 +1135,13 @@
             "conformal_empirical_coverage": 0.89,
             "accepted_only_ece": 0.0494
           },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
           "latency_ms": {
-            "p50": 1646.05,
-            "p95": 6451.3
+            "p50": 2946.99,
+            "p95": 7212.29
           },
           "per_class": {
             "ambiguous_multi_fault": {
@@ -1206,9 +1258,13 @@
             "conformal_empirical_coverage": 0.89,
             "accepted_only_ece": 0.0499
           },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
           "latency_ms": {
-            "p50": 1698.7,
-            "p95": 7965.83
+            "p50": 2525.2,
+            "p95": 6912.95
           },
           "per_class": {
             "ambiguous_multi_fault": {
@@ -1325,9 +1381,13 @@
             "conformal_empirical_coverage": 0.89,
             "accepted_only_ece": 0.0511
           },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
           "latency_ms": {
-            "p50": 1248.82,
-            "p95": 6497.79
+            "p50": 2511.62,
+            "p95": 8008.89
           },
           "per_class": {
             "ambiguous_multi_fault": {
@@ -1444,9 +1504,13 @@
             "conformal_empirical_coverage": 0.88,
             "accepted_only_ece": 0.052
           },
+          "confidence_distribution": {
+            "accepted_confidence_under_0_70": 0,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+          },
           "latency_ms": {
-            "p50": 1673.82,
-            "p95": 5850.31
+            "p50": 2251.55,
+            "p95": 6277.52
           },
           "per_class": {
             "ambiguous_multi_fault": {
@@ -1568,9 +1632,13 @@
         "conformal_empirical_coverage": 0.89,
         "accepted_only_ece": 0.0502
       },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 0,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
       "latency_ms": {
-        "p50": 321.5,
-        "p95": 1255.52
+        "p50": 415.86,
+        "p95": 1262.96
       },
       "per_class": {
         "ambiguous_multi_fault": {
@@ -1686,6 +1754,10 @@
       "calibration_metrics": {
         "conformal_empirical_coverage": 0.0,
         "accepted_only_ece": 0.122
+      },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 0,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
       },
       "latency_ms": {
         "p50": 0.0,
@@ -1815,6 +1887,10 @@
         "conformal_empirical_coverage": 0.0,
         "accepted_only_ece": 0.5824
       },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 0,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
       "latency_ms": {
         "p50": 0.0,
         "p95": 0.0
@@ -1943,9 +2019,13 @@
         "conformal_empirical_coverage": 0.89,
         "accepted_only_ece": 0.0502
       },
+      "confidence_distribution": {
+        "accepted_confidence_under_0_70": 0,
+        "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+      },
       "latency_ms": {
-        "p50": 276.88,
-        "p95": 986.62
+        "p50": 278.43,
+        "p95": 847.53
       },
       "per_class": {
         "ambiguous_multi_fault": {
@@ -2072,9 +2152,13 @@
           "conformal_empirical_coverage": 0.89,
           "accepted_only_ece": 0.0313
         },
+        "confidence_distribution": {
+          "accepted_confidence_under_0_70": 0,
+          "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+        },
         "latency_ms": {
-          "p50": 232.9,
-          "p95": 1100.9
+          "p50": 371.72,
+          "p95": 1228.58
         },
         "per_class": {
           "ambiguous_multi_fault": {
@@ -2200,9 +2284,13 @@
           "conformal_empirical_coverage": 0.89,
           "accepted_only_ece": 0.0579
         },
+        "confidence_distribution": {
+          "accepted_confidence_under_0_70": 0,
+          "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+        },
         "latency_ms": {
-          "p50": 259.77,
-          "p95": 1223.74
+          "p50": 310.58,
+          "p95": 1219.55
         },
         "per_class": {
           "ambiguous_multi_fault": {
@@ -2328,9 +2416,13 @@
           "conformal_empirical_coverage": 0.89,
           "accepted_only_ece": 0.0502
         },
+        "confidence_distribution": {
+          "accepted_confidence_under_0_70": 0,
+          "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+        },
         "latency_ms": {
-          "p50": 252.39,
-          "p95": 1024.05
+          "p50": 347.48,
+          "p95": 1287.74
         },
         "per_class": {
           "ambiguous_multi_fault": {
@@ -2456,9 +2548,13 @@
           "conformal_empirical_coverage": 0.89,
           "accepted_only_ece": 0.0502
         },
+        "confidence_distribution": {
+          "accepted_confidence_under_0_70": 0,
+          "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+        },
         "latency_ms": {
-          "p50": 252.3,
-          "p95": 677.08
+          "p50": 295.96,
+          "p95": 1236.32
         },
         "per_class": {
           "ambiguous_multi_fault": {
@@ -2584,9 +2680,13 @@
           "conformal_empirical_coverage": 0.89,
           "accepted_only_ece": 0.0508
         },
+        "confidence_distribution": {
+          "accepted_confidence_under_0_70": 0,
+          "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+        },
         "latency_ms": {
-          "p50": 266.03,
-          "p95": 1390.48
+          "p50": 378.47,
+          "p95": 1310.66
         },
         "per_class": {
           "ambiguous_multi_fault": {
@@ -2712,9 +2812,13 @@
           "conformal_empirical_coverage": 0.9,
           "accepted_only_ece": 0.0913
         },
+        "confidence_distribution": {
+          "accepted_confidence_under_0_70": 0,
+          "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis."
+        },
         "latency_ms": {
-          "p50": 181.12,
-          "p95": 273.74
+          "p50": 287.13,
+          "p95": 906.05
         },
         "per_class": {
           "ambiguous_multi_fault": {
@@ -2806,18 +2910,34 @@
           "abstain_to_misdiagnosed": 0,
           "misdiagnosed_to_abstain": 0,
           "misdiagnosed_to_diagnosed": 0
-        }
+        },
+        "mechanics_verification": "Verified: Removing classifier_agent prevents node_dispatch from querying the classifier, leaving calibrated_probabilities empty and model_score equal to rules_score. On this in-distribution frozen set, deterministic multi-signal domain rules fired with >= 2 independent domains for all accepted cases; thus decisions are identical."
       }
     }
   },
   "latency": {
+    "mode": "Dual: TestClient (in-process) and HTTP Microservice (real sockets)",
+    "in_process_testclient": {
+      "runs_evaluated": 200,
+      "p50_latency_ms": 2484.32,
+      "p95_latency_ms": 3335.91,
+      "p99_latency_ms": 3924.85,
+      "mean_latency_ms": 2629.23
+    },
+    "real_socket_microservice": {
+      "runs_evaluated": 50,
+      "p50_latency_ms": 2498.44,
+      "p95_latency_ms": 3067.76,
+      "p99_latency_ms": 3639.16,
+      "mean_latency_ms": 2589.63
+    },
     "runs_evaluated": 200,
-    "p50_latency_ms": 2356.48,
-    "p95_latency_ms": 4168.41,
-    "p99_latency_ms": 7218.32,
-    "mean_latency_ms": 2652.65,
-    "min_latency_ms": 2247.68,
-    "max_latency_ms": 10433.46
+    "p50_latency_ms": 2484.32,
+    "p95_latency_ms": 3335.91,
+    "p99_latency_ms": 3924.85,
+    "mean_latency_ms": 2629.23,
+    "min_latency_ms": 2298.09,
+    "max_latency_ms": 4547.93
   },
   "determinism": {
     "seeds_tested": 50,

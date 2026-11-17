@@ -39,11 +39,11 @@ def test_interop_suite_scoring():
     """Verify that interop suite evaluates against actual ground truth scenarios."""
     summary = eval_interop_suite_split()
     assert summary["total_samples"] == 8
-    # 6 accepted (diagnosed), 2 abstained (interop_null_nan, interop_renamed_fields)
-    assert summary["outcomes"]["accepted"] == 6
-    assert summary["outcomes"]["abstained"] == 2
-    # All 6 accepted must be correctly diagnosed link_congestion (100% selective accuracy)
-    assert summary["selective_metrics"]["correct_count"] == 6
+    # With Gateway normalization via OrganizerAdapter, all 8 valid interop files are normalized and diagnosed
+    assert summary["outcomes"]["accepted"] == 8
+    assert summary["outcomes"]["abstained"] == 0
+    # All 8 accepted must be correctly diagnosed link_congestion (100% selective accuracy)
+    assert summary["selective_metrics"]["correct_count"] == 8
     assert summary["selective_metrics"]["wrong_count"] == 0
     assert summary["selective_metrics"]["selective_accuracy"] == 1.0
 

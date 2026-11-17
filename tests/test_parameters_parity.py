@@ -67,3 +67,16 @@ def test_parameters_code_parity():
     assert data["optical_rx_power_warn_dbm"]["value"] == DynamicThresholds.OPTICAL_RX_POWER_WARN_DBM
     assert data["optical_rx_power_crit_dbm"]["value"] == DynamicThresholds.OPTICAL_RX_POWER_CRIT_DBM
     assert data["ethernet_flap_threshold"]["value"] == DynamicThresholds.LINK_FLAPS_CRIT
+
+    # Rule ambiguity thresholds
+    assert data["rule_ambiguity_min_domains"]["value"] == 2
+    assert data["rule_ambiguity_dns_failure_pct"]["value"] == 25.0
+    assert data["rule_ambiguity_dhcp_failure_pct"]["value"] == 25.0
+    assert data["rule_ambiguity_hardware_cpu_pct"]["value"] == 95.0
+    assert data["rule_ambiguity_hardware_loss_pct"]["value"] == 15.0
+    assert data["rule_ambiguity_hardware_queue_drops"]["value"] == 2000
+
+    # Healthy guard thresholds
+    assert data["healthy_guard_active_fault_prob_threshold"]["value"] == 0.50
+    assert data["healthy_guard_dq_min"]["value"] == 0.70
+    assert data["healthy_health_score_threshold"]["value"] == 0.85

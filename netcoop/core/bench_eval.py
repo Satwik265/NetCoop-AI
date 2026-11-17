@@ -279,6 +279,9 @@ def summarize_results(name: str, results: List[Dict[str, Any]]) -> Dict[str, Any
     conformal_covered = sum(1 for r in results if r.get("conformal_covered"))
     conformal_coverage = conformal_covered / total if total > 0 else 0.0
 
+    # Accepted confidence distribution (< 0.70 count)
+    accepted_under_70 = sum(1 for r in accepted_results if float(r.get("confidence", 1.0)) < 0.70)
+
     # Accepted-only ECE
     accepted_ece = compute_accepted_ece(results)
 
@@ -334,6 +337,10 @@ def summarize_results(name: str, results: List[Dict[str, Any]]) -> Dict[str, Any
         "calibration_metrics": {
             "conformal_empirical_coverage": round(conformal_coverage, 4),
             "accepted_only_ece": round(accepted_ece, 4),
+        },
+        "confidence_distribution": {
+            "accepted_confidence_under_0_70": accepted_under_70,
+            "acceptance_policy_note": "Acceptance status is determined at decision time before data quality penalty is deducted; degraded telemetry can lower displayed confidence below 0.70 while safely preserving diagnosis.",
         },
         "latency_ms": {
             "p50": round(p50_lat, 2),

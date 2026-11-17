@@ -201,3 +201,68 @@ parameters:
     type: "heuristic"
     category: "fault_signatures"
     evidence: "Carrier state transition count indicating link instability or faulty auto-negotiation."
+
+  # Rule-Based Ambiguity & Exemption Gating
+  rule_ambiguity_min_domains:
+    value: 2
+    unit: "domain_count"
+    type: "hard safety"
+    category: "ambiguity_gating"
+    evidence: "Minimum distinct fault domain signatures active simultaneously required to trigger ambiguous multi-fault abstention."
+
+  rule_ambiguity_dns_failure_pct:
+    value: 25.0
+    unit: "percent"
+    type: "heuristic"
+    category: "ambiguity_gating"
+    evidence: "DNS resolution failure rate percentage triggering DNS domain candidate or multi-fault ambiguity."
+
+  rule_ambiguity_dhcp_failure_pct:
+    value: 25.0
+    unit: "percent"
+    type: "heuristic"
+    category: "ambiguity_gating"
+    evidence: "DHCP lease failure rate percentage triggering DHCP domain candidate or multi-fault ambiguity."
+
+  rule_ambiguity_hardware_cpu_pct:
+    value: 95.0
+    unit: "percent"
+    type: "heuristic"
+    category: "ambiguity_gating"
+    evidence: "ASIC/device CPU crash threshold in catastrophic hardware failure exemption signature."
+
+  rule_ambiguity_hardware_loss_pct:
+    value: 15.0
+    unit: "percent"
+    type: "heuristic"
+    category: "ambiguity_gating"
+    evidence: "Line-rate packet loss threshold in catastrophic hardware failure exemption signature."
+
+  rule_ambiguity_hardware_queue_drops:
+    value: 2000
+    unit: "packets"
+    type: "heuristic"
+    category: "ambiguity_gating"
+    evidence: "Catastrophic queue drops threshold in catastrophic hardware failure exemption signature."
+
+  # Healthy Normal Operation Confirmation Guards
+  healthy_guard_active_fault_prob_threshold:
+    value: 0.50
+    unit: "probability"
+    type: "hard safety"
+    category: "healthy_confirmation"
+    evidence: "Classifier calibrated probability threshold for active fault class triggering healthy rejection."
+
+  healthy_guard_dq_min:
+    value: 0.70
+    unit: "quality_score"
+    type: "hard safety"
+    category: "healthy_confirmation"
+    evidence: "Minimum data quality required for normal_operation confirmation to prevent false normal calls on garbage inputs."
+
+  healthy_health_score_threshold:
+    value: 0.85
+    unit: "ratio"
+    type: "fitted"
+    category: "healthy_confirmation"
+    evidence: "Noise-robust composite metric compliance ratio fitted on validation mesh for normal confirmation."

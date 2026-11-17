@@ -207,6 +207,31 @@ TOPOLOGY_REGISTRY: Dict[str, Dict[str, Any]] = {
             {"source": "blind-leaf-04", "target": "blind-srv-04", "bandwidth_mbps": 25000.0, "media_type": "copper", "source_interface": "xe-0/0/1", "target_interface": "eth0"},
         ],
     },
+    "blind_branch_9": {
+        "description": "Blind Topology 3: Enterprise branch office with redundant uplinks and guest wireless (9 devices)",
+        "device_count": 9,
+        "nodes": [
+            {"id": "branch-gw-01", "type": DeviceType.ROUTER, "role": "router", "bandwidth_mbps": 10000.0, "zone": "branch_wan"},
+            {"id": "branch-core-sw-01", "type": DeviceType.SWITCH, "role": "switch", "bandwidth_mbps": 10000.0, "zone": "branch_lan"},
+            {"id": "branch-poe-sw-02", "type": DeviceType.SWITCH, "role": "switch", "bandwidth_mbps": 1000.0, "zone": "branch_access"},
+            {"id": "branch-ap-front", "type": DeviceType.ACCESS_POINT, "role": "access_point", "bandwidth_mbps": 1000.0, "zone": "branch_wifi_front"},
+            {"id": "branch-ap-back", "type": DeviceType.ACCESS_POINT, "role": "access_point", "bandwidth_mbps": 1000.0, "zone": "branch_wifi_back"},
+            {"id": "branch-pos-01", "type": DeviceType.HOST, "role": "host", "bandwidth_mbps": 1000.0, "zone": "branch_access"},
+            {"id": "branch-pos-02", "type": DeviceType.HOST, "role": "host", "bandwidth_mbps": 1000.0, "zone": "branch_access"},
+            {"id": "branch-srv-01", "type": DeviceType.HOST, "role": "host", "bandwidth_mbps": 10000.0, "zone": "branch_lan"},
+            {"id": "branch-wifi-user-01", "type": DeviceType.HOST, "role": "host", "bandwidth_mbps": 300.0, "zone": "branch_wifi_front"},
+        ],
+        "links": [
+            {"source": "branch-gw-01", "target": "branch-core-sw-01", "bandwidth_mbps": 10000.0, "media_type": "fiber", "source_interface": "xe-0/0/0", "target_interface": "xe-0/0/1"},
+            {"source": "branch-core-sw-01", "target": "branch-poe-sw-02", "bandwidth_mbps": 1000.0, "media_type": "copper", "source_interface": "ge-0/0/1", "target_interface": "ge-0/0/1"},
+            {"source": "branch-core-sw-01", "target": "branch-srv-01", "bandwidth_mbps": 10000.0, "media_type": "fiber", "source_interface": "xe-0/0/2", "target_interface": "eth0"},
+            {"source": "branch-poe-sw-02", "target": "branch-ap-front", "bandwidth_mbps": 1000.0, "media_type": "copper", "source_interface": "ge-0/0/2", "target_interface": "eth0"},
+            {"source": "branch-poe-sw-02", "target": "branch-ap-back", "bandwidth_mbps": 1000.0, "media_type": "copper", "source_interface": "ge-0/0/3", "target_interface": "eth0"},
+            {"source": "branch-poe-sw-02", "target": "branch-pos-01", "bandwidth_mbps": 1000.0, "media_type": "copper", "source_interface": "ge-0/0/4", "target_interface": "eth0"},
+            {"source": "branch-poe-sw-02", "target": "branch-pos-02", "bandwidth_mbps": 1000.0, "media_type": "copper", "source_interface": "ge-0/0/5", "target_interface": "eth0"},
+            {"source": "branch-ap-front", "target": "branch-wifi-user-01", "bandwidth_mbps": 300.0, "media_type": "wireless", "source_interface": "wlan0", "target_interface": "wlan0"},
+        ],
+    },
 }
 
 
@@ -222,6 +247,7 @@ class TopologyRandomizedGenerator:
     VALIDATION_TOPOLOGY = "validation_mesh_7"
     BLIND_TOPOLOGY_1 = "blind_edge_iot_6"
     BLIND_TOPOLOGY_2 = "blind_spine_leaf_10"
+    BLIND_TOPOLOGY_3 = "blind_branch_9"
 
     @classmethod
     def _heavy_tail_noise(cls, rng: random.Random, scale: float = 1.0, shape: float = 3.0) -> float:

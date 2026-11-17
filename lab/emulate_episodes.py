@@ -691,18 +691,18 @@ def run_healthy_episode(ep_id: int, seed: int, intensity: str = "nominal") -> Di
 # Main Orchestration: 50 Episodes across 5 Conditions
 # -----------------------------------------------------------------------------
 
-def run_all_episodes(output_dir: str = DEFAULT_RAW_DIR) -> List[Dict[str, Any]]:
-    """Execute 50 randomized episodes (10 per condition) with new seeds 10001-10050."""
+def run_all_episodes(output_dir: str = DEFAULT_RAW_DIR, seed_start: int = 10001) -> List[Dict[str, Any]]:
+    """Execute 50 randomized episodes (10 per condition) with starting seed."""
     os.makedirs(output_dir, exist_ok=True)
     all_captures: List[Dict[str, Any]] = []
 
     # 10 episodes per condition; randomized intensity distribution
     conditions = [
-        ("congestion", run_congestion_episode, 10001),
-        ("link_flap", run_link_flap_episode, 10011),
-        ("mtu_mismatch", run_mtu_mismatch_episode, 10021),
-        ("cpu_stress", run_cpu_stress_episode, 10031),
-        ("healthy_run", run_healthy_episode, 10041),
+        ("congestion", run_congestion_episode, seed_start),
+        ("link_flap", run_link_flap_episode, seed_start + 10),
+        ("mtu_mismatch", run_mtu_mismatch_episode, seed_start + 20),
+        ("cpu_stress", run_cpu_stress_episode, seed_start + 30),
+        ("healthy_run", run_healthy_episode, seed_start + 40),
     ]
 
     intensities = ["mild", "mild", "moderate", "moderate", "moderate", "moderate", "severe", "severe", "moderate", "mild"]
@@ -728,4 +728,5 @@ def run_all_episodes(output_dir: str = DEFAULT_RAW_DIR) -> List[Dict[str, Any]]:
 
 if __name__ == "__main__":
     out_dir = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_RAW_DIR
-    run_all_episodes(out_dir)
+    seed_s = int(sys.argv[2]) if len(sys.argv) > 2 else 10001
+    run_all_episodes(out_dir, seed_start=seed_s)

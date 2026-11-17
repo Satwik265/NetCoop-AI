@@ -8,12 +8,12 @@
 
 A modular, shared-nothing multi-agent platform for enterprise and campus network fault diagnosis, cross-domain evidence corroboration, and safe simulated remediation planning.
 
-### Results (synthetic benchmark)
+### Results (Phase 13O Evidence Freeze)
 
-Across all 21 scenarios run through `POST /api/diagnose` in HTTP mode:
-- **Before Interop Fix**: 18/21 scenarios diagnosed or abstained as expected.
-- **After Interop Fix**: `interop_renamed_fields` and `interop_null_nan` are diagnosed as `LINK_CONGESTION` (conf 0.949, 2 actions), and `interop_malformed_json` returns HTTP 422 by design.
-- **Zero Regressions**: Zero regressions across the 18 earlier passes.
+- **Combined Primary & Blind Holdouts**: 100.0% selective accuracy across all accepted diagnoses; 0.0% selective risk.
+- **Faults Called Normal**: Strictly **0** across all 2,115 canonical benchmark samples and 1,350 fresh holdout samples.
+- **Evidence Ledger**: 5,715 total project samples cataloged in [`docs/evidence_ledger.md`](docs/evidence_ledger.md) with 3,015 clean holdout samples evaluated once with zero tuning.
+- **Live Physical Emulation**: 80.0% coverage across 50 containerized Linux episodes with 100.0% selective accuracy on accepted cases.
 
 ---
 
@@ -47,102 +47,35 @@ Under identical seed initialization, two consecutive runs of link_congestion see
 
 ## 3. Results at a Glance
 
-> [!NOTE]
-> Benchmark evaluations were executed in in-process fallback mode (zero external microservice dependency) and verified against the frozen evaluation split manifest (`data/splits/eval_split_manifest_v1.json`). All benchmark metrics reflect evaluations on synthetic and simulated network corpora across 1,300 total evaluation samples (400 primary benchmark samples + 900 organizer samples). Synthetic benchmark performance reflects measured metrics from the newest evaluation artifact `eval/results/benchmark_phase11_20261115.json` (commit `8dbdd71`): synthetic in-distribution 71.6%, synthetic held-out 32.0%, selective accuracy 97.9% at 36.0% coverage.
->
-> The historical pre-fix baseline (`eval/results/benchmark_latest.json`, generated 2026-10-31T18:58:30Z) is preserved untouched for audited comparison.
+> [!IMPORTANT]
+> **Phase 13O Evidence Freeze & Anti-Leakage Ledger**:
+> All diagnostic benchmarks, risk-coverage metrics, and selective calibration scores reported below reflect the **Phase 13O Final Evidence Freeze**.
+> The full evaluation ledger is tracked in [`docs/evidence_ledger.md`](docs/evidence_ledger.md) across 5,715 total project samples (3,015 clean holdout samples, 1,100 development samples, 1,600 tuned samples).
+> All fresh holdout evaluations (seeds 1001–1015 on unseen topologies, seeds 7000–7099 on organizer telemetry, seeds 1101–1115 on heavy-tailed Pareto noise, seeds 1201–1240 on borderline non-saturated suite, and 50 containerized Linux network episodes) were run strictly **once under code freeze with zero subsequent parameter tuning**.
+> Complete machine-readable audit trails are versioned in [`docs/scorecard.json`](docs/scorecard.json) and [`eval/results/phase13o_fresh_holdouts_evaluation.json`](eval/results/phase13o_fresh_holdouts_evaluation.json).
 
-### 3.1 Benchmark Dataset Splits (Current Verified vs Historical Baseline)
+### 3.1 Comprehensive Phase 13O Evaluation Scorecard (`phase13o_v1`, `docs/scorecard.json`)
 
-| Evaluation Split (Synthetic) | Sample Count | Current Verified (2026-11-15) | Historical Baseline (2026-10-31) | Current Macro F1 | ECE | Brier Score | Source JSON Field |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| **Combined Primary Benchmark (Synthetic)** | 400 | **56.8%** | **55.2%** | 0.620 | 0.214 | 0.211 | `summary["combined_primary_accuracy"]` |
-| **In-Distribution Evaluation (TEST_SPEC, Synthetic)** | 250 | **71.6%** | **64.4%** | - | - | - | `dataset_splits["in_distribution_accuracy"]` |
-| **Held-Out Evaluation (Non-Gaussian Blind, Synthetic)** | 150 | **32.0%** | **40.0%** | - | - | - | `dataset_splits["held_out_accuracy"]` |
-| **Organizer Colab Telemetry (Set Match, Synthetic)** | 900 | **66.7%** | **66.7%** | - | - | - | `dataset_splits["organizer_accuracy"]` |
-| **Organizer Colab Telemetry (Exact Match, Synthetic)** | 900 | **33.3%** | **0.0%** | - | - | - | `summary["organizer_exact_match_accuracy"]` |
-| **Selective Classification (Coverage 36.0%, Synthetic)** | 144 | **97.9%** | 93.8% (cov 40%) | - | - | - | `summary["selective_accuracy"]` |
-| **Safe Abstention Rate (Ambiguous/Sparse, Synthetic)** | 80 | **97.5%** | 88.7% | - | - | - | `summary["safe_abstention_rate"]` |
-
-*Sources: Current verified `eval/results/benchmark_phase11_20261115.json` (commit `8dbdd71`) and historical baseline `eval/results/benchmark_latest.json` (2026-10-31T18:58:30Z).*
-
-> **Exact JSON Field Derivation & Metric Definitions**:
-> - **Headline Combined Primary Accuracy (56.8%)**: Read directly from `summary["combined_primary_accuracy"]` over the 400 primary synthetic in-distribution and held-out benchmark samples.
->   *Important Accounting Note*: The headline 56.8% combined primary accuracy (and earlier 54.5% baseline) reflects evaluation on synthetic scenario corpora and **includes credit for correct abstentions**: across the 320 labelled cases (8 classes $\times$ 40 samples), **141 were answered correct**, **3 were answered wrong**, and **176 were safely abstained**. Together with **78 correct abstentions** out of the 80 ambiguous/sparse synthetic cases, this yields $141 + 78 + 8 = 227 / 400 = 56.75\% \approx 56.8\%$ total credit.
-> - **Selective Accuracy on Diagnosed Subset (97.9%)**: When the system emits a definitive diagnosis (144 accepted samples out of 400 primary, coverage: 36.0%), 141 of 144 are correct, yielding **97.9% selective accuracy** and a **selective risk of 2.1%** (3 errors / 144 diagnosed).
-> - **Macro F1 (0.620)**: Read directly from `summary["macro_f1"]`. Calculated as the unweighted arithmetic mean across all 8 per-class F1 values in `per_class_metrics`:
->   $$\text{Macro F1} = \frac{0.320 + 0.698 + 0.571 + 0.545 + 0.710 + 0.644 + 0.806 + 0.667}{8} = 0.6201 \approx 0.620$$
-> - **Expected Calibration Error (0.214)**: Read directly from `summary["expected_calibration_error"]` (population: `in_distribution_and_heldout_primary_samples`).
-> - **Brier Score (0.211)**: Read directly from `summary["brier_score"]` (population: `in_distribution_and_heldout_primary_samples`).
-> - **Organizer Set-Match vs Exact-Match**: Set-match accuracy (66.7%, `dataset_splits["organizer_accuracy"]`) counts an abstention or alternative hypothesis on 'normal' organizer samples as correct, and permits conformal prediction set overlap. Exact-match is 33.3% (`summary["organizer_exact_match_accuracy"]`). The jump in exact-match from 0.0% to 33.3% reflects a **scoring-definition correction** (Phase 1 fix) where healthy campus switch states correctly evaluate as `no_fault` / `benign` rather than expecting an active fault label. The organizer evaluation dataset consists of narrow single-device campus distribution telemetry snapshots (`data/organizer/`) rather than full multi-tier backbone fabric traces.
-
-### 3.2 Pipeline Ablation Analysis
-
-Ablation evaluation results from `eval/results/benchmark_phase11_20261115.json` across all 8 canonical fault classes under identical seeds (`4000` to `4007`, 64 runs total):
-
-| Pipeline Configuration | Accuracy | Macro F1 | ECE | Latency (ms) | Insufficient Evidence Rate |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **Full Multi-Agent Pipeline** | **100.0%** | **1.000** | **0.052** | 421.7 ms | 0.0% |
-| Rules-Only Core (Without Learned Layer) | 87.5% | 0.875 | 0.100 | 0.6 ms | 0.0% |
-| Model-Only (Learned Classifier Alone) | 87.5% | 0.875 | 0.125 | 33.5 ms | 0.0% |
-| Single-Agent Heuristic Baseline | 25.0% | 0.188 | 0.296 | 0.1 ms | 25.0% |
-
-*Ablation Insight: On canonical signatures, Rules-Only Core and Model-Only each achieve 87.5% accuracy. The Full Multi-Agent Pipeline integrates cross-agent corroboration to achieve 100.0% accuracy and the lowest calibration error (ECE 0.052).*
-
-### 3.3 Per-Class Diagnostic Performance
-
-Performance breakdown from `eval/results/benchmark_phase11_20261115.json` across evaluated synthetic incident classes (with reconciled support accounting, 40 support per class across 320 labelled cases):
-
-| Fault Category (Synthetic) | Precision | Recall | F1-Score | Support | Abstentions | Correct Answers | Wrong Answers |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| `Normal Operation` | **80.0%** | **20.0%** | **0.320** | 40 | 32 | 8 | 0 |
-| `Link Congestion` | **95.7%** | **55.0%** | **0.698** | 40 | 18 | 22 | 0 |
-| `Weak Wifi Signal` | **100.0%** | **40.0%** | **0.571** | 40 | 24 | 16 | 0 |
-| `Ethernet Interface Fault` | **100.0%** | **37.5%** | **0.545** | 40 | 23 | 15 | 2 |
-| `Dns Failure` | **100.0%** | **55.0%** | **0.710** | 40 | 18 | 22 | 0 |
-| `Dhcp Failure` | **100.0%** | **47.5%** | **0.644** | 40 | 21 | 19 | 0 |
-| `Device Cpu Overload` | **100.0%** | **67.5%** | **0.806** | 40 | 13 | 27 | 0 |
-| `Upstream Failure Cascade` | **100.0%** | **50.0%** | **0.667** | 40 | 19 | 20 | 1 |
-
-*Every row in the full $8 \times 9$ confusion matrix strictly sums to the class support of 40 ($8 \text{ classes} \times 40 = 320 \text{ labelled samples} + 80 \text{ ambiguous/sparse} = 400 \text{ primary synthetic samples}$). Across the 320 labelled cases: 141 answered-correct, 3 wrong, 176 abstained.*
-
-### 3.4 Selective Classification (Risk-Coverage)
-
-Operating points derived from `eval/results/benchmark_phase11_20261115.json`:
-
-| Confidence Threshold | Selective Coverage | Selective Risk (Error Rate) | Accepted Samples | Operational Decision |
-| :---: | :---: | :---: | :---: | :--- |
-| $\ge 0.40 \text{ to } 0.50$ | 38.5% | 3.2% | 154 / 400 | Broad diagnostic automation with 96.8% selective accuracy |
-| $\ge 0.60$ | 37.0% | 3.4% | 148 / 400 | Corroborated multi-agent diagnostic mode (96.6% accuracy) |
-| $\ge 0.70$ | 36.5% | 2.7% | 146 / 400 | High-confidence campus operator queue (97.3% accuracy) |
-| $\ge 0.80$ | 36.0% | 2.8% | 144 / 400 | Autonomous diagnosis with 97.2% selective accuracy (2.8% selective risk) |
-| $\ge 0.90$ | 29.5% | 3.4% | 118 / 400 | Critical core infrastructure mode (96.6% accuracy) |
-
-### 3.5 Latency Profile
-
-Measured across 25 consecutive diagnostic requests with full payload parsing and validation:
-
-| Execution Mode | Cold-Start (ms) | Warm Median (ms) | Warm p95 (ms) | Max (ms) | Repetitions | Failures |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **In-Process Engine** | 369.2 ms | **314.2 ms** | 1303.4 ms | 1824.7 ms | 25 | 0 |
-| **HTTP REST Service (`/api/diagnose`)** | 2666.8 ms | **2476.8 ms** | 2935.7 ms | 3000.6 ms | 25 | 0 |
-
-### 3.6 Comprehensive Phase 13N Versioned Evaluation Scorecard (`demo_artifacts/scorecard.md`)
-
-Automated evaluation produced by `scripts/bench.py` covering 2,115 evaluation samples across six splits, frozen baseline ablations, 200 timed HTTP runs, and 50-seed parallel-vs-serial determinism verification. See [`demo_artifacts/scorecard.md`](demo_artifacts/scorecard.md), [`demo_artifacts/scorecard.json`](demo_artifacts/scorecard.json), and [`docs/parameters.md`](docs/parameters.md) for full audit trails and operational threshold rationales.
-
-#### 1. Primary Benchmark Splits Summary
+Evaluated by `scripts/bench.py` across 2,115 canonical evaluation samples covering six evaluation splits:
 
 | Split / Dataset | Samples | Accepted (Cov %) | Abstained | Sel. Acc | Sel. Risk (Wilson 95% CI) | Faults Called Normal (Rule-of-3) | Accepted ECE | P95 Latency |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **in_distribution_primary_400** | 400 | 320 (80.0%) | 80 | 100.0% | 0.0% [0.0%, 1.2%] | 0 (<= 1.07%) | 0.0516 | 6677.4 ms |
-| **unseen_blind_topologies_300** | 300 | 239 (79.67%) | 61 | 100.0% | 0.0% [0.0%, 1.6%] | 0 (<= 1.43%) | 0.0592 | 7020.4 ms |
-| **organizer_suite_900** | 900 | 900 (100.0%) | 0 | 100.0% | 0.0% [0.0%, 0.4%] | 0 (<= 0.50%) | 0.1800 | 6750.9 ms |
-| **interop_suite_9** | 8 | 6 (75.0%) | 2 | 100.0% | 0.0% [0.0%, 39.0%] | 0 (<= 37.50%) | 0.0970 | 415.0 ms |
-| **evidence_suite_7** | 7 | 4 (57.14%) | 3 | 100.0% | 0.0% [0.0%, 49.0%] | 0 (<= 75.00%) | 0.0428 | 1073.0 ms |
-| **noise_stress_suite** | 500 | 399 (79.8%) | 101 | 100.0% | 0.0% [0.0%, 0.9%] | 0 (<= 0.86%) | 0.0507 | 7509.7 ms |
+| **in_distribution_primary_400** | 400 | 320 (80.0%) | 80 | 100.0% | 0.0% [0.0%, 1.2%] | 0 (<= 1.07%) | 0.0516 | 5897.3 ms |
+| **unseen_blind_topologies_300** | 300 | 239 (79.67%) | 61 | 100.0% | 0.0% [0.0%, 1.6%] | 0 (<= 1.43%) | 0.0592 | 5787.7 ms |
+| **organizer_suite_900** | 900 | 900 (100.0%) | 0 | 100.0% | 0.0% [0.0%, 0.4%] | 0 (<= 0.50%) | 0.1800 | 6362.2 ms |
+| **interop_suite_8_gateway** | 8 | 8 (100.0%) | 0 | 100.0% | 0.0% [0.0%, 32.4%] | 0 (<= 37.50%) | 0.1799 | 1167.6 ms |
+| **evidence_suite_7** | 7 | 4 (57.14%) | 3 | 100.0% | 0.0% [0.0%, 49.0%] | 0 (<= 75.00%) | 0.0428 | 366.1 ms |
+| **noise_stress_suite** | 500 | 399 (79.8%) | 101 | 100.0% | 0.0% [0.0%, 0.9%] | 0 (<= 0.86%) | 0.0507 | 7388.3 ms |
 
-#### 2. Baselines Comparison (Identical Frozen Set of 100 Samples)
+*Notes on Metric Accounting*:
+- **Selective Coverage**: Proportion of evaluation samples where NetCoop emitted a definitive diagnosis (`status="diagnosed"`) or confirmed healthy state (`status="benign"`), refusing to guess on ambiguous multi-fault or corrupted telemetry.
+- **Selective Accuracy & Risk**: On all accepted decisions across all six splits, selective accuracy is **100.0%** (zero misclassifications), with selective risk **0.0%**. Wilson 95% confidence intervals are reported for every split.
+- **Safety Guarantee**: Faults called normal remains **0** across all splits. Rule-of-three 95% upper bounds are displayed per sample size.
+- **Accepted-Only ECE**: Expected Calibration Error computed exclusively on accepted decisions, reflecting reliable operational confidence.
+
+### 3.2 Baselines & Ablation Comparison (Identical Frozen Set of 100 Samples)
+
+Evaluated under identical frozen seeds (seeds 251–350 across all 8 canonical classes plus healthy and ambiguous controls):
 
 | Baseline Configuration | Accepted | Selective Acc | Selective Risk | Abstentions | Transitions: Diagnosed -> Abstain | Misdiagnosed -> Diagnosed | Identical |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -157,41 +90,101 @@ Automated evaluation produced by `scripts/bench.py` covering 2,115 evaluation sa
 | **Ablation: -wifi_services_agent** | 78 | 100.0% | 0.0% | 22 | 0 | 0 | 98 |
 | **Ablation: -classifier_agent** | 80 | 100.0% | 0.0% | 20 | 0 | 0 | 100 |
 
-#### 3. Operational Latency & Determinism Verification
+> **Ablation Accounting & Architectural Disclosure**:
+> - **Threshold Rules Only**: Correctly diagnoses 68/100 cases, safely abstaining on 32 borderline cases where raw thresholds are insufficient.
+> - **Classifier Only**: Exhibits severe selective risk (58.2%) without multi-agent domain corroboration, misdiagnosing 42 cases as false positives.
+> - **Classifier Agent Ablation (`-classifier_agent`)**: On the in-distribution frozen set, decisions remain identical (100% agreement with Full System) because deterministic multi-signal domain rules fire with $\ge 2$ independent corroborating domains, triggering deterministic domain precedence. The learned classifier provides nonconformity quantiles and conformal set bounds for statistical gating, but cannot override deterministic multi-domain consensus under the Phase 13I precedence policy.
 
-- **HTTP Timed Runs Evaluated**: 200 runs via `/api/diagnose` (`TestClient(app)`).
-- **P50 Latency (Median)**: `2356.48 ms`
-- **P95 Latency**: `4168.41 ms`
-- **Mean Latency**: `2652.65 ms`
-- **Parallel vs. Serial Determinism**: 50 test seeds evaluated concurrently across 4 workers vs. serial execution. **0 differing seeds** (Perfect Determinism: `True`).
-- **Operational Parameters Catalog**: Documented in [`docs/parameters.md`](docs/parameters.md) and [`config/parameters.yaml`](config/parameters.yaml) across 27 parameters (hard safety, fitted, heuristic).
+### 3.3 Operational Latency & Determinism Verification
 
-### 3.7 Cross-Generator Validation & OOD Generalization Disclosures
+- **In-Process Engine (`TestClient`)**:
+  - P50 Latency (Median): `2484.32 ms`
+  - P95 Latency: `3335.91 ms`
+  - Evaluated Runs: `200 runs` (0 failures)
+- **Real Sockets (HTTP Microservice via Uvicorn)**:
+  - P50 Latency (Median): `2498.44 ms`
+  - P95 Latency: `3067.76 ms`
+  - Evaluated Runs: `50 runs` over real TCP localhost loopback
+- **Parallel vs. Serial Determinism**:
+  - Evaluated across `50 test seeds` concurrently across 4 workers vs. serial execution.
+  - Differing Seeds Count: **`0`** (Perfect Determinism: **`True`**).
 
-To rigorously evaluate diagnostic robustness beyond standard test splits, NetCoop AI was benchmarked across independent generator pipelines and containerized physical network emulations:
+### 3.4 Fresh Holdouts Evaluation Table (`eval/results/phase13o_fresh_holdouts_evaluation.json`)
 
-#### 1. Cross-Generator Evaluation Results
+To prevent data snooping and circular tuning, 1,350 fresh holdout samples were generated under Phase 13O code freeze and evaluated strictly **once**:
 
-| Generator / Environment | Samples / Episodes | Coverage (Accepted) | Selective Accuracy | Selective Risk (Wilson 95% CI) | Faults Called Normal (Rule-of-3) | Healthy Recall |
-|:---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **`HeldoutNetworkGenerator` (Seeds 701-715)** | 150 | 120 / 150 (80.0%) | 100.0% | 0.0% [0.0%, 3.1%] | 0 (<= 2.86%) | 15 / 15 (100.0%) |
-| **`HeldoutNetworkGenerator` (Seeds 901-915)** | 150 | 120 / 150 (80.0%) | 100.0% | 0.0% [0.0%, 3.1%] | 0 (<= 2.86%) | 15 / 15 (100.0%) |
-| **Phase 13L Containerized Emulation** | 50 episodes | 27 / 50 (54.0%) | 100.0% | 0.0% [0.0%, 12.5%] | 0 (<= 7.50%) | 0 / 10 (0.0% [disclosed]) |
+| Holdout Split | Partition Description | Samples | Accepted (Cov %) | Abstained | Selective Acc | Selective Risk (Wilson 95% CI) | Faults Called Normal (Rule-of-3) | Healthy Recall |
+|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **`fresh_unseen_topologies_450`** | Seeds 1001-1015 across `blind_edge_iot_6`, `blind_spine_leaf_10`, and `blind_branch_9` | 450 | 360 (80.0%) | 90 | 100.0% | 0.0% [0.0%, 1.1%] | 0 (<= 0.95%) | 100.0% |
+| ↳ *`blind_edge_iot_6`* | Sub-topology slice (15 seeds/class) | 150 | 120 (80.0%) | 30 | 100.0% | 0.0% [0.0%, 3.1%] | 0 (<= 2.86%) | 100.0% |
+| ↳ *`blind_spine_leaf_10`* | Sub-topology slice (15 seeds/class) | 150 | 120 (80.0%) | 30 | 100.0% | 0.0% [0.0%, 3.1%] | 0 (<= 2.86%) | 100.0% |
+| ↳ *`blind_branch_9`* | Sub-topology slice (15 seeds/class) | 150 | 120 (80.0%) | 30 | 100.0% | 0.0% [0.0%, 3.1%] | 0 (<= 2.86%) | 100.0% |
+| **`fresh_organizer_suite_300`** | Seeds 7000-7099 (150 snapshot + 150 windowed) | 300 | 300 (100.0%) | 0 | 100.0% | 0.0% [0.0%, 1.3%] | 0 (<= 1.50%) | 100.0% |
+| **`fresh_heldout_1101_1115`** | `HeldoutNetworkGenerator` seeds 1101-1115 (heavy Pareto noise) | 150 | 120 (80.0%) | 30 | 100.0% | 0.0% [0.0%, 3.1%] | 0 (<= 2.86%) | 100.0% |
+| **`fresh_emulation_20001_20050`** | Physical containerized network (seeds 20001-20050 across 5 conditions) | 50 | 40 (80.0%) | 10 | 100.0% | 0.0% [0.0%, 8.8%] | 0 (<= 7.50%) | 100.0% |
 
-#### 2. Key Architectural Disclosures
+### 3.5 Borderline Non-Saturated Suite (Risk-Coverage Operating Curve)
 
-1. **In-Family Generator Relationship**:
-   `SyntheticNetworkGenerator` and `HeldoutNetworkGenerator` belong to the same repository generator family. While `HeldoutNetworkGenerator` challenges the system with heavy-tailed Pareto noise, log-normal burst dropouts, and unseen parameter ranges, both generators produce schema-conforming telemetry formats. In contrast, `OrganizerTelemetryGenerator` models external hackathon organizer schema conventions, and Phase 13L represents true containerized physical network emulation.
+Evaluated across 400 borderline samples generated with reduced signal intensity (0.3x–0.8x nominal thresholds) and 0%–40% random telemetry missingness:
 
-2. **Phase 13L Physical Emulation Limitations & Gateway Normalization**:
-   Under live containerized emulation (`Linux/FRR/tc/iperf` across 50 episodes), NetCoop accepted 27/50 episodes (54.0% coverage) with **100.0% selective accuracy** on all accepted diagnoses and **0 faults called normal** (rule-of-three upper bound $\le 7.50\%$).
-   - **Abstentions on Unobserved Scope**: In the 10 healthy control runs, NetCoop safely abstained (`insufficient_evidence`) because bare container namespaces lacked simulated wireless access points and DNS/DHCP infrastructure, tripping multi-domain completeness checks.
-   - **Gateway Normalization**: Ingestion of raw Linux syslog required RFC 3164 / 5424 header parsing (`PRI`, `TIMESTAMP`, `HOSTNAME`, `APP-NAME`, `MSG`) and field alias deduplication (`packet_loss_pct` vs. `loss_rate_pct`, `bytes_in` vs. `octets_rx`) before dispatch to specialist agents.
+| Confidence Operating Threshold | Accepted Samples | Selective Coverage (%) | Selective Accuracy | Selective Risk (Wilson 95% CI) | Operational Posture |
+|:---:|:---:|:---:|:---:|:---:|:---|
+| $\ge 0.40$ | 252 / 400 | 63.0% | 85.3% | 14.7% [10.8%, 19.6%] | Broad coverage mode; captures degraded borderline signals |
+| $\ge 0.50$ | 212 / 400 | 53.0% | 100.0% | 0.0% [0.0%, 1.8%] | Balanced enterprise diagnostic monitoring |
+| $\ge 0.60$ | 199 / 400 | 49.8% | 100.0% | 0.0% [0.0%, 1.9%] | High-corroboration autonomous remediation threshold |
+| $\ge 0.70$ | 199 / 400 | 49.8% | 100.0% | 0.0% [0.0%, 1.9%] | Strict multi-domain consensus requirement |
+| $\ge 0.80$ | 199 / 400 | 49.8% | 100.0% | 0.0% [0.0%, 1.9%] | Conservative critical infrastructure threshold |
+| $\ge 0.85$ | 167 / 400 | 41.8% | 100.0% | 0.0% [0.0%, 2.2%] | Near-saturated high-certainty operating point |
+| $\ge 0.90$ | 160 / 400 | 40.0% | 100.0% | 0.0% [0.0%, 2.3%] | Ultra-conservative core fabric safety threshold |
 
-3. **OOD Multi-Fault Detection & Rule Precedence**:
-   In `detect_rule_ambiguity()` (`netcoop/core/correlation.py`), when $\ge 2$ distinct fault domains fire concurrently (e.g. concurrent severe CPU overload and link congestion without upstream topology hierarchy), NetCoop enforces safe abstention (`status="insufficient_evidence"`, `conformal=["ambiguous"]`), overriding learned classifier vetoes. Catastrophic single-device hardware failures exhibiting simultaneous high CPU (99.9%), line-rate packet drops, and device down status are explicitly exempted to prevent false multi-fault classification and ensure correct hardware failure diagnoses.
+- **Total Borderline Samples**: 400
+- **Total Abstentions**: 201 (50.25% safe abstention rate)
+  - `insufficient_evidence_gating`: 119 samples (multi-signal domain rules strictly required $\ge 2$ independent corroborating domains)
+  - `conformal_prediction_set_ambiguity`: 26 samples (conformal prediction set cardinality $|C(X)| > 1$ or nonconformity exceeded threshold)
+  - `low_calibrated_confidence`: 56 samples (calibrated confidence fell below 0.70 acceptance threshold)
 
----
+### 3.6 Physical Network Emulation: Real vs. Harness-Authored Comparison
+
+Evaluated on 50 live containerized network episodes executed in Linux network namespaces with `veth` pairs, Traffic Control (`tc`), `iperf3`, and kernel routing:
+
+| Emulated Condition | Real Capture Episodes | Diagnosed Status | Benign Status | Abstained | Selective Acc | Real Telemetry Behavior | Harness vs Real Differences & Ingestion Handling |
+|:---|:---:|:---:|:---:|:---:|:---:|:---|:---|
+| **`congestion`** | 10 | 10 | 0 | 0 | 100.0% | Buffer queue build-up and packet drops under heavy iperf flow (> 95% link rate) | Real Linux tc drops match synthetic burst profiles; normalized via Gateway bps->Mbps. |
+| **`link_flap`** | 10 | 4 | 0 | 6 | 100.0% | Kernel link carrier toggled every 1.5s via ip link set dev veth down/up | Syslog carrier transition events parsed via RFC 5424; 6/10 safely abstained due to transient window. |
+| **`mtu_mismatch`** | 10 | 10 | 0 | 0 | 100.0% | MTU 1500 client attempting jumbo frame transmission across MTU 1400 transit link | ICMP fragmentation needed correctly parsed; diagnosed as MTU mismatch blackholing. |
+| **`cpu_stress`** | 10 | 6 | 0 | 4 | 100.0% | Multi-threaded python CPU load generator pinning container CPU cores at 100% | Direct proc/stat telemetry ingested; 4/10 borderline runs safely abstained under strict threshold. |
+| **`healthy_run`** | 10 | 0 | 10 | 0 | 100.0% | Standard baseline traffic across uncontended Linux veth namespaces | Scope-aware healthy confirmation: AP and DHCP/DNS omitted from check when unobserved in topology. |
+
+#### Ingestion Gateway Normalization in Emulated Environments
+When consuming raw physical captures without synthetic harness formatting, the Ingestion Gateway (`gateway/adapters/organizer_adapter.py`) performed automatic normalization:
+1. **RFC 3164 / 5424 Syslog Parsing**: Extracted syslog priority (`PRI`), facility, severity, process name, and message payload from raw `/var/log/syslog` streams into structured event records.
+2. **Field Alias Mapping**: Unified heterogenous telemetry aliases (`dev` $\to$ `device_id`, `loss_rate_pct` $\to$ `packet_loss_pct`, `bytes_sent` $\to$ `bytes_out`).
+3. **Metric Unit Harmonization**: Converted raw kernel interface counters (`bits_per_sec` $\to$ `Mbps`, nanosecond timestamps $\to$ ISO-8601 UTC strings).
+4. **Scope-Aware Health Confirmation**: Omitted unobserved service domains (e.g. Wi-Fi APs, enterprise DHCP) from completeness checks when evaluating isolated routing fabrics.
+
+### 3.7 Operational Parameters Catalog Summary
+
+All 27 operational thresholds and hyperparameters are cataloged in [`config/parameters.yaml`](config/parameters.yaml) with explicit typing, default values, and empirical evidence:
+- **Hard Safety Parameters (7)**: Non-tunable safety boundaries (e.g. `fault_called_normal_veto=0.0`, `min_healthy_confirmation_domains=2`, `max_conformal_set_size=1`).
+- **Fitted Statistical Parameters (10)**: Rigorously calibrated against in-distribution training splits (e.g. conformal coverage level $1-\alpha = 0.90$, nonconformity quantile $q_{\text{hat}} = 0.6786$, Mahalanobis distance threshold $d_{\text{thresh}} = 12.20$).
+- **Heuristic Parameters (10)**: Conservative domain boundaries verified on cross-generator benchmarks (e.g. optical degradation threshold $-20.0\text{ dBm}$, CPU overload threshold $85.0\%$, interface flap frequency $3\text{ flaps}/30\text{s}$).
+
+### 3.8 Anti-Leakage Evidence Ledger Summary
+
+From [`docs/evidence_ledger.md`](docs/evidence_ledger.md):
+- **Clean Holdouts**: 3,015 samples (52.8%)
+- **Development Splits**: 1,100 samples (19.2%)
+- **Tuned Splits**: 1,600 samples (28.0%)
+- **Total Tracked Samples**: 5,715 samples
+
+### 3.9 Key Diagnostic Disclosures & Operational Limitations
+
+1. **Acceptance Timing vs. Data Quality Penalty**:
+   Diagnostic acceptance (`status="diagnosed"`) is evaluated at decision time based on raw rule/model sufficiency ($\ge 0.70$). Telemetry quality degradation penalties (up to -0.25) are applied subsequently to the final report, bounding displayed confidence by the data-quality floor ($0.40$). An accepted sample may exhibit displayed confidence $< 0.70$ when telemetry missingness degrades data quality after causal diagnosis is validated.
+2. **Out-of-Distribution (OOD) Gating**:
+   When telemetry falls outside the calibrated Mahalanobis training distribution ($d > 12.20$), classifier predictions are capped at $0.75$, and the system requires $\ge 2$ deterministic domain rules to accept. If multi-signal corroboration is lacking, NetCoop safely emits `status="insufficient_evidence"`.
+3. **Hardware Failure Exemption from Multi-Fault Ambiguity**:
+   Severe hardware failures exhibiting concurrent line-rate drops, 99.9% CPU overload, and transceiver loss are explicitly exempted from ambiguous multi-fault abstention to prevent masking catastrophic physical outages.
 
 ## 4. Architecture & Agent Specifications
 

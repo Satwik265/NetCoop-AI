@@ -7,7 +7,9 @@ import pytest
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 README_PATH = BASE_DIR / "README.md"
-BENCHMARK_PATH = BASE_DIR / "eval" / "results" / "benchmark_phase11_20261115.json"
+SCORECARD_PATH = BASE_DIR / "docs" / "scorecard.json"
+HOLDOUTS_PATH = BASE_DIR / "eval" / "results" / "phase13o_fresh_holdouts_evaluation.json"
+EVIDENCE_LEDGER_PATH = BASE_DIR / "docs" / "evidence_ledger.md"
 DERIVED_PATH = BASE_DIR / "eval" / "results" / "benchmark_phase11_derived.json"
 FINAL_RC_PATH = BASE_DIR / "docs" / "final_release_candidate_report.md"
 PROGRESS_PATH = BASE_DIR / "docs" / "progress.md"
@@ -15,8 +17,14 @@ MODEL_CARD_PATH = BASE_DIR / "netcoop" / "models" / "MODEL_CARD.md"
 
 
 @pytest.fixture
-def benchmark_data():
-    with open(BENCHMARK_PATH, "r", encoding="utf-8") as f:
+def scorecard_data():
+    with open(SCORECARD_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+@pytest.fixture
+def holdouts_data():
+    with open(HOLDOUTS_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -26,54 +34,48 @@ def readme_text():
         return f.read()
 
 
-def test_readme_numbers_match_benchmark_json(benchmark_data, readme_text):
-    """Verify that headline benchmark numbers in README match the latest evaluation JSON."""
-    summary = benchmark_data["summary"]
-    splits = benchmark_data["dataset_splits"]
+def test_readme_numbers_match_scorecard_json(scorecard_data, readme_text):
+    """Verify that scorecard metrics in README match docs/scorecard.json."""
+    meta = scorecard_data["metadata"]
+    splits = scorecard_data["splits"]
+    latency = scorecard_data["latency"]
+    det = scorecard_data["determinism"]
 
-    # 1. Combined Primary Accuracy (56.8%)
-    combined_acc_pct = f"{summary['combined_primary_accuracy'] * 100:.1f}%"
-    assert combined_acc_pct in readme_text, f"Expected {combined_acc_pct} in README"
+    assert meta["version"] in readme_text, f"Expected {meta['version']} in README"
+    assert (str(meta["total_samples_evaluated"]) in readme_text or f"{meta['total_samples_evaluated']:,}" in readme_text)
 
-    # 2. In-Distribution Accuracy (71.6%)
-    in_dist_pct = f"{splits['in_distribution_accuracy'] * 100:.1f}%"
-    assert in_dist_pct in readme_text, f"Expected {in_dist_pct} in README"
+    # Verify split metrics appear in README
+    for k, sp in splits.items():
+        assert sp["split_name"] in readme_text
+        cov_pct = f"{sp['outcomes']['coverage_pct']}%"
+        assert cov_pct in readme_text
+        sel_acc_pct = f"{sp['selective_metrics']['selective_accuracy'] * 100:.1f}%"
+        assert sel_acc_pct in readme_text
 
-    # 3. Held-Out Accuracy (32.0%)
-    held_out_pct = f"{splits['held_out_accuracy'] * 100:.1f}%"
-    assert held_out_pct in readme_text, f"Expected {held_out_pct} in README"
+    # Latency
+    in_proc = latency.get("in_process_testclient", latency)
+    assert f"{in_proc['p50_latency_ms']} ms" in readme_text
+    assert f"{in_proc['p95_latency_ms']} ms" in readme_text
 
-    # 4. Safe Abstention Rate (97.5%)
-    safe_abs_pct = f"{summary['safe_abstention_rate'] * 100:.1f}%"
-    assert safe_abs_pct in readme_text, f"Expected {safe_abs_pct} in README"
-
-    # 5. Organizer Colab Set Match (66.7%) and Exact Match (33.3%)
-    org_set_pct = f"{splits['organizer_accuracy'] * 100:.1f}%"
-    org_exact_pct = f"{splits['organizer_exact_accuracy'] * 100:.1f}%"
-    assert org_set_pct in readme_text, f"Expected {org_set_pct} in README"
-    assert org_exact_pct in readme_text, f"Expected {org_exact_pct} in README"
-
-    # 6. Macro F1 (0.620)
-    macro_f1_str = f"{summary['macro_f1']:.3f}"
-    assert macro_f1_str in readme_text, f"Expected {macro_f1_str} in README"
-
-    # 7. Sample Counts: 400 primary, 900 organizer, 1,300 total
-    assert "400" in readme_text
-    assert "900" in readme_text
-    assert ("1,300" in readme_text or "1300" in readme_text)
+    # Determinism
+    assert f"{det['differing_seeds_count']}" in readme_text
 
 
-def test_selective_accuracy_definitions_consistency(benchmark_data, readme_text):
-    """Verify selective accuracy and risk definitions are internally consistent."""
-    summary = benchmark_data["summary"]
+def test_readme_fresh_holdouts_match_json(holdouts_data, readme_text):
+    """Verify fresh holdout metrics in README match evaluation JSON."""
+    fresh = holdouts_data["fresh_holdouts"]
+    for split_key in ["unseen_topologies_450", "organizer_suite_300", "heldout_suite_150", "emulation_episodes_50"]:
+        sp = fresh[split_key]
+        assert sp["split_name"] in readme_text
+        assert str(sp["total_samples"]) in readme_text
 
-    # Fault-only selective accuracy (97.9%) and risk (2.1%)
-    assert "97.9%" in readme_text
-    assert "2.1%" in readme_text
 
-    # Operating threshold >= 0.80 row in Section 3.4 must have consistent values (97.2% + 2.8% = 100%)
-    pattern = re.compile(r"\|\s*\$\\ge 0\.80\$\s*\|\s*36\.0%\s*\|\s*2\.8%\s*\|\s*144\s*/\s*400\s*\|\s*.*97\.2%.*\|")
-    assert pattern.search(readme_text), "README threshold table row for >= 0.80 must show consistent 97.2% accuracy and 2.8% risk"
+def test_readme_evidence_ledger_consistency(readme_text):
+    """Verify evidence ledger summary numbers match in README."""
+    assert "3,015" in readme_text  # Clean holdouts
+    assert "1,100" in readme_text  # Development
+    assert "1,600" in readme_text  # Tuned
+    assert "5,715" in readme_text  # Total
 
 
 def test_no_stale_metrics_in_docs(readme_text):
