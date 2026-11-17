@@ -58,7 +58,7 @@ Evaluated across 400 borderline samples generated with reduced signal intensity 
 
 | Operating Confidence Threshold | Accepted Samples | Selective Coverage (%) | Selective Accuracy | Selective Risk (Wilson 95% CI) | Operational Posture |
 | :---: | :---: | :---: | :---: | :---: | :--- |
-| $\ge 0.40$ | 212 / 400 | 53.0% | 100.0% | 0.0% [0.0%, 1.8%] | Broad coverage mode; captures degraded borderline signals |
+| $\ge 0.40$ | 252 / 400 | 63.0% | 85.3% | 14.7% [10.8%, 19.6%] | Broad coverage mode; captures degraded borderline signals |
 | $\ge 0.50$ | 212 / 400 | 53.0% | 100.0% | 0.0% [0.0%, 1.8%] | Balanced enterprise diagnostic monitoring |
 | $\ge 0.60$ | 199 / 400 | 49.8% | 100.0% | 0.0% [0.0%, 1.9%] | High-corroboration autonomous remediation threshold |
 | $\ge 0.70$ | 199 / 400 | 49.8% | 100.0% | 0.0% [0.0%, 1.9%] | Strict multi-domain consensus requirement |

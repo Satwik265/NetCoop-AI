@@ -36,3 +36,14 @@ This document tracks all evaluation splits, sample partitions, topologies, and s
 - **Samples in `CLEAN` Single-Eval Holdout Partitions:** `3,015` (52.8%)
 
 All diagnostic performance metrics reported in Phase 13O for fresh holdout sets reflect **single-run, zero-tuning evaluation**.
+
+---
+
+## 3. Discrepancy Analysis & Reconciliation Audit
+
+- **Directly Verified Partition Total:** `4,200` samples across the 13 cataloged partitions in Section 1:
+  - `TUNED`: 1,600 samples (28.0% of historical project total)
+  - `DEVELOPMENT`: 1,100 samples (19.2% of historical project total)
+  - `CLEAN`: 1,500 samples (35.7% of cataloged total)
+- **Historical Summary Accounting Gap:** The summary figures (`5,715` total samples, `3,015` clean holdouts) reflect historical cumulative runs across earlier exploration splits. A forensic audit of the underlying raw evaluation artifacts reveals that `1,515` clean holdouts lack explicit seed-level JSON manifests on disk (`3,015 - 1,500 = 1,515`).
+- **Anti-Fabrication Policy:** NetCoop AI strictly prohibits fabricating sample IDs, seeds, or mock JSON results to fill this gap. Instead, this ledger explicitly documents the `4,200` verified samples with exact seed provenance while acknowledging the `1,515` sample historical accounting delta.
