@@ -1,10 +1,166 @@
 from netcoop.core.signatures import HypothesisKey, SIGNATURE_REGISTRY
 """Deterministic offline correlation engine with full campus network fault signatures."""
 
-from typing import Dict, List, Optional, Tuple
+import math
+from typing import Any, Dict, List, Optional, Tuple
 from core.envelope import Observation
 from core.evidence import DiagnosticHypothesis, EvidenceItem, UncertaintyEvaluation
 from netcoop.core.parameters import get_parameter
+
+
+def _safe_float(val: Any, default: float = 0.0) -> float:
+    if val is None:
+        return default
+    try:
+        f = float(val)
+        if math.isnan(f):
+            return default
+        return f
+    except (ValueError, TypeError):
+        return default
+
+
+def _safe_int(val: Any, default: int = 0) -> int:
+    if val is None:
+        return default
+    try:
+        f = float(val)
+        if math.isnan(f):
+            return default
+        return int(f)
+    except (ValueError, TypeError):
+        return default
+
+
+def detect_rule_ambiguity(
+    observations: Optional[List[Observation]] = None,
+    raw_telemetry: Optional[List[Dict[str, Any]]] = None,
+) -> Tuple[bool, List[str]]:
+    """Detect if two or more distinct fault domain signatures exceed their thresholds."""
+    active_domains: List[str] = []
+    recs = raw_telemetry or []
+    obs = observations or []
+
+    # 1. Device CPU Overload: router/switch with cpu_pct >= 85.0
+    has_cpu = any(
+        (rec.get("cpu_pct") is not None and _safe_float(rec.get("cpu_pct")) >= 85.0)
+        for rec in recs
+        if str(rec.get("device_type", "")).lower() in ("router", "switch")
+        or rec.get("role") in ("router", "switch")
+    ) or any(
+        o.metric_name in ("cpu_pct", "cpu_utilization_pct") and _safe_float(o.observed_value) >= 85.0
+        for o in obs
+    )
+    if has_cpu:
+        active_domains.append("cpu_overload")
+
+    # 2. Link Congestion: util >= 75.0% and (queue_drops >= 200 or packet_loss >= 3.0%)
+    has_congestion = any(
+        (rec.get("link_utilization_pct") is not None and _safe_float(rec.get("link_utilization_pct")) >= 75.0)
+        and (
+            (rec.get("queue_drops") is not None and _safe_int(rec.get("queue_drops")) >= 200)
+            or (rec.get("packet_loss_pct") is not None and _safe_float(rec.get("packet_loss_pct")) >= 3.0)
+        )
+        for rec in recs
+    ) or (
+        any(o.metric_name == "link_utilization_pct" and _safe_float(o.observed_value) >= 75.0 for o in obs)
+        and any((o.metric_name == "queue_drops" and _safe_float(o.observed_value) >= 200) or (o.metric_name == "packet_loss_pct" and _safe_float(o.observed_value) >= 3.0) for o in obs)
+    )
+
+    # 3. Upstream Failure Cascade: router offline/100% loss AND switch congested
+    router_offline = any(
+        (str(rec.get("device_status", "")).lower() in ("offline", "down") or (rec.get("packet_loss_pct") is not None and _safe_float(rec.get("packet_loss_pct")) >= 99.0))
+        for rec in recs
+        if str(rec.get("device_type", "")).lower() == "router" or rec.get("role") == "router"
+    ) or any(
+        o.metric_name in ("device_status", "device_reachability") and str(o.observed_value).lower() in ("offline", "down", "unreachable")
+        for o in obs
+    )
+    if router_offline and has_congestion:
+        active_domains.append("upstream_cascade")
+    elif has_congestion:
+        active_domains.append("link_congestion")
+
+    # 4. Wi-Fi RF Degradation: RSSI <= -78.0 and retx >= 20.0
+    has_wifi = any(
+        (rec.get("wifi_rssi_dbm") is not None and _safe_float(rec.get("wifi_rssi_dbm"), default=0.0) <= -78.0)
+        and (rec.get("wifi_retransmission_pct") is not None and _safe_float(rec.get("wifi_retransmission_pct")) >= 20.0)
+        for rec in recs
+    ) or (
+        any(o.metric_name == "wifi_rssi_dbm" and _safe_float(o.observed_value, default=0.0) <= -78.0 for o in obs)
+        and any(o.metric_name == "wifi_retransmission_pct" and _safe_float(o.observed_value) >= 20.0 for o in obs)
+    )
+    if has_wifi:
+        active_domains.append("weak_wifi")
+
+    # 5. Ethernet / Physical Interface Fault: interface_errors >= 100 or link_flaps >= 3
+    has_eth = any(
+        (rec.get("interface_errors") is not None and _safe_int(rec.get("interface_errors")) >= 100)
+        or (rec.get("link_flaps") is not None and _safe_int(rec.get("link_flaps")) >= 3)
+        for rec in recs
+    ) or any(
+        (o.metric_name in ("interface_errors", "fcs_errors", "crc_errors") and _safe_float(o.observed_value) >= 100)
+        or (o.metric_name == "link_flaps" and _safe_float(o.observed_value) >= 3)
+        for o in obs
+    )
+    if has_eth:
+        active_domains.append("ethernet_fault")
+
+    # 6. DNS Failure: failure_pct >= 25.0% or resolution_ms >= 1000.0
+    has_dns = any(
+        (rec.get("dns_failure_pct") is not None and _safe_float(rec.get("dns_failure_pct")) >= 25.0)
+        or (rec.get("dns_resolution_ms") is not None and _safe_float(rec.get("dns_resolution_ms")) >= 1000.0)
+        for rec in recs
+    ) or any(
+        (o.metric_name == "dns_failure_pct" and _safe_float(o.observed_value) >= 25.0)
+        or (o.metric_name == "dns_resolution_ms" and _safe_float(o.observed_value) >= 1000.0)
+        for o in obs
+    )
+    if has_dns:
+        active_domains.append("dns_failure")
+
+    # 7. DHCP Failure: failure_pct >= 25.0%
+    has_dhcp = any(
+        (rec.get("dhcp_failure_pct") is not None and _safe_float(rec.get("dhcp_failure_pct")) >= 25.0)
+        for rec in recs
+    ) or any(
+        o.metric_name == "dhcp_failure_pct" and _safe_float(o.observed_value) >= 25.0
+        for o in obs
+    )
+    if has_dhcp:
+        active_domains.append("dhcp_failure")
+
+    # Check if catastrophic hardware failure signature is present
+    # (severe loss/drops + CPU crash/down status on a device represents single hardware failure, not ambiguous multi-fault)
+    has_hw_down = any(
+        str(rec.get("device_status") or rec.get("status") or "").lower() in ("down", "critical", "failed")
+        for rec in recs
+    ) or any(
+        o.metric_name in ("device_status", "status") and str(o.observed_value).lower() in ("down", "critical", "failed")
+        for o in obs
+    )
+    has_hw_cpu = any(
+        _safe_float(rec.get("cpu_pct") or (rec.get("metrics") or {}).get("cpu_utilization_pct")) >= 95.0
+        for rec in recs
+    ) or any(
+        o.metric_name in ("cpu_pct", "cpu_utilization_pct") and _safe_float(o.observed_value) >= 95.0
+        for o in obs
+    )
+    has_hw_severe = any(
+        _safe_float(rec.get("queue_drops") or (rec.get("metrics") or {}).get("queue_drops")) >= 2000
+        or _safe_float(rec.get("packet_loss_pct") or (rec.get("metrics") or {}).get("packet_loss_pct")) >= 15.0
+        for rec in recs
+    ) or any(
+        (o.metric_name in ("queue_drops", "egress_queue_drops") and _safe_float(o.observed_value) >= 2000)
+        or (o.metric_name in ("packet_loss_pct", "ingress_packet_loss_pct") and _safe_float(o.observed_value) >= 15.0)
+        for o in obs
+    )
+    if (has_hw_down and (has_hw_cpu or has_hw_severe)) or (has_hw_cpu and has_hw_severe):
+        return False, []
+
+    # Ambiguity is present when >= 2 distinct fault domains fire simultaneously
+    is_ambiguous = len(active_domains) >= 2
+    return is_ambiguous, active_domains
 
 
 class OfflineCorrelationEngine:
@@ -104,6 +260,21 @@ class OfflineCorrelationEngine:
                     source_type=source_type,
                 )
             )
+
+        # Phase 13N Rule-based ambiguity detection independent of classifier:
+        # Two or more distinct fault domain signatures active simultaneously must abstain.
+        is_rule_amb, amb_doms = detect_rule_ambiguity(observations)
+        if is_rule_amb:
+            uncertainty = UncertaintyEvaluation(
+                score=0.85,
+                reasons=[
+                    f"Ambiguous multi-fault signature: multiple distinct fault domains active simultaneously ({', '.join(amb_doms)}).",
+                    "Deterministic multi-signal rule requires safe abstention when conflicting root causes compete.",
+                ],
+                missing_evidence=["Targeted cross-examination probes", "Sequential isolation tests"],
+                alternative_hypotheses=[{"cause": d, "confidence": 0.85} for d in amb_doms],
+            )
+            return "insufficient_evidence", None, uncertainty
 
         # Check candidate fault models
         candidate_hypotheses: List[DiagnosticHypothesis] = []
@@ -471,7 +642,7 @@ class OfflineCorrelationEngine:
         cls, observations: List[Observation], evidence: List[EvidenceItem]
     ) -> Optional[DiagnosticHypothesis]:
         """Correlate DNS resolution failure and timeout."""
-        dns_obs = [o for o in observations if (o.metric_name == "dns_failure_pct" and float(o.observed_value or 0) > 50.0) or (o.metric_name == "dns_resolution_ms" and float(o.observed_value or 0) > 1500.0)]
+        dns_obs = [o for o in observations if (o.metric_name == "dns_failure_pct" and float(o.observed_value or 0) >= 25.0) or (o.metric_name == "dns_resolution_ms" and float(o.observed_value or 0) >= 1000.0)]
         if not dns_obs:
             return None
 
@@ -480,8 +651,8 @@ class OfflineCorrelationEngine:
         provided_domains = sorted(list({e.source_agent for e in sup_evidence if e.source_agent}))
         required_domains = ["telemetry_agent"]
 
-        max_fail = max([float(o.observed_value or 0) for o in dns_obs if o.metric_name == "dns_failure_pct"], default=60.0)
-        fail_factor = min(1.0, max(0.0, (max_fail - 50.0) / 50.0))
+        max_fail = max([float(o.observed_value or 0) for o in dns_obs if o.metric_name == "dns_failure_pct"], default=25.0)
+        fail_factor = min(1.0, max(0.0, (max_fail - 25.0) / 50.0))
         raw_score = round(min(0.95, 0.70 + 0.25 * fail_factor), 3)
 
         return DiagnosticHypothesis(

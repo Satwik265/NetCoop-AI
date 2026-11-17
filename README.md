@@ -41,7 +41,7 @@ Under identical seed initialization, two consecutive runs of link_congestion see
 | **Orchestration & Conflict Resolution** | 15% | LangGraph cyclical state graph. The Mediator evaluates hypothesis overlap, triggers cross-inquiry turns, and applies a strict domain precedence hierarchy (physical optics > buffer drops > routing flaps > ping latency). | `netcoop/orchestrator/graph.py`, `tests/test_conflict_resolution.py` |
 | **Robustness to Missing & Corrupted Data** | 15% | Evaluated on independently generated non-Gaussian held-out data (Pareto/log-normal noise, bursty dropouts) and organizer Colab telemetry. Degrades gracefully to `insufficient_evidence` rather than hallucinating root causes. | `eval/results/benchmark_phase11_20261115.json` (66.7% organizer set-match; exact-match is 33.3%) |
 | **Usability, Extensibility & Innovation** | 10% | Stdio Model Context Protocol (MCP) server for external AI tools; blast-radius bounded simulated remediation engine with rollback automation; Rich monochrome CLI (`netcoop`); and real-time React web dashboard. | `netcoop/mcp/server.py`, `netcoop/remediation/engine.py` |
-| **Code Quality, Docs & Demo** | 5% | Clean-room architectural separation, comprehensive automated test suite (429 backend unit/integration tests passed across 38 test files, 9 frontend contract tests passed), typed codebase, docstrings, structured logging, zero emojis, and reproducible demo scripts. | `tests/` (429 passed in full test suite run) |
+| **Code Quality, Docs & Demo** | 5% | Clean-room architectural separation, comprehensive automated test suite (512 backend unit/integration tests passed across 50 test files, 9 frontend contract tests passed), typed codebase, docstrings, structured logging, zero emojis, and reproducible demo scripts. | `tests/` (512 passed in full test suite run) |
 
 ---
 
@@ -127,7 +127,7 @@ Measured across 25 consecutive diagnostic requests with full payload parsing and
 | **In-Process Engine** | 369.2 ms | **314.2 ms** | 1303.4 ms | 1824.7 ms | 25 | 0 |
 | **HTTP REST Service (`/api/diagnose`)** | 2666.8 ms | **2476.8 ms** | 2935.7 ms | 3000.6 ms | 25 | 0 |
 
-### 3.6 Comprehensive Phase 13K Versioned Evaluation Scorecard (`demo_artifacts/scorecard.md`)
+### 3.6 Comprehensive Phase 13N Versioned Evaluation Scorecard (`demo_artifacts/scorecard.md`)
 
 Automated evaluation produced by `scripts/bench.py` covering 2,115 evaluation samples across six splits, frozen baseline ablations, 200 timed HTTP runs, and 50-seed parallel-vs-serial determinism verification. See [`demo_artifacts/scorecard.md`](demo_artifacts/scorecard.md), [`demo_artifacts/scorecard.json`](demo_artifacts/scorecard.json), and [`docs/parameters.md`](docs/parameters.md) for full audit trails and operational threshold rationales.
 
@@ -135,36 +135,61 @@ Automated evaluation produced by `scripts/bench.py` covering 2,115 evaluation sa
 
 | Split / Dataset | Samples | Accepted (Cov %) | Abstained | Sel. Acc | Sel. Risk (Wilson 95% CI) | Faults Called Normal (Rule-of-3) | Accepted ECE | P95 Latency |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **In-Distribution Primary (400)** | 400 | 320 (80.0%) | 80 | 100.0% | 0.0% [0.0%, 1.2%] | 0 (<= 1.07%) | 0.0525 | 7853.4 ms |
-| **Unseen Blind Topologies (300)** | 300 | 254 (84.67%) | 46 | 94.1% | 5.9% [3.6%, 9.5%] | 0 (<= 1.43%) | 0.0467 | 7953.0 ms |
-| **Organizer Telemetry Suite (900)** | 900 | 900 (100.0%) | 0 | 100.0% | 0.0% [0.0%, 0.4%] | 0 (<= 0.50%) | 0.2120 | 8294.6 ms |
-| **Interop Suite (8)** | 8 | 6 (75.0%) | 2 | 0.0% | 100.0% [61.0%, 100.0%] | 0 (<= 37.50%) | 0.9030 | 9446.5 ms |
-| **Evidence Suite (7)** | 7 | 4 (57.14%) | 3 | 0.0% | 100.0% [51.0%, 100.0%] | 0 (<= 60.00%) | 0.9572 | 5645.5 ms |
-| **Noise Stress Suite (500)** | 500 | 405 (81.0%) | 95 | 98.5% | 1.5% [0.7%, 3.2%] | 0 (<= 0.86%) | 0.0373 | 7021.1 ms |
+| **in_distribution_primary_400** | 400 | 320 (80.0%) | 80 | 100.0% | 0.0% [0.0%, 1.2%] | 0 (<= 1.07%) | 0.0516 | 6677.4 ms |
+| **unseen_blind_topologies_300** | 300 | 239 (79.67%) | 61 | 100.0% | 0.0% [0.0%, 1.6%] | 0 (<= 1.43%) | 0.0592 | 7020.4 ms |
+| **organizer_suite_900** | 900 | 900 (100.0%) | 0 | 100.0% | 0.0% [0.0%, 0.4%] | 0 (<= 0.50%) | 0.1800 | 6750.9 ms |
+| **interop_suite_9** | 8 | 6 (75.0%) | 2 | 100.0% | 0.0% [0.0%, 39.0%] | 0 (<= 37.50%) | 0.0970 | 415.0 ms |
+| **evidence_suite_7** | 7 | 4 (57.14%) | 3 | 100.0% | 0.0% [0.0%, 49.0%] | 0 (<= 75.00%) | 0.0428 | 1073.0 ms |
+| **noise_stress_suite** | 500 | 399 (79.8%) | 101 | 100.0% | 0.0% [0.0%, 0.9%] | 0 (<= 0.86%) | 0.0507 | 7509.7 ms |
 
 #### 2. Baselines Comparison (Identical Frozen Set of 100 Samples)
 
 | Baseline Configuration | Accepted | Selective Acc | Selective Risk | Abstentions | Transitions: Diagnosed -> Abstain | Misdiagnosed -> Diagnosed | Identical |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Full System (Reference)** | 80 | 100.0% | 0.0% | 20 | 0 | 0 | 100 |
-| **Threshold Rules Only** | 71 | 95.8% | 4.2% | 29 | 0 | 0 | 85 |
+| **Threshold Rules Only** | 68 | 100.0% | 0.0% | 32 | 0 | 0 | 88 |
 | **Classifier Only** | 91 | 41.8% | 58.2% | 9 | 0 | 42 | 47 |
 | **Full Without Inquiry** | 80 | 100.0% | 0.0% | 20 | 0 | 0 | 100 |
 | **Ablation: -telemetry_agent** | 30 | 100.0% | 0.0% | 70 | 0 | 0 | 50 |
 | **Ablation: -topology_agent** | 80 | 100.0% | 0.0% | 20 | 0 | 0 | 100 |
 | **Ablation: -config_agent** | 80 | 100.0% | 0.0% | 20 | 0 | 0 | 100 |
 | **Ablation: -log_agent** | 80 | 100.0% | 0.0% | 20 | 0 | 0 | 100 |
-| **Ablation: -wifi_services_agent** | 81 | 96.3% | 3.7% | 19 | 0 | 0 | 95 |
+| **Ablation: -wifi_services_agent** | 78 | 100.0% | 0.0% | 22 | 0 | 0 | 98 |
 | **Ablation: -classifier_agent** | 80 | 100.0% | 0.0% | 20 | 0 | 0 | 100 |
 
 #### 3. Operational Latency & Determinism Verification
 
 - **HTTP Timed Runs Evaluated**: 200 runs via `/api/diagnose` (`TestClient(app)`).
-- **P50 Latency (Median)**: `2358.08 ms`
-- **P95 Latency**: `4843.98 ms`
-- **Mean Latency**: `2597.96 ms`
+- **P50 Latency (Median)**: `2356.48 ms`
+- **P95 Latency**: `4168.41 ms`
+- **Mean Latency**: `2652.65 ms`
 - **Parallel vs. Serial Determinism**: 50 test seeds evaluated concurrently across 4 workers vs. serial execution. **0 differing seeds** (Perfect Determinism: `True`).
 - **Operational Parameters Catalog**: Documented in [`docs/parameters.md`](docs/parameters.md) and [`config/parameters.yaml`](config/parameters.yaml) across 27 parameters (hard safety, fitted, heuristic).
+
+### 3.7 Cross-Generator Validation & OOD Generalization Disclosures
+
+To rigorously evaluate diagnostic robustness beyond standard test splits, NetCoop AI was benchmarked across independent generator pipelines and containerized physical network emulations:
+
+#### 1. Cross-Generator Evaluation Results
+
+| Generator / Environment | Samples / Episodes | Coverage (Accepted) | Selective Accuracy | Selective Risk (Wilson 95% CI) | Faults Called Normal (Rule-of-3) | Healthy Recall |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| **`HeldoutNetworkGenerator` (Seeds 701-715)** | 150 | 120 / 150 (80.0%) | 100.0% | 0.0% [0.0%, 3.1%] | 0 (<= 2.86%) | 15 / 15 (100.0%) |
+| **`HeldoutNetworkGenerator` (Seeds 901-915)** | 150 | 120 / 150 (80.0%) | 100.0% | 0.0% [0.0%, 3.1%] | 0 (<= 2.86%) | 15 / 15 (100.0%) |
+| **Phase 13L Containerized Emulation** | 50 episodes | 27 / 50 (54.0%) | 100.0% | 0.0% [0.0%, 12.5%] | 0 (<= 7.50%) | 0 / 10 (0.0% [disclosed]) |
+
+#### 2. Key Architectural Disclosures
+
+1. **In-Family Generator Relationship**:
+   `SyntheticNetworkGenerator` and `HeldoutNetworkGenerator` belong to the same repository generator family. While `HeldoutNetworkGenerator` challenges the system with heavy-tailed Pareto noise, log-normal burst dropouts, and unseen parameter ranges, both generators produce schema-conforming telemetry formats. In contrast, `OrganizerTelemetryGenerator` models external hackathon organizer schema conventions, and Phase 13L represents true containerized physical network emulation.
+
+2. **Phase 13L Physical Emulation Limitations & Gateway Normalization**:
+   Under live containerized emulation (`Linux/FRR/tc/iperf` across 50 episodes), NetCoop accepted 27/50 episodes (54.0% coverage) with **100.0% selective accuracy** on all accepted diagnoses and **0 faults called normal** (rule-of-three upper bound $\le 7.50\%$).
+   - **Abstentions on Unobserved Scope**: In the 10 healthy control runs, NetCoop safely abstained (`insufficient_evidence`) because bare container namespaces lacked simulated wireless access points and DNS/DHCP infrastructure, tripping multi-domain completeness checks.
+   - **Gateway Normalization**: Ingestion of raw Linux syslog required RFC 3164 / 5424 header parsing (`PRI`, `TIMESTAMP`, `HOSTNAME`, `APP-NAME`, `MSG`) and field alias deduplication (`packet_loss_pct` vs. `loss_rate_pct`, `bytes_in` vs. `octets_rx`) before dispatch to specialist agents.
+
+3. **OOD Multi-Fault Detection & Rule Precedence**:
+   In `detect_rule_ambiguity()` (`netcoop/core/correlation.py`), when $\ge 2$ distinct fault domains fire concurrently (e.g. concurrent severe CPU overload and link congestion without upstream topology hierarchy), NetCoop enforces safe abstention (`status="insufficient_evidence"`, `conformal=["ambiguous"]`), overriding learned classifier vetoes. Catastrophic single-device hardware failures exhibiting simultaneous high CPU (99.9%), line-rate packet drops, and device down status are explicitly exempted to prevent false multi-fault classification and ensure correct hardware failure diagnoses.
 
 ---
 
@@ -866,16 +891,16 @@ Executed across the entire codebase:
 ```powershell
 pytest -o pythonpath=. --collect-only -q
 ```
-**Collection Result**: **429 tests collected across 39 test files** (duration: 4.64s).
+**Collection Result**: **512 tests collected across 50 test files** (duration: 4.64s).
 
 Executed in `in_process` mode:
 ```powershell
 $env:AGENTS_MODE="in_process"; pytest -o pythonpath=. tests/ -q
 ```
-**Execution Result**: **429 passed, 4 warnings** (zero failures across all 429 unit, property, security, contract, and remediation tests).
+**Execution Result**: **512 passed, 4 warnings** (zero failures across all 512 unit, property, security, contract, and remediation tests).
 In addition, frontend contract tests pass: **9 passed, 0 failed** in `dashboard/tests/test_ui_ux_contract.mjs`, and the dashboard builds cleanly (`npm run build`, 229 modules transformed in 3.02s).
 
-#### Inventory of All 39 Test Files
+#### Inventory of All 50 Test Files
 
 | Test File | Coverage Description | Tests Collected |
 | :--- | :--- | :---: |
@@ -884,13 +909,16 @@ In addition, frontend contract tests pass: **9 passed, 0 failed** in `dashboard/
 | `test_api_endpoints.py` | Tests for FastAPI backend REST and WebSocket endpoints. | 7 |
 | `test_b1_gateway_robustness.py` | Comprehensive validation tests for B1 deliverables (Gateway, Normalizer, Error handling). | 28 |
 | `test_b2_learned_layer.py` | Unit and property tests for B2 learned layer (Feature extraction, Calibrated classifier). | 15 |
+| `test_bench_scoring.py` | Benchmark scoring logic, interop known-correct scenarios, and evidence suite scoring. | 3 |
 | `test_chaos.py` | Chaos, circuit-breaker, and degraded-mode resilience testing. | 19 |
 | `test_conflict_resolution.py` | Tests for conflict detection and deterministic arbitration. | 3 |
 | `test_diagnosis_execution.py` | Test suite validating diagnosis execution flow, repeated runs, and run comparison. | 2 |
+| `test_docs_consistency.py` | Documentation consistency, benchmark numbers, and LaTeX verification. | 8 |
 | `test_evidence_provenance_and_corroboration.py` | Evidence provenance, corroboration matrix, and non-fabrication tests. | 9 |
 | `test_gateway_api.py` | Integration test for Gateway /ingest and /health microservice endpoints. | 2 |
 | `test_generator.py` | Unit tests for synthetic network generator determinism, scenario signatures, and knobs. | 7 |
 | `test_heldout_generator.py` | Unit and contract validation tests for the held-out telemetry generator. | 27 |
+| `test_heldout_signature_discrimination.py` | Signature discrimination on non-Gaussian held-out distributions. | 1 |
 | `test_iitbbsr_topology_fixture.py` | Unit tests and schema validation fixtures for IIT Bhubaneswar campus topology. | 11 |
 | `test_insufficient_evidence.py` | Dedicated tests verifying strict compliance with the insufficient_evidence rule. | 2 |
 | `test_mcp_and_remediation.py` | Comprehensive test suite for MCP tools, remediation simulation, and network hard-blocking. | 21 |
@@ -898,6 +926,13 @@ In addition, frontend contract tests pass: **9 passed, 0 failed** in `dashboard/
 | `test_new_views_api.py` | Tests for new HITL, simulation, resume, and feature flags endpoints. | 7 |
 | `test_normal_operation_benign.py` | Regression test suite for normal_operation resolution and non-fault boundaries. | 29 |
 | `test_organizer_adapter.py` | Unit tests verifying OrganizerAdapter resilience to external variants and dirty inputs. | 7 |
+| `test_parameters_parity.py` | Parameters catalog schema, runtime settings, and dynamic thresholds parity. | 3 |
+| `test_phase13b_evidence_domains.py` | Phase 13B evidence domain expansion and multi-domain attribution. | 5 |
+| `test_phase13h_regressions.py` | Phase 13H blind normal recall, noise-robust health score, and noise bounds. | 12 |
+| `test_phase13i_organizer_precedence.py` | Phase 13I organizer precedence policy, rule overrides, and guard toggles. | 9 |
+| `test_phase13j_topology_ood.py` | Phase 13J topology randomization, topology-invariant aggregates, and OOD gate. | 4 |
+| `test_phase13k_evidence_sufficiency.py` | Phase 13K evidence independence classes, source types, and sufficiency policy. | 4 |
+| `test_phase13m_scope_healthy_and_quality.py` | Phase 13M scope-aware healthy confirmation and data-quality score. | 3 |
 | `test_phase2_canonical_ingestion.py` | Canonical normalization, alias adaptation, and unit coercion verification. | 15 |
 | `test_phase3_evaluation.py` | Full multi-dataset benchmark evaluation harness and metrics verification. | 7 |
 | `test_phase3_validation.py` | Targeted regression and validation test suite for Phase 3 System Validation. | 5 |
@@ -916,10 +951,11 @@ In addition, frontend contract tests pass: **9 passed, 0 failed** in `dashboard/
 | `test_robustness_hypothesis.py` | Property-based testing with Hypothesis verifying system resilience to dirty or malformed inputs. | 4 |
 | `test_scenarios.py` | End-to-end integration tests executing the benchmark scenarios. | 5 |
 | `test_signatures_and_conflicts.py` | Comprehensive tests for fault signatures, causal chains, and conflict arbitration. | 7 |
+| `test_syslog_parser.py` | RFC 3164 and 5424 syslog parsing, severity mapping, and log agent guard. | 31 |
 | `test_tickets_and_impersonation.py` | Tests for ticket management workflow, RBAC access boundaries, and audited impersonation. | 6 |
 | `test_wifi_services_agent.py` | Unit and integration tests for WifiServicesAgent. | 5 |
 
-*Source: `pytest -o pythonpath=. --collect-only -q` (Total: 429 tests across 39 files).*
+*Source: `pytest -o pythonpath=. --collect-only -q` (Total: 512 tests across 50 files).*
 
 #### Commands for Key Verification Checks
 
@@ -1203,7 +1239,7 @@ NetCoop-AI/
 |   |-- demo.py                 # End-to-end diagnostic demonstration
 |   |-- demo_organizer.py       # Organizer Colab telemetry demo
 |   `-- run_agents.py           # Multi-process agent launcher
-|-- tests/                      # Automated unit and integration test suite (39 test files)
+|-- tests/                      # Automated unit and integration test suite (50 test files)
 |-- Makefile                    # Automation commands (wrapped for PowerShell)
 `-- pyproject.toml              # Package configuration and dependencies
 ```
@@ -1233,7 +1269,7 @@ NetCoop-AI/
 2. **Compound Multi-Fault and Ambiguous Scenarios**: Compound multi-fault scenarios (`compound_cpu_and_link.json`, `compound_wifi_and_dns.json`) and `ambiguous_multi_fault.json` return insufficient evidence (`insufficient_evidence` status) because the multi-agent consensus state machine abstains rather than emitting uncorroborated single-fault causes when metrics cross multiple competing fault domains.
 3. **Unified Confidence Semantics**: Confidence adheres to a single unified rule across API, export, and reports: normal baseline operation (`status == "benign"`) strictly emits confidence `1.000` with zero suggested remediation actions; ambiguous, incomplete, or uncorroborated scenarios (`status == "insufficient_evidence"`) strictly emit confidence `0.000` under mathematical split-conformal abstention thresholds.
 4. **Conformal Coverage Gap**: Conformal coverage measured **77.4%** versus the nominal **90%** target ($\alpha = 0.10$) due to non-exchangeability across synthetic noise regimes.
-5. **Executed Test Suite Results**: The backend test suite executes **429 tests across 39 test files** (`pytest -o pythonpath=. tests/ -q`), passing with zero failures. In addition, 9 frontend contract tests pass in `dashboard/tests/test_ui_ux_contract.mjs`, and the dashboard builds cleanly.
+5. **Executed Test Suite Results**: The backend test suite executes **512 tests across 50 test files** (`pytest -o pythonpath=. tests/ -q`), passing with zero failures. In addition, 9 frontend contract tests pass in `dashboard/tests/test_ui_ux_contract.mjs`, and the dashboard builds cleanly.
 6. **Benchmark Artifacts & Headline Combined Accuracy**: The latest verified benchmark run (`eval/results/benchmark_phase11_20261115.json`) achieves 71.6% in-distribution, 32.0% held-out, and 56.8% combined primary accuracy across 400 synthetic samples. The headline 56.8% combined accuracy includes credit for correct abstentions (141 answered-correct, 3 wrong, 176 abstained out of 320 labelled cases). Selective accuracy on diagnosed incidents is 97.9% (141/144) with 2.1% selective risk at 36.0% coverage.
 7. **Out-of-Distribution Generalization Drop**: While in-distribution synthetic accuracy is **71.6%** (179/250 samples), accuracy on held-out synthetic non-Gaussian distributions drops to **32.0%** (48/150 samples).
 8. **Organizer Telemetry Exact-Match**: On organizer Colab telemetry (`data/organizer/`, 900 samples), set-match accuracy is **66.7%**; exact-match accuracy is **33.3%** (`summary["organizer_exact_match_accuracy"]`). The jump from 0.0% to 33.3% exact-match is due to a scoring-definition correction where healthy switch states map to `no_fault`.

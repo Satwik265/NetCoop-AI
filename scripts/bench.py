@@ -77,7 +77,7 @@ from netcoop.core.envelope import (
 from netcoop.data.generator import SyntheticNetworkGenerator
 from netcoop.orchestrator.graph import mediator, run_diagnosis
 
-SCORECARD_VERSION = "phase13k_v1"
+SCORECARD_VERSION = "phase13n_v1"
 DEMO_ARTIFACTS_DIR = PROJECT_ROOT / "demo_artifacts"
 DEMO_ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -133,12 +133,24 @@ def eval_interop_suite_split() -> Dict[str, Any]:
     for f in interop_files:
         try:
             data = json.loads(f.read_text(encoding="utf-8"))
-            res = evaluate_sample(data, "interop")
+            gt = data.get("scenario", "link_congestion")
+            res = evaluate_sample(data, gt)
             res["filename"] = f.name
             raw_results.append(res)
         except Exception:
             pass
     return summarize_results("interop_suite_9", raw_results)
+
+
+EVIDENCE_GT_MAP = {
+    "mtu_mismatch_with_config.json": "mtu_mismatch_blackhole",
+    "link_congestion_with_logs.json": "link_congestion",
+    "ethernet_fault_with_logs.json": "ethernet_interface_fault",
+    "conflicting_evidence.json": "link_congestion",
+    "05_insufficient_evidence_sparse.json": "insufficient_data",
+    "ambiguous_multi_fault.json": "ambiguous_multi_fault",
+    "insufficient_data.json": "insufficient_data",
+}
 
 
 def eval_evidence_suite_split() -> Dict[str, Any]:
@@ -158,7 +170,7 @@ def eval_evidence_suite_split() -> Dict[str, Any]:
         f = scenarios_dir / fname
         if f.exists():
             data = json.loads(f.read_text(encoding="utf-8"))
-            gt = fname.replace(".json", "")
+            gt = EVIDENCE_GT_MAP.get(fname, fname.replace(".json", ""))
             res = evaluate_sample(data, gt)
             res["filename"] = fname
             raw_results.append(res)

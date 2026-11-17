@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, TypedDict
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 
-from netcoop.core.correlation import OfflineCorrelationEngine
+from netcoop.core.correlation import OfflineCorrelationEngine, detect_rule_ambiguity
 from netcoop.core.envelope import (
     AgentEnvelope,
     AgentRole,
@@ -1122,8 +1122,30 @@ def node_report(state: GraphState) -> Dict[str, Any]:
 
     is_ambiguous_conformal = (len(conformal_prediction_set) > 1 or classifier_conformal_status == "ambiguous")
 
+    # Phase 13N Rule-based ambiguity detection independent of classifier:
+    # Two or more distinct fault domain signatures active simultaneously must abstain, even when OOD.
+    raw_telemetry = (state.get("raw_data") or {}).get("telemetry", [])
+    is_rule_amb, amb_doms = detect_rule_ambiguity(
+        [Observation(**o) for o in state.get("accumulated_observations", [])],
+        raw_telemetry=raw_telemetry,
+    )
+
+    if is_rule_amb and status != "benign":
+        status = "insufficient_evidence"
+        hypothesis = None
+        confidence_category = "low"
+        calibrated_confidence = 0.0
+        conformal_prediction_set = ["ambiguous"]
+        uncertainty = UncertaintyEvaluation(
+            score=0.85,
+            reasons=[f"Rule-based ambiguity detected: competing fault signatures active ({', '.join(amb_doms)}). Safe abstention enforced."],
+            missing_evidence=["Targeted differential discrimination probes"],
+            alternative_hypotheses=[{"cause": d, "confidence": 0.85} for d in amb_doms],
+        )
+
     # Phase 13I & 13J Precedence Policy: When deterministic multi-signal domain rules are satisfied
-    # OR when OOD, an ambiguous conformal set or classifier veto must not force abstention.
+    # OR when OOD, an ambiguous conformal set or classifier veto must not force abstention,
+    # UNLESS rule-based ambiguity is present.
     deterministic_rule_satisfied = bool(
         hypothesis
         and getattr(hypothesis, "is_sufficient", False)
@@ -1131,7 +1153,7 @@ def node_report(state: GraphState) -> Dict[str, Any]:
         and len(getattr(hypothesis, "supporting_evidence", [])) >= 1
     )
 
-    override_classifier_veto = deterministic_rule_satisfied or (is_ood and bool(hypothesis))
+    override_classifier_veto = (deterministic_rule_satisfied or (is_ood and bool(hypothesis))) and not is_rule_amb
 
     if is_ambiguous_conformal and status != "benign":
         if override_classifier_veto:

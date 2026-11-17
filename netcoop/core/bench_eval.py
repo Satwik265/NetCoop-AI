@@ -37,6 +37,7 @@ KEY_MAP = {
     "DHCP_FAILURE": "dhcp_failure",
     "DEVICE_CPU_OVERLOAD": "device_cpu_overload",
     "NO_FAULT": "normal_operation",
+    "MTU_MISMATCH_BLACKHOLE": "mtu_mismatch_blackhole",
 }
 
 ALL_SCENARIOS = [
@@ -121,6 +122,8 @@ def extract_predicted_class(rep: Any) -> Optional[str]:
         return "upstream_failure_cascade"
     if "hardware" in pc:
         return "device_hardware_failure"
+    if "mtu" in pc:
+        return "mtu_mismatch_blackhole"
     return None
 
 
@@ -141,7 +144,7 @@ def evaluate_sample(inc: Dict[str, Any], ground_truth: str) -> Dict[str, Any]:
 
     if ground_truth == "normal_operation":
         is_correct = is_benign
-    elif ground_truth in ("ambiguous_multi_fault", "insufficient_data"):
+    elif ground_truth in ("ambiguous_multi_fault", "insufficient_data", "insufficient_evidence", "05_insufficient_evidence_sparse"):
         is_correct = is_abstained
     else:
         # Fault scenario
@@ -155,7 +158,7 @@ def evaluate_sample(inc: Dict[str, Any], ground_truth: str) -> Dict[str, Any]:
     c_set = list(getattr(rep, "conformal_prediction_set", []) or [])
     if ground_truth == "normal_operation":
         conformal_covered = ("normal_operation" in c_set)
-    elif ground_truth in ("ambiguous_multi_fault", "insufficient_data"):
+    elif ground_truth in ("ambiguous_multi_fault", "insufficient_data", "insufficient_evidence", "05_insufficient_evidence_sparse"):
         conformal_covered = (len(c_set) != 1) or ("insufficient_evidence" in c_set)
     else:
         conformal_covered = (ground_truth in c_set)

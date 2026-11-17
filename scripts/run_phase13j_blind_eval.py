@@ -37,139 +37,23 @@ settings.in_process_fallback = True
 settings.allow_dev_in_process_fallback = True
 
 from eval.run_eval import CLASSES
+from netcoop.core.bench_eval import (
+    KEY_MAP,
+    compute_accepted_ece,
+    compute_wilson_ci,
+    run_unseen_topology_sample,
+)
 from netcoop.data.topology_generator import TopologyRandomizedGenerator
 from netcoop.orchestrator.graph import run_diagnosis
 
 
-KEY_MAP = {
-    "DEVICE_HARDWARE_FAILURE": "device_hardware_failure",
-    "LINK_CONGESTION": "link_congestion",
-    "UPSTREAM_CONGESTION": "upstream_failure_cascade",
-    "UPSTREAM_FAILURE_CASCADE": "upstream_failure_cascade",
-    "WEAK_WIFI_SIGNAL": "weak_wifi_signal",
-    "ETHERNET_INTERFACE_FAULT": "ethernet_interface_fault",
-    "DNS_FAILURE": "dns_failure",
-    "DHCP_FAILURE": "dhcp_failure",
-    "DEVICE_CPU_OVERLOAD": "device_cpu_overload",
-    "NO_FAULT": "normal_operation",
-}
-
-
 def evaluate_sample(scen: str, seed: int, topology_name: str) -> Dict[str, Any]:
-    inc = TopologyRandomizedGenerator.generate(
-        scenario=scen,
-        seed=seed,
-        topology_name=topology_name,
-        noise_level=0.1,
-    )
-    t0 = time.time()
-    rep = run_diagnosis(inc)
-    dur_ms = (time.time() - t0) * 1000.0
-
-    is_diagnosed = (rep.status == "diagnosed")
-    is_benign = (rep.status == "benign")
-    is_abstain = (rep.status in ("insufficient_evidence", "ambiguous", "inconclusive"))
-
-    # Map predicted cause
-    pred_cls = None
-    if getattr(rep, "hypothesis_key", None):
-        pred_cls = KEY_MAP.get(str(rep.hypothesis_key).upper())
-
-    if not pred_cls and is_diagnosed and rep.probable_cause:
-        pc = str(rep.probable_cause).lower()
-        for c in CLASSES:
-            if c in pc:
-                pred_cls = c
-                break
-        if not pred_cls:
-            if "congestion" in pc:
-                pred_cls = "link_congestion"
-            elif "wifi" in pc or "rf attenuation" in pc:
-                pred_cls = "weak_wifi_signal"
-            elif "ethernet" in pc or "interface" in pc:
-                pred_cls = "ethernet_interface_fault"
-            elif "dns" in pc:
-                pred_cls = "dns_failure"
-            elif "dhcp" in pc:
-                pred_cls = "dhcp_failure"
-            elif "cpu" in pc:
-                pred_cls = "device_cpu_overload"
-            elif "upstream" in pc or "cascade" in pc:
-                pred_cls = "upstream_failure_cascade"
-    elif is_benign:
-        pred_cls = "normal_operation"
-
-    is_accepted = is_diagnosed or is_benign
-    is_correct = False
-    if scen == "normal_operation":
-        is_correct = is_benign
-    elif scen in ("ambiguous_multi_fault", "insufficient_data"):
-        is_correct = is_abstain
-    else:
-        is_correct = (pred_cls == scen)
-
-    c_set = list(getattr(rep, "conformal_prediction_set", []) or [])
-
-    # Check conformal coverage
-    # For a true label: is true label in conformal set?
-    if scen == "normal_operation":
-        conformal_covered = ("normal_operation" in c_set)
-    elif scen in ("ambiguous_multi_fault", "insufficient_data"):
-        # For ambiguous or insufficient, empty set or multiple competing causes
-        conformal_covered = (len(c_set) != 1) or ("insufficient_evidence" in c_set)
-    else:
-        conformal_covered = (scen in c_set)
-
-    return {
-        "topology": topology_name,
-        "scenario": scen,
-        "seed": seed,
-        "status": rep.status,
-        "probable_cause": rep.probable_cause,
-        "confidence": float(rep.confidence),
-        "predicted_class": pred_cls,
-        "is_accepted": is_accepted,
-        "is_correct": is_correct,
-        "conformal_prediction_set": c_set,
-        "conformal_covered": conformal_covered,
-        "is_ood": getattr(rep, "is_ood", False),
-        "duration_ms": dur_ms,
-    }
-
-
-def compute_wilson_ci(k: int, n: int, confidence: float = 0.95) -> Tuple[float, float, float]:
-    """Wilson score confidence interval for a proportion."""
-    if n == 0:
-        return 0.0, 0.0, 0.0
-    z = 1.959963984540054  # 95%
-    p_hat = k / n
-    denom = 1.0 + (z ** 2) / n
-    center = (p_hat + (z ** 2) / (2 * n)) / denom
-    margin = (z / denom) * math.sqrt((p_hat * (1 - p_hat)) / n + (z ** 2) / (4 * (n ** 2)))
-    low = max(0.0, center - margin)
-    high = min(1.0, center + margin)
-    return p_hat, low, high
-
-
-def compute_accepted_ece(results: List[Dict[str, Any]], n_bins: int = 10) -> float:
-    """Compute ECE on accepted predictions."""
-    accepted = [r for r in results if r["is_accepted"]]
-    if not accepted:
-        return 0.0
-    confs = np.array([r["confidence"] for r in accepted], dtype=np.float64)
-    accs = np.array([1.0 if r["is_correct"] else 0.0 for r in accepted], dtype=np.float64)
-    bin_edges = np.linspace(0.0, 1.0, n_bins + 1)
-    ece = 0.0
-    n = len(accepted)
-    for i in range(n_bins):
-        low, high = bin_edges[i], bin_edges[i + 1]
-        mask = (confs >= low) & (confs <= high if i == n_bins - 1 else confs < high)
-        cnt = np.sum(mask)
-        if cnt > 0:
-            bin_acc = np.mean(accs[mask])
-            bin_conf = np.mean(confs[mask])
-            ece += (cnt / n) * abs(bin_acc - bin_conf)
-    return float(ece)
+    """Delegate to canonical benchmark evaluation harness in netcoop.core.bench_eval."""
+    res = run_unseen_topology_sample(topology_name, scen, seed)
+    res["scenario"] = scen
+    res["seed"] = seed
+    res["is_ood"] = res.get("is_ood", False)
+    return res
 
 
 def analyze_topology_results(topo_name: str, results: List[Dict[str, Any]]) -> Dict[str, Any]:
