@@ -58,7 +58,7 @@ class LogAgent(BaseAgent):
 
         inquiries = envelope.payload.inquiries
 
-
+        non_dict_count = 0
 
         for inq in inquiries:
 
@@ -66,11 +66,15 @@ class LogAgent(BaseAgent):
 
             target_dev = target_entity.split(":")[0] if target_entity else ""
 
-
-
             matched_logs = []
 
             for log in raw_logs:
+
+                if not isinstance(log, dict):
+
+                    non_dict_count += 1
+
+                    continue
 
                 dev = log.get("device", "")
 
@@ -92,17 +96,19 @@ class LogAgent(BaseAgent):
 
                 inq.answer = f"Syslog inquiry verified {len(matched_logs)} events on {target_entity or 'scope'}: {first_msg}"
 
-                inq.status = "answered"
-
             else:
 
                 inq.answer = f"Syslog inquiry verified 0 anomalous events on {target_entity or 'scope'}; logs nominal."
 
-                inq.status = "answered"
-
 
 
         response.payload.inquiries = inquiries
+
+        if non_dict_count > 0:
+            limitations = response.context.setdefault("limitations", [])
+            limitations.append(
+                f"unstructured_syslog_telemetry: {non_dict_count} non-dict log entries skipped; gateway syslog normalization required"
+            )
 
         return response
 
@@ -132,9 +138,15 @@ class LogAgent(BaseAgent):
 
         observations: List[Observation] = []
 
-
+        non_dict_count = 0
 
         for log in raw_logs:
+
+            if not isinstance(log, dict):
+
+                non_dict_count += 1
+
+                continue
 
             dev = log.get("device", "unknown")
 
@@ -449,6 +461,12 @@ class LogAgent(BaseAgent):
             )
 
 
+
+        if non_dict_count > 0:
+            limitations = response.context.setdefault("limitations", [])
+            limitations.append(
+                f"unstructured_syslog_telemetry: {non_dict_count} non-dict log entries skipped; gateway syslog normalization required"
+            )
 
         return response
 

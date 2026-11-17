@@ -887,14 +887,66 @@ def node_report(state: GraphState) -> Dict[str, Any]:
     detected_format = raw_data.get("detected_format") or ""
     is_organizer_format = "organizer" in str(detected_format)
 
-    # In Phase 13G, we implement a calibrated healthy-confirmation engine:
-    # Hard constraint: the rate of faults called normal must not increase.
-    # 1. Complete absence of degraded/offline/down device statuses.
-    # 2. Critical network switches must not have unobserved interface health.
-    # 3. All observed telemetry metrics must reside within validated nominal operational bounds.
-    # 4. Zero unhandled high/critical syslog errors or configuration diff anomalies.
-    # 5. Classifier must not predict an active fault with high confidence (>= 0.50).
+    # In Phase 13G and 13M, we implement a scope-aware calibrated healthy-confirmation engine:
+    # Hard constraint: the rate of faults called normal must not increase (0 faults called normal).
+    # Scope awareness (13M): require only the metric domains that exist in scope (e.g. Wi-Fi only if APs
+    # exist, DNS/DHCP only if services are in scope). Record checked vs out-of-scope domains.
+    topo = raw_data.get("topology") or {}
+    topo_nodes = topo.get("nodes", []) if isinstance(topo, dict) else []
+    node_roles = {str(n.get("role") or "").lower() for n in topo_nodes if isinstance(n, dict)}
+
     telemetry_records = raw_data.get("telemetry", [])
+    telemetry_types = {str(getattr(r.get("device_type"), "value", r.get("device_type") or "")).lower() for r in telemetry_records if isinstance(r, dict)}
+    all_roles = node_roles | telemetry_types
+
+    ap_in_scope = any("ap" in r or "wifi" in r or "wireless" in r for r in all_roles) or any(
+        isinstance(r, dict) and any(
+            (r.get("metrics") or {}).get(k) is not None or r.get(k) is not None
+            for k in ("wifi_rssi_dbm", "wifi_retransmission_pct", "wifi_snr_db")
+        )
+        for r in telemetry_records
+    )
+    services_list = raw_data.get("services") or []
+    services_in_scope = (
+        any("dns" in str(s).lower() or "dhcp" in str(s).lower() for s in services_list)
+        or any("dns" in r or "dhcp" in r or "server" in r for r in all_roles)
+        or any(
+            isinstance(r, dict) and any(
+                (r.get("metrics") or {}).get(k) is not None or r.get(k) is not None
+                for k in ("dns_failure_pct", "dhcp_failure_pct", "dns_resolution_ms")
+            )
+            for r in telemetry_records
+        )
+    )
+    switching_in_scope = any("switch" in r or "router" in r for r in all_roles) or not all_roles
+    hosts_in_scope = any("host" in r or "endpoint" in r or "client" in r for r in all_roles)
+
+    checked_domains: List[str] = ["traffic_performance"]
+    out_of_scope_domains: List[str] = []
+
+    if switching_in_scope:
+        checked_domains.append("switching_fabric")
+    else:
+        out_of_scope_domains.append("switching_fabric")
+
+    if ap_in_scope:
+        checked_domains.append("wireless_rf")
+    else:
+        out_of_scope_domains.append("wireless_rf")
+
+    if services_in_scope:
+        checked_domains.append("network_services")
+    else:
+        out_of_scope_domains.append("network_services")
+
+    if hosts_in_scope:
+        checked_domains.append("host_endpoints")
+    else:
+        out_of_scope_domains.append("host_endpoints")
+
+    provenance["checked_domains"] = sorted(checked_domains)
+    provenance["out_of_scope_domains"] = sorted(out_of_scope_domains)
+
     telemetry_is_nominal = False
     has_unhealthy_signal = False
 
@@ -970,29 +1022,43 @@ def node_report(state: GraphState) -> Dict[str, Any]:
             if opt_power is not None and (float(opt_power) < -13.0 or float(opt_power) > -5.0):
                 has_unhealthy_signal = True
                 break
-            dns_f = rec_metrics.get("dns_failure_pct") or r.get("dns_failure_pct")
-            if dns_f is not None and float(dns_f) > 5.0:
-                has_unhealthy_signal = True
-                break
-            dhcp_f = rec_metrics.get("dhcp_failure_pct") or r.get("dhcp_failure_pct")
-            if dhcp_f is not None and float(dhcp_f) > 5.0:
-                has_unhealthy_signal = True
-                break
+            if services_in_scope:
+                dns_f = rec_metrics.get("dns_failure_pct") or r.get("dns_failure_pct")
+                if dns_f is not None and float(dns_f) > 5.0:
+                    has_unhealthy_signal = True
+                    break
+                dhcp_f = rec_metrics.get("dhcp_failure_pct") or r.get("dhcp_failure_pct")
+                if dhcp_f is not None and float(dhcp_f) > 5.0:
+                    has_unhealthy_signal = True
+                    break
 
         if not has_unhealthy_signal and not is_organizer_format and len(telemetry_records) < 3:
             # Sparse campus telemetry cannot establish network-wide nominal health
             has_unhealthy_signal = True
 
-        if not has_unhealthy_signal:
-            # Host unobserved endpoint health check: if host devices exist but all are unobserved
-            hosts = [r for r in telemetry_records if str(getattr(r.get("device_type"), "value", r.get("device_type") or "")).lower() == "host"]
-            if hosts and all(
-                (h.get("device_status") is None or str(getattr(h.get("device_status"), "value", h.get("device_status"))).lower() == "")
-                and (h.get("dhcp_failure_pct") is None and (h.get("metrics") or {}).get("dhcp_failure_pct") is None)
-                and (h.get("dns_failure_pct") is None and (h.get("metrics") or {}).get("dns_failure_pct") is None)
-                for h in hosts
-            ):
-                has_unhealthy_signal = True
+        if not has_unhealthy_signal and hosts_in_scope:
+            # Host endpoint health check: scope-aware
+            hosts = [r for r in telemetry_records if isinstance(r, dict) and str(getattr(r.get("device_type"), "value", r.get("device_type") or "")).lower() in ("host", "endpoint", "client")]
+            if hosts:
+                if services_in_scope:
+                    all_unobserved = all(
+                        (h.get("device_status") is None or str(getattr(h.get("device_status"), "value", h.get("device_status"))).lower() == "")
+                        and (h.get("dhcp_failure_pct") is None and (h.get("metrics") or {}).get("dhcp_failure_pct") is None)
+                        and (h.get("dns_failure_pct") is None and (h.get("metrics") or {}).get("dns_failure_pct") is None)
+                        for h in hosts
+                    )
+                    if all_unobserved:
+                        has_unhealthy_signal = True
+                else:
+                    all_unobserved = all(
+                        (h.get("device_status") is None or str(getattr(h.get("device_status"), "value", h.get("device_status"))).lower() == "")
+                        and (h.get("packet_loss_pct") is None and (h.get("metrics") or {}).get("packet_loss_pct") is None)
+                        and (h.get("latency_ms") is None and (h.get("metrics") or {}).get("latency_ms") is None)
+                        and (h.get("cpu_pct") is None and (h.get("metrics") or {}).get("cpu_pct") is None)
+                        for h in hosts
+                    )
+                    if all_unobserved:
+                        has_unhealthy_signal = True
 
         if not has_unhealthy_signal:
             logs = raw_data.get("logs", [])

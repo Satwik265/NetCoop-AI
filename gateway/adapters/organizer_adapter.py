@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel, Field
 
 from core.normalizer import TelemetryNormalizer
+from gateway.adapters.syslog_parser import parse_syslog_lines
 
 
 class TypedValidationError(BaseModel):
@@ -117,6 +118,23 @@ class OrganizerAdapter:
         "dns_failure_pct",
         "dhcp_failure_pct",
     ]
+
+    OPTIONAL_FIELDS = {
+        "wifi_rssi_dbm",
+        "wifi_retransmission_pct",
+        "dns_resolution_ms",
+        "dns_failure_pct",
+        "dhcp_failure_pct",
+        "queue_drops",
+        "interface_errors",
+        "link_flaps",
+        "jitter_ms",
+        "throughput_mbps",
+        "bandwidth_mbps",
+        "memory_pct",
+        "optical_tx_power_dbm",
+        "optical_rx_power_dbm",
+    }
 
     STATUS_MAP: Dict[str, str] = {
         "healthy": "online",
@@ -786,10 +804,17 @@ class OrganizerAdapter:
             per_source_quality[src]["quarantined_fields"].update(rec_quarantined)
             per_source_quality[src]["error_count"] += len(rec_errors)
 
-            # Check absent canonical metrics
-            for cf in cls.CANONICAL_FIELDS:
-                if adapted.get(cf) is None and cf not in ("wifi_rssi_dbm", "wifi_retransmission_pct", "dns_resolution_ms", "dns_failure_pct", "dhcp_failure_pct"):
-                    per_source_quality[src]["missing_fields"].add(cf)
+            # Check absent canonical metrics - do not penalize out-of-scope or optional domains
+            if adapted.get("timestamp") is None:
+                per_source_quality[src]["missing_fields"].add("timestamp")
+            if adapted.get("device_id") is None or adapted.get("device_id") == "unknown":
+                per_source_quality[src]["missing_fields"].add("device_id")
+            has_perf_metric = any(
+                adapted.get(k) is not None
+                for k in ("latency_ms", "packet_loss_pct", "link_utilization_pct", "cpu_pct", "throughput_mbps", "bandwidth_mbps")
+            )
+            if not has_perf_metric:
+                per_source_quality[src]["missing_fields"].add("primary_performance_metrics")
 
             for t in rec_transformations:
                 if t not in global_transformations:
@@ -868,7 +893,8 @@ class OrganizerAdapter:
             penalty += sq["error_count"] * 0.05
             if clock_skew_flag:
                 penalty += 0.1
-            src_score = round(max(0.0, min(1.0, 1.0 - penalty)), 3)
+            # Quality score baseline 1.0 - penalties, with 0.40 floor for evaluable telemetry
+            src_score = round(max(0.40, min(1.0, 1.0 - penalty)), 3)
             total_source_score += src_score
 
             per_source_final[src] = {
@@ -920,7 +946,7 @@ class OrganizerAdapter:
             "topology": topology,
             "telemetry": unique_records,
             "configurations": container.get("configurations", []),
-            "logs": container.get("logs", []),
+            "logs": parse_syslog_lines(container.get("logs", [])),
             "routing_state": container.get("routing_state", {}),
             "description": container.get("description", ""),
             "raw_input": dict(container) if isinstance(container, dict) else container,

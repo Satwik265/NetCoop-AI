@@ -81,6 +81,13 @@ parameters:
     category: "data_quality"
     evidence: "Minimum required data quality score to prevent garbage-in-garbage-out hallucinations on corrupted payloads."
 
+  dq_floor:
+    value: 0.40
+    unit: "quality_score"
+    type: "hard safety"
+    category: "data_quality"
+    evidence: "Minimum data quality floor ensuring structurally valid telemetry with intact timestamps and device identities remains evaluable."
+
   # Orchestrator & Communication Resilience
   max_inquiry_iterations:
     value: 3
