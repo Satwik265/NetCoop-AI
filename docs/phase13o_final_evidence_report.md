@@ -11,14 +11,16 @@
 
 Phase 13O completes the comprehensive evidence freeze, anti-leakage audit, and holdout evaluation across the entire NetCoop AI platform.
 
-- **Zero Data Leakage**: All 5,715 historical and holdout evaluation samples across the project lifecycle have been indexed and categorized in [`docs/evidence_ledger.md`](docs/evidence_ledger.md).
-  - **`CLEAN` Single-Evaluation Holdouts**: 3,015 samples (52.8%)
-  - **`DEVELOPMENT` Intermediate Splits**: 1,100 samples (19.2%)
-  - **`TUNED` Training & Calibration Sets**: 1,600 samples (28.0%)
+- **Zero Data Leakage**: All 4,200 explicitly catalogued evaluation samples across the project lifecycle have been indexed and categorized in [`docs/evidence_ledger.md`](docs/evidence_ledger.md):
+  - **`CLEAN` Single-Evaluation Holdouts**: 1,500 samples (35.71% of catalogued total)
+  - **`DEVELOPMENT` Intermediate Splits**: 1,100 samples (26.19% of catalogued total)
+  - **`TUNED` Training & Calibration Sets**: 1,600 samples (38.10% of catalogued total)
+  - *Historical summary discrepancy*: Earlier cumulative citations reported 5,715 samples (with 3,015 clean); an unrecorded delta of 1,515 samples lacks seed-level JSON manifests on disk and is excluded from verified totals as unresolved under strict anti-fabrication rules.
 - **Zero Engine Edits During Holdout Evaluation**: Engine logic was frozen before generating and running fresh holdouts.
-- **Perfect Selective Reliability**:
+- **Selective Reliability & Risk-Coverage**:
   - Across all 2,115 canonical benchmark samples in `docs/scorecard.json`: **100.0% selective accuracy** on all accepted diagnoses; **0.0% selective risk**.
-  - Across all 1,350 fresh holdouts (seeds 1001–1015 on unseen topologies, seeds 7000–7099 on organizer telemetry, seeds 1101–1115 on heavy Pareto noise, seeds 1201–1240 on borderline suite, and seeds 20001–20050 on containerized Linux network): **100.0% selective accuracy** on all accepted diagnoses; **0.0% selective risk**.
+  - Across the 950 saturated fresh holdout samples (seeds 1001–1015 on unseen topologies, seeds 7000–7099 on organizer telemetry, seeds 1101–1115 on heavy Pareto noise, and seeds 20001–20050 on containerized Linux network namespaces): **100.0% selective accuracy** on all accepted diagnoses; **0.0% selective risk** (40 accepted, 10 safely abstained on emulation).
+  - Across the 400 borderline holdout samples: **100.0% selective accuracy** (0.0% selective risk, 199 accepted) at the production default confidence threshold $\ge 0.70$, and **85.32% selective accuracy** (14.68% selective risk, 252 accepted) at broad-coverage threshold $\ge 0.40$.
 - **Absolute Safety Invariant**: **Faults called normal remains 0** across all 3,465 combined benchmark and holdout samples (Rule-of-Three 95% upper bound $\le 0.08\%$).
 
 ---
@@ -48,7 +50,7 @@ Evaluated strictly **once under code freeze** with zero parameter tuning:
 | ↳ *`blind_branch_9`* | Sub-topology slice (9 devices, 15 seeds/class, NEW) | 150 | 120 (80.0%) | 30 | 100.0% | 0.0% [0.0%, 3.1%] | 0 (<= 2.86%) | 100.0% (15/15) |
 | **`fresh_organizer_7000_7099`** | Seeds 7000–7099 (150 snapshot + 150 windowed) | 300 | 300 (100.0%) | 0 | 100.0% | 0.0% [0.0%, 1.2%] | 0 (<= 1.50%) | 100.0% (100/100) |
 | **`fresh_heldout_1101_1115`** | `HeldoutNetworkGenerator` seeds 1101–1115 (heavy Pareto noise) | 150 | 120 (80.0%) | 30 | 100.0% | 0.0% [0.0%, 3.1%] | 0 (<= 2.86%) | 100.0% (15/15) |
-| **`fresh_emulation_20001_20050`** | Physical containerized Linux network (seeds 20001–20050) | 50 | 40 (80.0%) | 10 | 100.0% | 0.0% [0.0%, 8.8%] | 0 (<= 10.00%) | 100.0% (10/10) |
+| **`fresh_emulation_20001_20050`** | Containerized Linux network namespaces (seeds 20001–20050) | 50 | 40 (80.0%) | 10 | 100.0% | 0.0% [0.0%, 8.8%] | 0 (<= 10.00%) | 100.0% (10/10) |
 
 ---
 
@@ -73,9 +75,9 @@ Evaluated across 400 borderline samples generated with reduced signal intensity 
 
 ---
 
-## 5. Physical Network Emulation: Real vs. Harness Comparison
+## 5. Containerized Linux Network-Namespace Emulation: Real vs. Harness Comparison
 
-Evaluated on 50 live containerized network episodes executed in Linux network namespaces with `veth` pairs, Traffic Control (`tc`), `iperf3`, and kernel routing:
+Evaluated on 50 live containerized network episodes executed in Linux network namespaces with `veth` pairs, Traffic Control (`tc`), `iperf3`, and kernel routing (containerized network namespace environment, not physical vendor hardware):
 
 | Emulated Condition | Real Capture Episodes | Diagnosed Status | Benign Status | Abstained | Selective Acc | Real Telemetry Behavior | Harness vs Real Differences & Ingestion Handling |
 | :--- | :---: | :---: | :---: | :---: | :---: | :--- | :--- |
@@ -85,6 +87,8 @@ Evaluated on 50 live containerized network episodes executed in Linux network na
 | **`cpu_stress`** | 10 | 6 | 0 | 4 | 100.0% | Multi-threaded python CPU load generator pinning container CPU cores at 100% | Direct proc/stat telemetry ingested; 4/10 borderline runs safely abstained under strict threshold. |
 | **`healthy_run`** | 10 | 0 | 10 | 0 | 100.0% | Standard baseline traffic across uncontended Linux veth namespaces | Scope-aware healthy confirmation: AP and DHCP/DNS omitted from check when unobserved in topology. |
 
+Across all 50 episodes, 40 were accepted (30 diagnosed fault + 10 healthy confirmation) and 10 were safely abstained (6 link flap + 4 cpu stress) with **100.0% selective accuracy** on accepted cases (zero false diagnoses, zero faults called normal).
+
 ---
 
 ## 6. Verification Status of Engine Assertions & Constraints
@@ -92,7 +96,7 @@ Evaluated on 50 live containerized network episodes executed in Linux network na
 1. **Deterministic Multi-Signal Domain Rule Precedence**: `VERIFIED`  
    When deterministic domain rules fire with $\ge 2$ independent corroborating domains, neither classifier vetoes nor ambiguous conformal sets force abstention.
 2. **Safety Invariant**: `VERIFIED`  
-   Zero faults called normal across in-distribution, unseen blind topologies, organizer Colab sets, interop scenarios, noise stress, fresh holdouts, borderline suite, and physical network emulations.
+   Zero faults called normal across in-distribution, unseen blind topologies, organizer Colab sets, interop scenarios, noise stress, fresh holdouts, borderline suite, and containerized Linux network-namespace emulations.
 3. **Reproducibility & Parallel Determinism**: `VERIFIED`  
    Evaluated 50 random test seeds concurrently across 4 workers vs. serial execution: 0 differing seeds (`differing_seeds_count = 0`, `is_perfectly_deterministic = True`).
 4. **Clean Git State**: `VERIFIED`  

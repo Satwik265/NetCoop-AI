@@ -30,20 +30,26 @@ This document tracks all evaluation splits, sample partitions, topologies, and s
 
 ## 2. Anti-Leakage Audit Summary
 
-- **Total Samples Evaluated Across Project History:** `5,715`
-- **Samples in `TUNED` Partitions:** `1,600` (28.0%)
-- **Samples in `DEVELOPMENT` Partitions:** `1,100` (19.2%)
-- **Samples in `CLEAN` Single-Eval Holdout Partitions:** `3,015` (52.8%)
+### Explicitly Catalogued Samples (Verified Ground Truth)
+- **Total Explicitly Catalogued Samples:** `4,200`
+- **Samples in `TUNED` Partitions:** `1,600` (38.10% of catalogued total)
+- **Samples in `DEVELOPMENT` Partitions:** `1,100` (26.19% of catalogued total)
+- **Samples in `CLEAN` Single-Eval Holdout Partitions:** `1,500` (35.71% of catalogued total)
 
-All diagnostic performance metrics reported in Phase 13O for fresh holdout sets reflect **single-run, zero-tuning evaluation**.
+All diagnostic performance metrics reported in Phase 13O for fresh holdout sets reflect **single-run, zero-tuning evaluation** on the catalogued `CLEAN` partitions.
+
+### Unresolved Historical Summary Discrepancy
+- **Earlier Cumulative Project Figure:** `5,715` samples (historically cited with `3,015` clean samples).
+- **Unresolved Delta:** `1,515` samples (`5,715 - 4,200 = 1,515`).
+- **Audit Status:** This `1,515` sample difference lacks supporting seed-level JSON manifests on disk. Under strict anti-fabrication standards, it is **unresolved**, excluded from verified totals, and not classified as clean, development, or tuned without evidence. Contradictory statements claiming that all 5,715 historical samples were independently audited or verified are formally retracted.
 
 ---
 
 ## 3. Discrepancy Analysis & Reconciliation Audit
 
 - **Directly Verified Partition Total:** `4,200` samples across the 13 cataloged partitions in Section 1:
-  - `TUNED`: 1,600 samples (28.0% of historical project total)
-  - `DEVELOPMENT`: 1,100 samples (19.2% of historical project total)
-  - `CLEAN`: 1,500 samples (35.7% of cataloged total)
-- **Historical Summary Accounting Gap:** The summary figures (`5,715` total samples, `3,015` clean holdouts) reflect historical cumulative runs across earlier exploration splits. A forensic audit of the underlying raw evaluation artifacts reveals that `1,515` clean holdouts lack explicit seed-level JSON manifests on disk (`3,015 - 1,500 = 1,515`).
-- **Anti-Fabrication Policy:** NetCoop AI strictly prohibits fabricating sample IDs, seeds, or mock JSON results to fill this gap. Instead, this ledger explicitly documents the `4,200` verified samples with exact seed provenance while acknowledging the `1,515` sample historical accounting delta.
+  - `TUNED`: 1,600 samples (38.10% of cataloged total)
+  - `DEVELOPMENT`: 1,100 samples (26.19% of cataloged total)
+  - `CLEAN`: 1,500 samples (35.71% of cataloged total)
+- **Historical Summary Accounting Gap:** Cumulative summary figures (`5,715` total samples, `3,015` clean holdouts) reflect earlier historical exploration runs. A forensic audit of the underlying raw evaluation artifacts reveals that `1,515` samples lack explicit seed-level JSON manifests on disk (`3,015 - 1,500 = 1,515`).
+- **Anti-Fabrication Policy:** NetCoop AI strictly prohibits fabricating sample IDs, seeds, or mock JSON results to fill this gap. Instead, this ledger explicitly documents the `4,200` verified samples with exact seed provenance while acknowledging the `1,515` sample unresolved historical accounting delta.

@@ -67,6 +67,8 @@ All diagnostic benchmarks and risk-coverage metrics reflect the **Phase 13O Fina
 
 ### Fresh Phase 13O Single-Evaluation Holdouts (`eval/results/phase13o_fresh_holdouts_evaluation.json`)
 
+Evaluated across all five fresh holdout populations (1,350 total samples):
+
 | Split Identifier | Partition Description | Audit Class | Total Samples | Accepted (Cov %) | Abstained | Selective Acc | Selective Risk (Wilson 95% CI) | Faults Called Normal (Rule-of-3) | Healthy Recall |
 |:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | **`fresh_unseen_topologies_450`** | Seeds 1001–1015 across 3 blind topologies | `CLEAN` | 450 | 360 (80.0%) | 90 | 100.0% | 0.0% [0.0%, 1.1%] | 0 (<= 0.95%) | 100.0% (45/45) |
@@ -75,18 +77,22 @@ All diagnostic benchmarks and risk-coverage metrics reflect the **Phase 13O Fina
 | ↳ *`blind_branch_9`* | Sub-topology slice (9 devices, 15 seeds/class) | `CLEAN` | 150 | 120 (80.0%) | 30 | 100.0% | 0.0% [0.0%, 3.1%] | 0 (<= 2.86%) | 100.0% (15/15) |
 | **`fresh_organizer_suite_300`** | Seeds 7000–7099 (150 snapshot + 150 windowed) | `CLEAN` | 300 | 300 (100.0%) | 0 | 100.0% | 0.0% [0.0%, 1.3%] | 0 (<= 1.50%) | 100.0% (100/100) |
 | **`fresh_heldout_1101_1115`** | `HeldoutNetworkGenerator` seeds 1101–1115 | `CLEAN` | 150 | 120 (80.0%) | 30 | 100.0% | 0.0% [0.0%, 3.1%] | 0 (<= 2.86%) | 100.0% (15/15) |
-| **`fresh_emulation_20001_20050`** | Containerized Linux network (50 episodes) | `CLEAN` | 50 | 40 (80.0%) | 10 | 100.0% | 0.0% [0.0%, 8.8%] | 0 (<= 7.50%) | 100.0% (10/10) |
+| **`fresh_emulation_20001_20050`** | Containerized Linux network namespaces (50 episodes) | `CLEAN` | 50 | 40 (80.0%) | 10 | 100.0% | 0.0% [0.0%, 8.8%] | 0 (<= 7.50%) | 100.0% (10/10) |
+| **`borderline_suite_400`** | Degraded non-saturated fault signals (400 samples) | `CLEAN` | 400 | 199 (49.75% at $\ge 0.70$)<br/>252 (63.0% at $\ge 0.40$) | 201 (at $\ge 0.70$)<br/>148 (at $\ge 0.40$) | 100.0% (at $\ge 0.70$)<br/>85.32% (at $\ge 0.40$) | 0.0% [0.0%, 1.9%] (at $\ge 0.70$)<br/>14.68% [10.8%, 19.6%] (at $\ge 0.40$) | 0 (<= 0.75%) | 100.0% (40/40) |
+| **Total Fresh Holdouts** | **Combined 5 Populations** | `CLEAN` | **1,350** | **1,019 (75.48% at $\ge 0.70$)<br/>1,072 (79.41% at $\ge 0.40$)** | **331 (at $\ge 0.70$)<br/>278 (at $\ge 0.40$)** | **100.0% (at $\ge 0.70$)<br/>96.55% (at $\ge 0.40$)** | **0.0% (at $\ge 0.70$)<br/>3.45% (at $\ge 0.40$)** | **0 (<= 0.22%)** | **100.0%** |
 
+- **Explicit Operating Points on Borderline Suite (400 samples)**:
+  - **Production Default ($\ge 0.70$)**: 199/400 accepted (49.75% coverage), 100.0% selective accuracy, 0.0% selective risk [Wilson 95% CI: 0.0%, 1.9%]. Strict multi-domain consensus requirement.
+  - **Broad Coverage Mode ($\ge 0.40$)**: 252/400 accepted (63.0% coverage), 85.32% selective accuracy, 14.68% selective risk [Wilson 95% CI: 10.84%, 19.58%]. Captures degraded borderline signals with bounded error.
 - **Faults Called Normal**: Strictly **0** across all 2,115 canonical benchmark samples and 1,350 fresh holdout samples.
-- **Selective Accuracy on Accepted**: 100.0% across all evaluated splits.
-- **Physical Emulation**: 50 live containerized Linux network episodes (`veth`, `tc`, `iperf3`, MTU mismatch, CPU overload, link flap) evaluated with zero hand-edited telemetry.
+- **Containerized Linux Network-Namespace Emulation**: 50 live containerized Linux network episodes (`veth`, `tc`, `iperf3`, MTU mismatch, CPU overload, link flap) evaluated with zero hand-edited telemetry: **40 accepted** (30 diagnosed fault + 10 healthy baseline confirmation) and **10 safely abstained** (6 transient link flap + 4 borderline cpu stress), achieving **100.0% selective accuracy** on accepted cases.
 
 ---
 
 ## Evidence Ledger Reconciliation Audit
 
-- **Directly Verified Partition Total**: `4,200` samples cataloged across 13 partitions in `docs/evidence_ledger.md` (1,600 Tuned, 1,100 Development, 1,500 Clean).
-- **Historical Accounting Discrepancy Disclosed**: The historical project summary (`5,715` samples, `3,015` clean holdouts) includes an unrecorded delta of `1,515` clean holdouts that lack explicit seed-level JSON manifests on disk. Under strict anti-fabrication standards, NetCoop AI discloses this discrepancy and reports only the `4,200` empirically verified samples.
+- **Directly Verified Partition Total**: `4,200` samples cataloged across 13 partitions in `docs/evidence_ledger.md` (1,600 Tuned [38.10%], 1,100 Development [26.19%], 1,500 Clean [35.71%]).
+- **Historical Accounting Discrepancy Disclosed**: The historical project summary (`5,715` samples, `3,015` clean holdouts) includes an unrecorded delta of `1,515` samples that lack supporting seed-level JSON manifests on disk. Under strict anti-fabrication standards, NetCoop AI discloses this discrepancy, labels it unresolved, excludes it from verified totals, and reports only the `4,200` empirically catalogued samples.
 
 ---
 
@@ -95,12 +101,10 @@ All diagnostic benchmarks and risk-coverage metrics reflect the **Phase 13O Fina
 - **Secret Scan**: Full commit history (`git log -p`) scanned with zero real secrets or credentials present.
 - **Render Secret Bypass**: Explicitly rejected and excluded. `netcoop/core/auth.py` contains zero backdoors.
 - **Tracked Files Audit**: Zero tracked `.env`, `*.db`, `*.sqlite`, `*.log`, or temporary files.
-- **Test Suite Pass Rates**:
-  - Backend pytest: 513 passed in 208.57s (exit code 0)
-  - Documentation consistency: 9 passed in 0.39s (exit code 0)
-  - Frontend UI/UX contract: 9 passed in 39.77ms (exit code 0)
-  - Parameters parity: 3 passed in 0.30s (exit code 0)
-  - Total: 534 tests passing with zero failures.
+- **Unique Test Suite Pass Rates (Zero Double-Counting)**:
+  - Backend pytest suite: 513 unique tests passed in 206.89s (exit code 0; uniquely includes 9 documentation consistency tests and 3 parameter parity tests).
+  - Frontend UI/UX contract suite: 9 unique tests passed in 26.9ms (exit code 0).
+  - Total Unique Tests Across Platform: **522 unique tests passing with zero failures, zero errors, and zero skipped**.
 
 ---
 

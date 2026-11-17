@@ -408,6 +408,7 @@ To prevent circular tuning, 1,350 fresh holdout samples were generated under Pha
 | **`fresh_organizer_suite_300`** | Seeds 7000–7099 (150 snapshot + 150 windowed) | `CLEAN` | 300 | 300 (100.0%) | 0 | 100.0% | 0.0% [0.0%, 1.3%] | 0 (<= 1.50%) | 100.0% (100/100) |
 | **`fresh_heldout_1101_1115`** | `HeldoutNetworkGenerator` seeds 1101–1115 (heavy Pareto noise) | `CLEAN` | 150 | 120 (80.0%) | 30 | 100.0% | 0.0% [0.0%, 3.1%] | 0 (<= 2.86%) | 100.0% (15/15) |
 | **`fresh_emulation_20001_20050`** | Containerized Linux network namespaces (50 episodes) | `CLEAN` | 50 | 40 (80.0%) | 10 | 100.0% | 0.0% [0.0%, 8.8%] | 0 (<= 7.50%) | 100.0% (10/10) |
+| **`borderline_suite_400`** | Degraded non-saturated fault signals (400 samples) | `CLEAN` | 400 | 199 (49.75% at $\ge 0.70$)<br/>252 (63.0% at $\ge 0.40$) | 201 | 100.0% (at $\ge 0.70$)<br/>85.32% (at $\ge 0.40$) | 0.0% [0.0%, 1.9%] (at $\ge 0.70$)<br/>14.68% [10.8%, 19.6%] (at $\ge 0.40$) | 0 (<= 0.75%) | 100.0% (40/40) |
 
 ### Dual Latency Benchmarking Methodology
 
@@ -642,20 +643,14 @@ python scripts/run_agents.py --stop
 NetCoop AI includes comprehensive regression, property-based, security, contract, and documentation consistency test suites:
 
 ```powershell
-# 1. Run full backend pytest suite (513 passed across 50 test files)
+# 1. Run full backend pytest suite (513 unique tests across 50 test files, including docs and parameter parity)
 pytest tests/ -q
 
-# 2. Run documentation consistency suite (9 passed)
-pytest tests/test_docs_consistency.py -v
-
-# 3. Run parameters parity suite (3 passed)
-pytest tests/test_parameters_parity.py -v
-
-# 4. Run frontend UI/UX contract suite (9 passed)
+# 2. Run frontend UI/UX contract suite (9 unique tests)
 node dashboard/tests/test_ui_ux_contract.mjs
 ```
 
-**Grand Total**: **534 tests passing with zero failures and zero skipped**.
+**Grand Total**: **522 unique tests passing with zero failures and zero skipped** (513 backend + 9 frontend).
 
 ---
 
@@ -725,10 +720,10 @@ NetCoop-AI/
 The project lifecycle evaluates telemetry across 13 cataloged partitions tracked in [`docs/evidence_ledger.md`](docs/evidence_ledger.md):
 
 - **Directly Verified Partition Total**: `4,200` samples cataloged across Section 1 of the ledger:
-  - `TUNED`: 1,600 samples (28.0% of historical total)
-  - `DEVELOPMENT`: 1,100 samples (19.2% of historical total)
-  - `CLEAN`: 1,500 samples (35.7% of cataloged total)
-- **Historical Summary Accounting Gap**: Cumulative summary figures (`5,715` total samples, `3,015` clean holdouts) reflect earlier historical runs across earlier exploration splits. An unrecorded discrepancy of `1,515` clean samples exists between the 4,200 verified partition samples and the 5,715 cumulative summary claim. Under strict anti-fabrication standards, NetCoop AI explicitly documents the `4,200` verified samples with exact seed provenance rather than inventing unverified data.
+  - `TUNED`: 1,600 samples (38.10% of cataloged total)
+  - `DEVELOPMENT`: 1,100 samples (26.19% of cataloged total)
+  - `CLEAN`: 1,500 samples (35.71% of cataloged total)
+- **Historical Summary Accounting Gap**: Cumulative summary figures (`5,715` total samples, `3,015` clean holdouts) reflect earlier historical runs across earlier exploration splits. An unrecorded discrepancy of `1,515` samples exists between the 4,200 verified partition samples and the 5,715 cumulative summary claim. Under strict anti-fabrication standards, NetCoop AI explicitly documents the `4,200` verified samples with exact seed provenance while acknowledging the `1,515` sample unresolved historical accounting delta.
 
 ---
 
