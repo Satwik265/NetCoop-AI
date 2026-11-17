@@ -8,6 +8,7 @@ from netcoop.config import settings
 @pytest.fixture(autouse=True)
 def configure_test_isolation(request):
     """Enable dev in-process fallback for general offline unit tests unless marked strict_isolation."""
+    os.environ.setdefault("NETCOOP_DEV_PASSWORD", "NetCoopDev!2026")
     settings.agents_mode = "http"
     os.environ["AGENTS_MODE"] = "http"
 
